@@ -109,4 +109,12 @@ If a parent issue exists and the tracker supports sub-issues, link each child to
 - **Linear**: set `parentId` on each child when creating it.
 - **GitLab / local files / unsupported trackers**: skip; the `## Parent` text reference is the only link.
 
-Do NOT close the parent or modify its body or labels. Adding sub-issue links is the only allowed parent change.
+Do NOT close the parent or modify its body. The only allowed parent changes are adding sub-issue links and updating the state label as described in step 7.
+
+### 7. Move the parent to `tracking`
+
+If the source was an existing parent issue (i.e. the new issues were linked as sub-issues in step 6), update the parent's state label to `tracking` (use the configured label string from `docs/agents/triage-labels.md`). Remove any prior state label (`needs-triage`, `ready-for-agent`, etc.) — the parent is no longer a unit of work, it's a container.
+
+GitHub will auto-close the parent when the last child closes. Do not close the parent yourself.
+
+Skip this step if there's no parent issue (e.g. the source was a freeform plan in conversation).

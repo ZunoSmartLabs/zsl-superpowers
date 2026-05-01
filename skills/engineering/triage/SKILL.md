@@ -25,19 +25,20 @@ Two **category** roles:
 - `bug` — something is broken
 - `enhancement` — new feature or improvement
 
-Five **state** roles:
+Six **state** roles:
 
 - `needs-triage` — maintainer needs to evaluate
 - `needs-info` — waiting on reporter for more information
 - `ready-for-agent` — fully specified, ready for an AFK agent
 - `ready-for-human` — needs human implementation
+- `tracking` — container/parent issue (e.g. a PRD) that has been broken into sub-issues; the real work lives in the children
 - `wontfix` — will not be actioned
 
 Every triaged issue should carry exactly one category role and one state role. If state roles conflict, flag it and ask the maintainer before doing anything else.
 
 These are canonical role names — the actual label strings used in the issue tracker may differ. The mapping should have been provided to you - run `/setup-zsl-skills` if not.
 
-State transitions: an unlabeled issue normally goes to `needs-triage` first; from there it moves to `needs-info`, `ready-for-agent`, `ready-for-human`, or `wontfix`. `needs-info` returns to `needs-triage` once the reporter replies. The maintainer can override at any time — flag transitions that look unusual and ask before proceeding.
+State transitions: an unlabeled issue normally goes to `needs-triage` first; from there it moves to `needs-info`, `ready-for-agent`, `ready-for-human`, `tracking`, or `wontfix`. `needs-info` returns to `needs-triage` once the reporter replies. `tracking` is set automatically by `/to-issues` after it breaks an issue into sub-issues, and the parent auto-closes when the last child closes (no manual transition needed). The maintainer can override at any time — flag transitions that look unusual and ask before proceeding.
 
 ## Invocation
 
@@ -72,6 +73,7 @@ Show counts and a one-line summary per issue. Let the maintainer pick.
    - `ready-for-agent` — post an agent brief comment ([AGENT-BRIEF.md](AGENT-BRIEF.md)).
    - `ready-for-human` — same structure as an agent brief, but note why it can't be delegated (judgment calls, external access, design decisions, manual testing).
    - `needs-info` — post triage notes (template below).
+   - `tracking` — the issue has open sub-issues; the work lives in the children. Apply the role and stop. Triage each child individually.
    - `wontfix` (bug) — polite explanation, then close.
    - `wontfix` (enhancement) — write to `.out-of-scope/`, link to it from a comment, then close ([OUT-OF-SCOPE.md](OUT-OF-SCOPE.md)).
    - `needs-triage` — apply the role. Optional comment if there's partial progress.
