@@ -1,6 +1,6 @@
 ---
 name: tdd-parallel
-description: Fan out unblocked sub-tasks of a parent issue into parallel /tdd sessions, each in its own git worktree, displayed side-by-side in a tmux session attached in a new iTerm window. Use when a parent issue has multiple ready-for-agent sub-tasks with no open blockers and the user wants to work on more than one at once. PR-style ship workflow + macOS + iTerm only.
+description: Fan out unblocked sub-tasks of a parent issue into parallel /tdd sessions, each in its own git worktree, displayed side-by-side in a tmux session attached in a new iTerm window. Use when a parent issue has multiple ready-for-agent sub-tasks with no open blockers and the user wants to work on more than one at once. macOS + iTerm only.
 disable-model-invocation: true
 ---
 
@@ -23,7 +23,7 @@ Fan out unblocked sub-tasks of a parent issue into parallel `/tdd` sessions, eac
 
 Refuse with a clear error message if any of these fail. Do **not** auto-fix or retry — surface the error and stop.
 
-- `docs/agents/ship-style.md` exists and declares **pull request** style. Direct-push is mechanically incompatible (worktrees can't share a branch, so each must ship via its own PR). If missing, tell the user to run `/setup-zsl-skills` first.
+- `docs/agents/ship-style.md` exists. Each pane's `/tdd` reads it: in PR-style repos each pane opens its own PR; in direct-push repos each pane pushes its branch and you merge them by hand afterwards. If missing, tell the user to run `/setup-zsl-skills` first.
 - `docs/agents/issue-tracker.md` exists. Read the tracker conventions from it.
 - `docs/agents/triage-labels.md` exists. Read the `ready-for-agent` label string from it.
 - `command -v tmux` succeeds.
