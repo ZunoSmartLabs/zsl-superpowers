@@ -1,6 +1,6 @@
 # ZSL Skills
 
-Personal fork of [`mattpocock/skills`](https://github.com/mattpocock/skills), customized for my own workflow. Agent skills I use every day for real engineering — not vibe coding.
+Fork of [`mattpocock/skills`](https://github.com/mattpocock/skills), customized for the ZSL Agentic Engineering workflow. Agent skills we use every day for real engineering — not vibe coding.
 
 Approaches like GSD, BMAD, and Spec-Kit try to help by owning the process. But while doing so, they take away control and make bugs in the process hard to resolve. The skills here are small, easy to adapt, and composable. They work with any model.
 
@@ -22,7 +22,7 @@ Then run `/setup-zsl-skills` in any repo where you want to use these skills. It 
 
 ## Why These Skills Exist
 
-I built these skills as a way to fix common failure modes I see with Claude Code, Codex, and other coding agents.
+These skills are a way to fix common failure modes we see with Claude Code, Codex, and other coding agents.
 
 ### #1: The Agent Didn't Do What I Want
 
@@ -92,9 +92,9 @@ It's time to look at your feedback loops. Without feedback on how the code it pr
 
 For automated tests, a red-green-refactor loop is critical. This is where the agent writes a failing test first, then fixes the test. This helps give the agent a consistent level of feedback that results in far better code.
 
-I've built a **[`/tdd`](./skills/engineering/tdd/SKILL.md) skill** you can slot into any project. It encourages red-green-refactor and gives the agent plenty of guidance on what makes good and bad tests.
+We've built a **[`/tdd`](./skills/engineering/tdd/SKILL.md) skill** you can slot into any project. It encourages red-green-refactor and gives the agent plenty of guidance on what makes good and bad tests.
 
-For debugging, I've also built a **[`/diagnose`](./skills/engineering/diagnose/SKILL.md)** skill that wraps best debugging practices into a simple loop.
+For debugging, we've also built a **[`/diagnose`](./skills/engineering/diagnose/SKILL.md)** skill that wraps best debugging practices into a simple loop.
 
 ### #4: We Built A Ball Of Mud
 
@@ -125,7 +125,7 @@ Software engineering fundamentals matter more than ever. These skills are my bes
 
 ### Engineering
 
-Skills I use daily for code work.
+Skills we use daily for code work.
 
 - **[diagnose](./skills/engineering/diagnose/SKILL.md)** — Disciplined diagnosis loop for hard bugs and performance regressions: reproduce → minimise → hypothesise → instrument → fix → regression-test.
 - **[grill-with-docs](./skills/engineering/grill-with-docs/SKILL.md)** — Grilling session that challenges your plan against the existing domain model, sharpens terminology, and updates `CONTEXT.md` and ADRs inline.
@@ -148,9 +148,9 @@ General workflow tools, not code-specific.
 
 ### Misc
 
-Tools I keep around but rarely use.
+Tools we keep around but rarely use.
 
+- **[edit-article](./skills/misc/edit-article/SKILL.md)** — Edit and improve articles by restructuring sections, improving clarity, and tightening prose.
 - **[git-guardrails-claude-code](./skills/misc/git-guardrails-claude-code/SKILL.md)** — Set up Claude Code hooks to block dangerous git commands (push, reset --hard, clean, etc.) before they execute.
-- **[migrate-to-shoehorn](./skills/misc/migrate-to-shoehorn/SKILL.md)** — Migrate test files from `as` type assertions to @total-typescript/shoehorn.
 - **[scaffold-exercises](./skills/misc/scaffold-exercises/SKILL.md)** — Create exercise directory structures with sections, problems, solutions, and explainers.
 - **[setup-pre-commit](./skills/misc/setup-pre-commit/SKILL.md)** — Set up Husky pre-commit hooks with lint-staged, Prettier, type checking, and tests.
