@@ -31,11 +31,29 @@ Slices may be 'HITL' or 'AFK'. HITL slices require human interaction, such as an
 - Prefer many thin slices over few thick ones
 </vertical-slice-rules>
 
+#### Title format
+
+Each slice gets a title in the form `[<TYPE>] <wave>[<letter>] — <description>`:
+
+- **Type prefix**: `[AFK]` or `[HITL]`.
+- **Wave number**: dependency depth, starting at 1. Slices sharing a wave number are runnable in parallel (same fan-out batch that `/tdd-parallel` would pick up).
+- **Letter suffix**: when a wave has more than one slice, assign `a`, `b`, `c`... in the order slices were drafted. Single-slice waves stay unlettered.
+- **Em dash separator**: ` — ` between the wave token and the description.
+- **Description**: short and action-oriented.
+
+Examples:
+
+- `[HITL] 1 — Decide auth provider`
+- `[AFK] 2a — Add OAuth callback endpoint`
+- `[AFK] 2b — Render login button`
+- `[AFK] 3 — Wire callback to session store`
+- `[AFK] 4 — Show user profile after login`
+
 ### 4. Quiz the user
 
 Present the proposed breakdown as a numbered list. For each slice, show:
 
-- **Title**: short descriptive name
+- **Title**: as drafted in step 3 (with the `[TYPE] wave[letter] — description` format)
 - **Type**: HITL / AFK
 - **Blocked by**: which other slices (if any) must complete first
 - **User stories covered**: which user stories this addresses (if the source material has them)
