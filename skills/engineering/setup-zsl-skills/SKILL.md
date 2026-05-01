@@ -1,16 +1,17 @@
 ---
-name: setup-matt-pocock-skills
-description: Sets up an `## Agent skills` block in AGENTS.md/CLAUDE.md and `docs/agents/` so the engineering skills know this repo's issue tracker (GitHub or local markdown), triage label vocabulary, and domain doc layout. Run before first use of `to-issues`, `to-prd`, `triage`, `diagnose`, `tdd`, `improve-codebase-architecture`, or `zoom-out` — or if those skills appear to be missing context about the issue tracker, triage labels, or domain docs.
+name: setup-zsl-skills
+description: Sets up an `## Agent skills` block in AGENTS.md/CLAUDE.md and `docs/agents/` so the engineering skills know this repo's issue tracker (GitHub or local markdown), triage label vocabulary, domain doc layout, and ship style (PR vs direct push). Run before first use of `to-issues`, `to-prd`, `triage`, `diagnose`, `tdd`, `improve-codebase-architecture`, or `zoom-out` — or if those skills appear to be missing context about the issue tracker, triage labels, domain docs, or ship style.
 disable-model-invocation: true
 ---
 
-# Setup Matt Pocock's Skills
+# Setup ZSL Skills
 
 Scaffold the per-repo configuration that the engineering skills assume:
 
 - **Issue tracker** — where issues live (GitHub by default; local markdown is also supported out of the box)
 - **Triage labels** — the strings used for the five canonical triage roles
 - **Domain docs** — where `CONTEXT.md` and ADRs live, and the consumer rules for reading them
+- **Ship style** — how changes reach the default branch (pull request or direct push)
 
 This is a prompt-driven skill, not a deterministic script. Explore, present what you found, confirm with the user, then write.
 
@@ -29,7 +30,7 @@ Look at the current repo to understand its starting state. Read whatever exists;
 
 ### 2. Present findings and ask
 
-Summarise what's present and what's missing. Then walk the user through the three decisions **one at a time** — present a section, get the user's answer, then move to the next. Don't dump all three at once.
+Summarise what's present and what's missing. Then walk the user through the four decisions **one at a time** — present a section, get the user's answer, then move to the next. Don't dump them all at once.
 
 Assume the user does not know what these terms mean. Each section starts with a short explainer (what it is, why these skills need it, what changes if they pick differently). Then show the choices and the default.
 
@@ -67,12 +68,21 @@ Confirm the layout:
 - **Single-context** — one `CONTEXT.md` + `docs/adr/` at the repo root. Most repos are this.
 - **Multi-context** — `CONTEXT-MAP.md` at the root pointing to per-context `CONTEXT.md` files (typically a monorepo).
 
+**Section D — Ship style.**
+
+> Explainer: When a skill like `tdd` finishes a change, it needs to know how to get that change to the default branch. Team projects almost always go through pull requests; solo projects often push direct. This affects whether the skill creates a feature branch, opens a PR with a closing keyword, or commits straight to the default branch and closes the issue explicitly.
+
+- **Pull request** — every change goes through a PR. Skills create a feature branch, push, and open a PR with `Closes #<issue>` in the body. The human merges.
+- **Direct push** — changes go straight to the default branch. Skills commit, push, and close the related issue explicitly.
+
+Default: pull request, unless the user specifies otherwise.
+
 ### 3. Confirm and edit
 
 Show the user a draft of:
 
 - The `## Agent skills` block to add to whichever of `CLAUDE.md` / `AGENTS.md` is being edited (see step 4 for selection rules)
-- The contents of `docs/agents/issue-tracker.md`, `docs/agents/triage-labels.md`, `docs/agents/domain.md`
+- The contents of `docs/agents/issue-tracker.md`, `docs/agents/triage-labels.md`, `docs/agents/domain.md`, `docs/agents/ship-style.md`
 
 Let them edit before writing.
 
@@ -104,6 +114,10 @@ The block:
 ### Domain docs
 
 [one-line summary of layout — "single-context" or "multi-context"]. See `docs/agents/domain.md`.
+
+### Ship style
+
+[one-line summary — "pull request" or "direct push"]. See `docs/agents/ship-style.md`.
 ```
 
 Then write the three docs files using the seed templates in this skill folder as a starting point:
@@ -113,6 +127,8 @@ Then write the three docs files using the seed templates in this skill folder as
 - [issue-tracker-local.md](./issue-tracker-local.md) — local-markdown issue tracker
 - [triage-labels.md](./triage-labels.md) — label mapping
 - [domain.md](./domain.md) — domain doc consumer rules + layout
+- [ship-style-pr.md](./ship-style-pr.md) — pull-request workflow
+- [ship-style-direct.md](./ship-style-direct.md) — direct push to default branch
 
 For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch using the user's description.
 

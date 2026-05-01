@@ -98,6 +98,28 @@ After all tests pass, look for [refactor candidates](refactoring.md):
 
 **Never refactor while RED.** Get to GREEN first.
 
+### 5. Ship it
+
+Once tests are green and refactored, ship the slice. The repo's workflow is defined in `docs/agents/ship-style.md` (written by `/setup-zsl-skills`) — read it before doing anything.
+
+- **Always commit via `/zsl-commit`** — never craft commits yourself. The commit body must reference both the sub-task and the parent issue so git history is navigable. Use `#<num>` for GitHub/GitLab (auto-linked in the UI) or full URLs for other trackers:
+
+  ```
+  <subject>
+
+  Sub-task: #<sub-task>
+  Parent: #<parent>
+  ```
+
+- **Close the sub-task on merge:**
+  - PR-style — put `Closes #<sub-task>` in the PR body, alongside the same sub-task/parent references.
+  - Direct-push — put `Closes #<sub-task>` in the commit body itself (replaces the `Sub-task:` line).
+
+  GitHub auto-closes the parent once its last child closes (the sub-issue link was set at `/to-issues` time).
+- **Confirm with the user** before opening a PR or pushing to the default branch.
+
+If `docs/agents/ship-style.md` doesn't exist, run `/setup-zsl-skills` first.
+
 ## Checklist Per Cycle
 
 ```

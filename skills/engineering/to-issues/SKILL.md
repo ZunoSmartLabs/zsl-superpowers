@@ -7,7 +7,7 @@ description: Break a plan, spec, or PRD into independently-grabbable issues on t
 
 Break a plan into independently-grabbable issues using vertical slices (tracer bullets).
 
-The issue tracker and triage label vocabulary should have been provided to you — run `/setup-matt-pocock-skills` if not.
+The issue tracker and triage label vocabulary should have been provided to you — run `/setup-zsl-skills` if not.
 
 ## Process
 
@@ -78,4 +78,17 @@ Or "None - can start immediately" if no blockers.
 
 </issue-template>
 
-Do NOT close or modify any parent issue.
+### 6. Link each new issue as a sub-issue of the parent
+
+If a parent issue exists and the tracker supports sub-issues, link each child to the parent so the parent auto-closes when all children close.
+
+- **GitHub**: use the `addSubIssue` GraphQL mutation. Fetch parent and child node IDs first, then link (replace `OWNER`, `REPO`, `PARENT`, `CHILD`):
+  ```bash
+  PARENT_ID=$(gh api graphql -f query='query{repository(owner:"OWNER",name:"REPO"){issue(number:PARENT){id}}}' -q .data.repository.issue.id)
+  CHILD_ID=$(gh api graphql -f query='query{repository(owner:"OWNER",name:"REPO"){issue(number:CHILD){id}}}' -q .data.repository.issue.id)
+  gh api graphql -f query='mutation($p:ID!,$c:ID!){addSubIssue(input:{issueId:$p,subIssueId:$c}){subIssue{number}}}' -f p="$PARENT_ID" -f c="$CHILD_ID"
+  ```
+- **Linear**: set `parentId` on each child when creating it.
+- **GitLab / local files / unsupported trackers**: skip; the `## Parent` text reference is the only link.
+
+Do NOT close the parent or modify its body or labels. Adding sub-issue links is the only allowed parent change.
