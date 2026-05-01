@@ -121,6 +121,47 @@ And crucially, [`/improve-codebase-architecture`](./skills/engineering/improve-c
 
 Software engineering fundamentals matter more than ever. These skills are my best effort at condensing these fundamentals into repeatable practices, to help you ship the best apps of your career. Enjoy.
 
+## Workflow
+
+The skills compose into one end-to-end loop. Most days you only touch a few of them.
+
+### One-time setup
+
+- **[`/setup-zsl-skills`](./skills/engineering/setup-zsl-skills/SKILL.md)** — configure the issue tracker, triage label vocabulary, domain doc layout, and ship style for this repo. Run once before anything else.
+
+### Plan
+
+- **[`/grill-me`](./skills/productivity/grill-me/SKILL.md)** or **[`/grill-with-docs`](./skills/engineering/grill-with-docs/SKILL.md)** — interview yourself to surface what you're actually building. `grill-with-docs` also updates `CONTEXT.md` and ADRs inline.
+- **[`/to-prd`](./skills/engineering/to-prd/SKILL.md)** — synthesise that conversation into a PRD on the issue tracker.
+
+### Break down
+
+- **[`/to-issues`](./skills/engineering/to-issues/SKILL.md)** — break the PRD into vertical-slice sub-issues. Children are labeled `needs-triage`; the PRD parent is auto-relabeled to `tracking`. Slice titles use the `[AFK|HITL] <wave>[<letter>] — <description>` format so the dependency graph reads at a glance (same wave = runnable in parallel).
+- **[`/triage`](./skills/engineering/triage/SKILL.md)** — triage **each child** to `ready-for-agent` (with an agent brief), `ready-for-human`, or `needs-info`. Skip triaging the PRD itself; you just wrote it.
+
+### Build
+
+- **[`/tdd-parallel`](./skills/engineering/tdd-parallel/SKILL.md) `<PRD>`** — fan out the next batch of unblocked `ready-for-agent` children into parallel `/tdd` worktrees. Containers and blocked items are skipped automatically.
+- **[`/tdd`](./skills/engineering/tdd/SKILL.md) `<child>`** — single-issue red-green-refactor. Refuses if you point it at a container.
+
+### Ship
+
+- Each `/tdd` reads `docs/agents/ship-style.md`. PR-style opens a PR per slice; direct-push pushes the feature branch and you merge by hand.
+- **[`/commit`](./skills/engineering/commit/SKILL.md)** for clean, attribution-free commits.
+- **[`/code-review`](./skills/engineering/code-review/SKILL.md)** before opening the PR.
+
+### Cleanup
+
+- After children merge, manually run `git worktree remove`, `git branch -d`, and `tmux kill-session` to clean up the parallel-tdd artifacts.
+- The PRD parent auto-closes when the last child closes.
+
+### Cross-cutting
+
+- **[`/triage`](./skills/engineering/triage/SKILL.md)** is also the entry point for **inbound issues** (bugs, feature requests from others) and re-evaluating stale ones — not just for the children you just sliced.
+- **[`/diagnose`](./skills/engineering/diagnose/SKILL.md)** for hard bugs and performance regressions.
+- **[`/improve-codebase-architecture`](./skills/engineering/improve-codebase-architecture/SKILL.md)** every few days to fight entropy.
+- **[`/zoom-out`](./skills/engineering/zoom-out/SKILL.md)** when you need a higher-level view of unfamiliar code.
+
 ## Reference
 
 ### Engineering
