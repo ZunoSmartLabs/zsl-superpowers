@@ -102,7 +102,7 @@ After all tests pass, look for [refactor candidates](refactoring.md):
 
 Once tests are green and refactored, ship the slice. The repo's workflow is defined in `docs/agents/ship-style.md` (written by `/setup-zsl-skills`) — read it before doing anything.
 
-- **Always commit via `/zsl-commit`** — never craft commits yourself. The commit body must reference both the sub-task and the parent issue so git history is navigable. Use `#<num>` for GitHub/GitLab (auto-linked in the UI) or full URLs for other trackers:
+- **Always commit via `/commit`** — never craft commits yourself. The commit body must reference both the sub-task and the parent issue so git history is navigable. Use `#<num>` for GitHub/GitLab (auto-linked in the UI) or full URLs for other trackers:
 
   ```
   <subject>
