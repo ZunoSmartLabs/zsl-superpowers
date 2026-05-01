@@ -41,6 +41,7 @@ Using the conventions from `docs/agents/issue-tracker.md`:
   - Open
   - Carry the configured `ready-for-agent` label
   - Have every issue referenced in their `## Blocked by` section closed
+  - Have **no open sub-issues of their own** (otherwise the candidate is itself a container/PRD, not a leaf unit of work)
 
 Sort ascending by issue number (lowest = oldest).
 
@@ -51,6 +52,7 @@ Default cap is 2; override with `--max N`. Print three buckets:
 - **Selected** (numbered, will be worked on in parallel): issue number + title + branch name + worktree path.
 - **Skipped — over cap**: issue number + title.
 - **Skipped — still blocked**: issue number + title + the open `Blocked by` issues still preventing it.
+- **Skipped — is a container**: issue number + title + count of open sub-issues (these are tracking issues, not units of work).
 
 Confirm with the user before proceeding.
 

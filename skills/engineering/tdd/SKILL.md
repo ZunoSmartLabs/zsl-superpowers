@@ -44,6 +44,8 @@ RIGHT (vertical):
 
 ### 1. Planning
 
+**Pre-flight: refuse container issues.** If you were given an issue identifier as input, fetch it and check whether it has open sub-issues. If it does, it's a tracking parent (likely a PRD), not a unit of work. Refuse and tell the user to run `/to-issues` to break it down first, then `/tdd` against one of the leaf children.
+
 When exploring the codebase, use the project's domain glossary so that test names and interface vocabulary match the project's language, and respect ADRs in the area you're touching.
 
 Before writing any code:
