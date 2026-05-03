@@ -12,6 +12,7 @@ Scaffold the per-repo configuration that the engineering skills assume:
 - **Triage labels** — the strings used for the six canonical triage roles
 - **Domain docs** — where `CONTEXT.md` and ADRs live, and the consumer rules for reading them
 - **Ship style** — how changes reach the default branch (pull request or direct push)
+- **Project board** *(optional)* — a GitHub Projects v2 board whose `Status` column should mirror triage labels and tdd lifecycle
 
 This is a prompt-driven skill, not a deterministic script. Explore, present what you found, confirm with the user, then write.
 
@@ -30,7 +31,7 @@ Look at the current repo to understand its starting state. Read whatever exists;
 
 ### 2. Present findings and ask
 
-Summarise what's present and what's missing. Then walk the user through the four decisions **one at a time** — present a section, get the user's answer, then move to the next. Don't dump them all at once.
+Summarise what's present and what's missing. Then walk the user through the five decisions **one at a time** — present a section, get the user's answer, then move to the next. Don't dump them all at once.
 
 Assume the user does not know what these terms mean. Each section starts with a short explainer (what it is, why these skills need it, what changes if they pick differently). Then show the choices and the default.
 
@@ -78,12 +79,41 @@ Confirm the layout:
 
 Default: pull request, unless the user specifies otherwise.
 
+**Section E — Project board sync (optional, GitHub only).**
+
+> Explainer: If you're using GitHub Projects v2 to track your issues on a board, the `triage`, `to-issues`, and `tdd` skills can update a card's `Status` column whenever they change the issue's lifecycle (e.g. triaged to `ready-for-agent` → Status `Ready`; `tdd` starts work → `In progress`; PR opened → `In review`). Without this, the board stays static and you have to drag cards across columns manually. Skip this section if you don't use a project board, or if you'd rather wire the sync up via GitHub Actions yourself.
+
+If the user opts in, walk them through:
+
+1. **Identify the project.** Ask for the project URL (e.g. `https://github.com/users/<owner>/projects/<number>`) or an `owner/number` pair. Parse out the owner and number.
+2. **Fetch the project's structure.** Run:
+   ```bash
+   gh project view <number> --owner <owner> --format json
+   gh project field-list <number> --owner <owner> --format json
+   ```
+   Capture the project's node ID (`PVT_…`), find the single-select field named `Status` (or whatever the user calls their lifecycle column — confirm with them), and capture its field ID (`PVTSSF_…`) and option IDs.
+3. **Map canonical states to Status options.** Default mapping (override per user preference):
+
+   | Skill action                                      | Status option |
+   |---------------------------------------------------|---------------|
+   | `/triage` → `needs-triage` / `needs-info`         | Backlog       |
+   | `/triage` → `ready-for-agent` / `ready-for-human` | Ready         |
+   | `/triage` → `tracking` / `/to-issues` parent      | In progress   |
+   | `/tdd` step 1 (work begins)                       | In progress   |
+   | `/tdd` ship in PR-style (PR opened)               | In review     |
+   | `/triage` → `wontfix`                             | Done          |
+
+   Issue closure (PR merged, direct-push commit, manual close) lands at `Done` automatically via the project's built-in **Auto-close issue** workflow — skills don't write `Done` themselves.
+4. If the user's Status options don't include some of these labels (e.g. their column is named `In Review` not `In review`, or they have no `In progress`), confirm the substitutions before writing.
+
+If the user opts out, do not write `docs/agents/project-board.md` — the skills detect its absence and silently skip the sync.
+
 ### 3. Confirm and edit
 
 Show the user a draft of:
 
 - The `## Agent skills` block to add to whichever of `CLAUDE.md` / `AGENTS.md` is being edited (see step 4 for selection rules)
-- The contents of `docs/agents/issue-tracker.md`, `docs/agents/triage-labels.md`, `docs/agents/domain.md`, `docs/agents/ship-style.md`
+- The contents of `docs/agents/issue-tracker.md`, `docs/agents/triage-labels.md`, `docs/agents/domain.md`, `docs/agents/ship-style.md`, and (if Section E was answered yes) `docs/agents/project-board.md`
 
 Let them edit before writing.
 
@@ -121,7 +151,15 @@ The block:
 [one-line summary — "pull request" or "direct push"]. See `docs/agents/ship-style.md`.
 ```
 
-Then write the three docs files using the seed templates in this skill folder as a starting point:
+If Section E was answered yes, also append:
+
+```markdown
+### Project board
+
+[one-line summary — project name and URL]. See `docs/agents/project-board.md`.
+```
+
+Then write the docs files using the seed templates in this skill folder as a starting point:
 
 - [issue-tracker-github.md](./issue-tracker-github.md) — GitHub issue tracker
 - [issue-tracker-gitlab.md](./issue-tracker-gitlab.md) — GitLab issue tracker
@@ -130,8 +168,9 @@ Then write the three docs files using the seed templates in this skill folder as
 - [domain.md](./domain.md) — domain doc consumer rules + layout
 - [ship-style-pr.md](./ship-style-pr.md) — pull-request workflow
 - [ship-style-direct.md](./ship-style-direct.md) — direct push to default branch
+- [project-board.md](./project-board.md) — GitHub Projects v2 sync (only when Section E was answered yes)
 
-For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch using the user's description.
+For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch using the user's description. For `docs/agents/project-board.md`, fill the template placeholders with the project node ID, Status field ID, and option IDs you discovered in Section E.
 
 ### 5. Done
 

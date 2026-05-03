@@ -46,6 +46,8 @@ RIGHT (vertical):
 
 **Pre-flight: refuse container issues.** If you were given an issue identifier as input, fetch it and check whether it has open sub-issues. If it does, it's a tracking parent (likely a PRD), not a unit of work. Refuse and tell the user to run `/to-issues` to break it down first, then `/tdd` against one of the leaf children.
 
+**Pre-flight: signal "in progress" on the project board (if configured).** If you were given an issue identifier *and* `docs/agents/project-board.md` exists, update the issue's project item Status to the option mapped to "work begins" (typically `In progress`). Use the same lookup-then-update procedure documented in `triage/SKILL.md` step 6: fetch the project item via `gh api graphql` filtered by the configured project node ID, then `updateProjectV2ItemFieldValue` with the mapped Status option ID. If the issue isn't on the configured project, log and continue. Best-effort — failure to update Status doesn't block the TDD work. Skip entirely if `docs/agents/project-board.md` doesn't exist or you weren't given an issue identifier.
+
 When exploring the codebase, use the project's domain glossary so that test names and interface vocabulary match the project's language, and respect ADRs in the area you're touching.
 
 Before writing any code:
@@ -119,6 +121,7 @@ Once tests are green and refactored, ship the slice. The repo's workflow is defi
 
   GitHub auto-closes the parent once its last child closes (the sub-issue link was set at `/to-issues` time).
 - **Confirm with the user** before opening a PR or pushing to the default branch.
+- **Signal "in review" on the project board (PR-style only, if configured).** If `docs/agents/project-board.md` exists *and* the ship style is PR, update the issue's project item Status to the option mapped to "PR opened" (typically `In review`) once the PR is open. The project's existing `Auto-close issue` workflow will move Status to `Done` automatically when the PR merges and closes the issue. In direct-push mode, no skill-driven Status update is needed at ship time — the closing commit triggers the same Auto-close workflow directly.
 
 If `docs/agents/ship-style.md` doesn't exist, run `/setup-zsl-skills` first.
 

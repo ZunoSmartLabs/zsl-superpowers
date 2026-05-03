@@ -117,4 +117,8 @@ If the source was an existing parent issue (i.e. the new issues were linked as s
 
 GitHub will auto-close the parent when the last child closes. Do not close the parent yourself.
 
+If `docs/agents/project-board.md` exists, also update the parent's project item Status to the option mapped to `tracking` (typically `In progress`). Use the same lookup-then-update procedure documented in `triage/SKILL.md` step 6: fetch the project item via `gh api graphql` filtered by the configured project node ID, then `updateProjectV2ItemFieldValue` with the mapped Status option ID. If the parent isn't on the configured project, log and continue. Best-effort — the label change is the source of truth.
+
+Children created in step 5 are auto-added to the project (the user's existing "Auto-add to project" workflow handles that) and start in the project's default Status (`Backlog`); `/triage` will advance them to `Ready` later.
+
 Skip this step if there's no parent issue (e.g. the source was a freeform plan in conversation).

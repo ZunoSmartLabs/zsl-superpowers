@@ -78,6 +78,26 @@ Show counts and a one-line summary per issue. Let the maintainer pick.
    - `wontfix` (enhancement) — write to `.out-of-scope/`, link to it from a comment, then close ([OUT-OF-SCOPE.md](OUT-OF-SCOPE.md)).
    - `needs-triage` — apply the role. Optional comment if there's partial progress.
 
+6. **Sync the project board (if configured).** If `docs/agents/project-board.md` exists, after the label change above, also update the issue's project item Status:
+
+   1. Read the project node ID, Status field ID, and the canonical-state → option-ID mapping from `docs/agents/project-board.md`.
+   2. Look up the issue's project item:
+      ```bash
+      gh api graphql -f query='query { repository(owner:"<owner>", name:"<repo>") { issue(number:N) { projectItems(first:20) { nodes { id project { id } } } } } }'
+      ```
+      Filter by `project.id` matching the configured project node ID. If no match, log *"issue not in configured project; skipping Status update"* and continue.
+   3. Map the new state label to its Status option ID via the mapping table.
+   4. Update via:
+      ```bash
+      gh api graphql -f query='mutation($p:ID!,$i:ID!,$f:ID!,$o:String!){updateProjectV2ItemFieldValue(input:{projectId:$p,itemId:$i,fieldId:$f,value:{singleSelectOptionId:$o}}){projectV2Item{id}}}' \
+        -f p=<project-node-id> -f i=<item-id> -f f=<status-field-id> -f o=<option-id>
+      ```
+   5. Mention the Status change in the same triage summary you print to the maintainer.
+
+   The label transition is the source of truth; the board sync is best-effort. If the Status update fails, surface the error but do not roll back the label change.
+
+   Skip this step entirely if `docs/agents/project-board.md` doesn't exist.
+
 ## Quick state override
 
 If the maintainer says "move #42 to ready-for-agent", trust them and apply the role directly. Confirm what you're about to do (role changes, comment, close), then act. Skip grilling. If moving to `ready-for-agent` without a grilling session, ask whether they want to write an agent brief.
