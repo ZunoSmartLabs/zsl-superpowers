@@ -20,7 +20,11 @@ Fan out unblocked sub-tasks of a parent issue into parallel `/tdd` sessions, eac
 
 ## Process
 
-### 1. Pre-flight checks
+### 1. Pre-flight
+
+Pre-flight has four phases: validate the environment, auto-clean stale tmux sessions, auto-clean stale worktrees and branches, and sync local `main`. Phase 1a refuses on failure; phases 1b–1d only refuse when there's in-flight work or unsafe state — otherwise they clean up silently and continue.
+
+#### 1a. Environment validation
 
 Refuse with a clear error message if any of these fail. Do **not** auto-fix or retry — surface the error and stop.
 
@@ -29,9 +33,44 @@ Refuse with a clear error message if any of these fail. Do **not** auto-fix or r
 - `docs/agents/triage-labels.md` exists. Read the `ready-for-agent` label string from it.
 - `command -v tmux` succeeds.
 - `command -v osascript` succeeds.
-- `tmux has-session -t tdd-parallel-<parent>` returns non-zero. If a session already exists, tell the user to `tmux kill-session -t tdd-parallel-<parent>` and re-run — do not auto-kill (in-flight work would be lost).
 
 Append `.worktrees/` to the repo root `.gitignore` if not already present.
+
+#### 1b. Auto-clean stale tmux session
+
+If `tmux has-session -t tdd-parallel-<parent>` succeeds, decide whether the session is leftover residue (kill it) or active work (refuse):
+
+1. List each pane in the session. Parse the issue number from the pane's working directory: worktree paths follow `.worktrees/<issue-num>-<slug>/`, so the issue number is the leading numeric chunk before the first `-`.
+2. For each parsed issue, query the issue tracker (per `docs/agents/issue-tracker.md`) for the issue's state.
+3. If **every** pane's issue is CLOSED, the session is finished residue → `tmux kill-session -t tdd-parallel-<parent>` and continue.
+4. If **any** pane's issue is still OPEN, refuse with a clear error message naming the open issues — they're still in flight. Tell the user how to attach (`tmux attach -t tdd-parallel-<parent>`) and re-run after they ship.
+5. If a pane's working dir doesn't match the `.worktrees/<num>-<slug>/` pattern (e.g. the watcher pane itself, or a pane the user manually opened), or the issue tracker is unreachable for a given issue, treat the state as OPEN — never auto-kill on uncertainty.
+
+#### 1c. Auto-clean stale worktrees and branches
+
+Scan `.worktrees/*`. For each entry whose name matches `<issue-num>-<slug>`:
+
+1. Parse the issue number from the directory name (leading numeric chunk before the first `-`).
+2. Query the issue tracker for the issue's state.
+3. **Skip** if the issue is OPEN — not ours to remove.
+4. **Skip** if `git -C .worktrees/<dir> status --porcelain` is non-empty — uncommitted changes; the agent may have crashed mid-edit and the user should investigate.
+5. Otherwise:
+   - `git worktree remove .worktrees/<issue-num>-<slug>` (no `--force`)
+   - `git branch -d tdd/<issue-num>-<slug>` (no `-D`)
+6. If `git branch -d` refuses because the branch isn't fully merged, **skip and log** — never use `-D` automatically. Commits could be lost.
+
+Print a one-block summary: `cleaned: [...issue numbers]`, `skipped — open: [...]`, `skipped — uncommitted: [...]`, `skipped — unmerged branch: [...]`. Do not refuse on any skip; just continue.
+
+#### 1d. Sync local main
+
+The orchestrator's checkout may be behind `origin/main` — direct-push slices land on `origin/main` from worktrees, so this checkout doesn't auto-update. New worktrees inherit from the orchestrator's `HEAD`, so slice N+1 needs slice N's commits visible here.
+
+```bash
+git fetch origin
+git pull --ff-only origin main
+```
+
+If `git pull --ff-only` fails because of local divergence, refuse with a clear error message and stop. Do **not** auto-merge.
 
 ### 2. Discover unblocked sub-tasks
 
