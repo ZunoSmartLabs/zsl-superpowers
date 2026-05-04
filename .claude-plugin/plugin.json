@@ -1,5 +1,11 @@
 {
-  "name": "zsl-skills",
+  "name": "zsl",
+  "version": "0.1.0",
+  "description": "ZSL agentic engineering skills — daily-driver slash commands for triage, TDD, code review, and more.",
+  "author": {
+    "name": "ZunoSmartLabs",
+    "url": "https://github.com/ZunoSmartLabs"
+  },
   "skills": [
     "./skills/engineering/diagnose",
     "./skills/engineering/grill-with-docs",

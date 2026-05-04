@@ -6,14 +6,41 @@ Approaches like GSD, BMAD, and Spec-Kit try to help by owning the process. But w
 
 ## Install
 
-Clone the repo and run the link script to symlink every skill into `~/.claude/skills/`:
+This is a private repo, so install via a local clone (which uses your existing git auth):
 
 ```bash
-git clone https://github.com/ZunoSmartLabs/zsl-skills.git ~/code/zsl-skills
-bash ~/code/zsl-skills/scripts/link-skills.sh
+git clone git@github.com:ZunoSmartLabs/zsl-skills.git ~/code/zsl-skills
 ```
 
-Then run `/setup-zsl-skills` in any repo where you want to use these skills. It will:
+Then in Claude Code, register the clone as a marketplace and install the plugin:
+
+```
+/plugin marketplace add ~/code/zsl-skills
+/plugin install zsl@zsl-skills
+```
+
+Skills now surface namespaced as `/zsl:<skill-name>` (e.g. `/zsl:tdd`, `/zsl:triage`).
+
+### Updating
+
+When new versions land, pull and refresh:
+
+```bash
+git -C ~/code/zsl-skills pull
+```
+
+Then in Claude Code:
+
+```
+/plugin marketplace update zsl-skills
+/plugin update zsl
+```
+
+Restart Claude Code to apply.
+
+### Per-repo setup
+
+Run `/zsl:setup-zsl-skills` in any repo where you want to use these skills. It will:
 
 - Ask which issue tracker you use (GitHub, GitLab, or local markdown files)
 - Ask which labels you apply when triaging issues (`/triage` uses these)
