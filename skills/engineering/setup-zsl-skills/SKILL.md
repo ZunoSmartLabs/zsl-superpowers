@@ -81,30 +81,74 @@ Default: pull request, unless the user specifies otherwise.
 
 **Section E — Project board sync (optional, GitHub only).**
 
-> Explainer: If you're using GitHub Projects v2 to track your issues on a board, the `triage`, `to-issues`, and `tdd` skills can update a card's `Status` column whenever they change the issue's lifecycle (e.g. triaged to `ready-for-agent` → Status `Ready`; `tdd` starts work → `In progress`; PR opened → `In review`). Without this, the board stays static and you have to drag cards across columns manually. Skip this section if you don't use a project board, or if you'd rather wire the sync up via GitHub Actions yourself.
+> Explainer: If you're using GitHub Projects v2 to track your issues on a board — or want to start — the `triage`, `to-issues`, and `tdd` skills can update a card's `Status` column whenever they change the issue's lifecycle (e.g. triaged to `ready-for-agent` → Status `Ready`; `tdd` starts work → `In progress`; PR opened → `In review`). Without this, the board stays static and you have to drag cards across columns manually. The skill can wire up either an existing board or create a fresh one. Skip this section if you don't want a project board, or if you'd rather wire the sync up via GitHub Actions yourself.
 
 If the user opts in, walk them through:
 
-1. **Identify the project.** Ask for the project URL (e.g. `https://github.com/users/<owner>/projects/<number>`) or an `owner/number` pair. Parse out the owner and number.
+1. **Identify or create the project.** Ask whether an existing Projects v2 board should be wired up, or whether to create a new one.
+
+   - **Existing board.** Ask for the project URL (e.g. `https://github.com/users/<owner>/projects/<number>` or `https://github.com/orgs/<org>/projects/<number>`) or an `owner/number` pair. Parse out the owner and number.
+   - **New board.** Ask for a title (default: the repo name). Determine the owner — for org-owned repos default to the org; for user repos default to the user — and confirm before creating. Then:
+     ```bash
+     gh project create --owner <owner> --title "<title>" --format json
+     ```
+     Capture the returned `number`, `url`, and node ID. Two follow-ups, both optional but worth offering:
+     - **Link the repo** so issue/PR pickers know about the board: `gh project link <number> --owner <owner> --repo <owner>/<repo>`.
+     - **Enable built-in workflows** at `<url>/workflows` — at minimum **Auto-add to project** (filter `repo:<owner>/<repo> is:issue,pr is:open`) and **Auto-close issue** (so closing an issue lands its card on `Done` without the skills having to). These workflows can't yet be toggled via `gh`; point the user at the URL.
+
 2. **Fetch the project's structure.** Run:
    ```bash
    gh project view <number> --owner <owner> --format json
    gh project field-list <number> --owner <owner> --format json
    ```
    Capture the project's node ID (`PVT_…`), find the single-select field named `Status` (or whatever the user calls their lifecycle column — confirm with them), and capture its field ID (`PVTSSF_…`) and option IDs.
-3. **Map canonical states to Status options.** Default mapping (override per user preference):
 
-   | Skill action                                      | Status option |
-   |---------------------------------------------------|---------------|
-   | `/triage` → `needs-triage` / `needs-info`         | Backlog       |
-   | `/triage` → `ready-for-agent` / `ready-for-human` | Ready         |
-   | `/triage` → `tracking` / `/to-issues` parent      | In progress   |
-   | `/tdd` step 1 (work begins)                       | In progress   |
-   | `/tdd` ship in PR-style (PR opened)               | In review     |
-   | `/triage` → `wontfix`                             | Done          |
+3. **Customise Status options if needed.** New projects ship with `Todo` / `In Progress` / `Done`. These skills work best with five canonical options — `Backlog`, `Ready`, `In progress`, `In review`, `Done` — because they map cleanly onto the triage and tdd lifecycle. Compare the option list from step 2 against the canonical five. If any are missing, ask the user which approach they'd prefer:
+
+   - **Replace** the Status options with the canonical five (recommended for new boards, or older boards with no cards yet). Run the mutation:
+     ```bash
+     gh api graphql -f query='
+       mutation($projectId: ID!, $fieldId: ID!) {
+         updateProjectV2Field(input: {
+           projectId: $projectId
+           fieldId: $fieldId
+           singleSelectOptions: [
+             {name: "Backlog",     color: GRAY,   description: ""}
+             {name: "Ready",       color: BLUE,   description: ""}
+             {name: "In progress", color: YELLOW, description: ""}
+             {name: "In review",   color: PURPLE, description: ""}
+             {name: "Done",        color: GREEN,  description: ""}
+           ]
+         }) {
+           projectV2Field {
+             ... on ProjectV2SingleSelectField {
+               id
+               options { id name }
+             }
+           }
+         }
+       }
+     ' -f projectId=<PVT_…> -F fieldId=<PVTSSF_…>
+     ```
+     Re-run `gh project field-list` to capture the new option IDs. Note: `updateProjectV2Field` replaces the option set wholesale; any cards assigned to a removed option (e.g. `Todo`) become unassigned and need manual remapping. Don't run this on a board with live cards without warning the user first.
+   - **Map** existing options onto the canonical states (recommended when the board already has live cards). Confirm a mapping with the user — e.g. `Todo → Backlog`, `In Progress → In progress` — and record it in `docs/agents/project-board.md` so the skills emit the right option IDs without mutating the field.
+
+4. **Map canonical states to Status options.** Default mapping (override per user preference, or per the mapping agreed in step 3):
+
+   | Skill action                                                      | Status option |
+   |-------------------------------------------------------------------|---------------|
+   | `/triage` → `needs-triage` / `needs-info`                         | Backlog       |
+   | `/triage` → `ready-for-agent` / `ready-for-human`                 | Ready         |
+   | `/triage` → `tracking` / `/to-issues` parent                      | In progress   |
+   | `/tdd` step 1 (work begins)                                       | In progress   |
+   | `/tdd` ship in PR-style (PR opened)                               | In review     |
+   | `/tdd-parallel` step 4 (integration PR opened) — bulk parent + every integrated sub-issue | In review     |
+   | `/triage` → `wontfix`                                             | Done          |
+
+   `/tdd` invoked with `--no-ship` (used by `/tdd-parallel` sub-agents) skips the per-slice "In review" update; the orchestrator handles the bulk transition when the consolidated integration PR opens.
 
    Issue closure (PR merged, direct-push commit, manual close) lands at `Done` automatically via the project's built-in **Auto-close issue** workflow — skills don't write `Done` themselves.
-4. If the user's Status options don't include some of these labels (e.g. their column is named `In Review` not `In review`, or they have no `In progress`), confirm the substitutions before writing.
+5. If the user's Status options don't include some of these labels (e.g. their column is named `In Review` not `In review`, or they have no `In progress`), confirm the substitutions before writing.
 
 If the user opts out, do not write `docs/agents/project-board.md` — the skills detect its absence and silently skip the sync.
 

@@ -40,6 +40,10 @@ RIGHT (vertical):
   ...
 ```
 
+## Flags
+
+- `--no-ship` — skip step 5 (Ship it). After the final refactor commit, stop and report back: branch name (`git rev-parse --abbrev-ref HEAD`), last commit sha (`git rev-parse HEAD`), and a one-paragraph summary of the changes. Do not push, do not open a PR, do not update the project board's "in review" Status. Used by `/tdd-parallel` so the orchestrator can integrate slice branches locally and ship a single consolidated PR. Step 1's "in progress" Status update still happens — the work is real, only the ship step is deferred.
+
 ## Workflow
 
 ### 1. Planning
@@ -103,6 +107,8 @@ After all tests pass, look for [refactor candidates](refactoring.md):
 **Never refactor while RED.** Get to GREEN first.
 
 ### 5. Ship it
+
+**Skip this entire step if `--no-ship` was passed.** Stop after the final refactor commit and report back: branch name, last commit sha, one-paragraph summary. The orchestrator (`/tdd-parallel`) will integrate the branch and ship a consolidated PR.
 
 Once tests are green and refactored, ship the slice. The repo's workflow is defined in `docs/agents/ship-style.md` (written by `/setup-zsl-skills`) — read it before doing anything.
 

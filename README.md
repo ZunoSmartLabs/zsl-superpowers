@@ -168,7 +168,7 @@ The skills compose into one end-to-end loop. Most days you only touch a few of t
 
 ### Build
 
-- **[`/tdd-parallel`](./skills/engineering/tdd-parallel/SKILL.md) `<PRD>`** — fan out the next batch of unblocked `ready-for-agent` children into parallel `/tdd` worktrees. Containers and blocked items are skipped automatically.
+- **[`/tdd-parallel`](./skills/engineering/tdd-parallel/SKILL.md) `<PRD>`** — fan out the unblocked **`[AFK]`** `ready-for-agent` children into parallel `/tdd` sub-agents in worktrees. Sub-agents commit but do **not** push (`/tdd --no-ship`). The orchestrator merges every slice branch onto the PRD branch in wave order with `--no-ff`, then opens **one consolidated integration PR**. Halts with a structured RCA on agent failure, merge conflict, or zero-progress cycles. PR-style repos only; `[HITL]`, container, and blocked items are skipped.
 - **[`/tdd`](./skills/engineering/tdd/SKILL.md) `<child>`** — single-issue red-green-refactor. Refuses if you point it at a container.
 
 ### Ship
@@ -179,7 +179,7 @@ The skills compose into one end-to-end loop. Most days you only touch a few of t
 
 ### Cleanup
 
-- After children merge, manually run `git worktree remove`, `git branch -d`, and `tmux kill-session` to clean up the parallel-tdd artifacts.
+- After children merge, manually run `git worktree remove` and `git branch -d` to clean up the parallel-tdd worktrees and branches (the next `/tdd-parallel` run also sweeps these in its pre-flight).
 - The PRD parent auto-closes when the last child closes.
 
 ### Cross-cutting
@@ -201,7 +201,7 @@ Skills we use daily for code work.
 - **[improve-codebase-architecture](./skills/engineering/improve-codebase-architecture/SKILL.md)** — Find deepening opportunities in a codebase, informed by the domain language in `CONTEXT.md` and the decisions in `docs/adr/`.
 - **[setup-zsl-skills](./skills/engineering/setup-zsl-skills/SKILL.md)** — Scaffold the per-repo config (issue tracker, triage label vocabulary, domain doc layout) that the other engineering skills consume. Run once per repo before using `to-issues`, `to-prd`, `triage`, `diagnose`, `tdd`, `improve-codebase-architecture`, or `zoom-out`.
 - **[tdd](./skills/engineering/tdd/SKILL.md)** — Test-driven development with a red-green-refactor loop. Builds features or fixes bugs one vertical slice at a time.
-- **[tdd-parallel](./skills/engineering/tdd-parallel/SKILL.md)** — Fan out unblocked sub-tasks of a parent issue into parallel `/tdd` sessions in git worktrees, displayed side-by-side in tmux + iTerm.
+- **[tdd-parallel](./skills/engineering/tdd-parallel/SKILL.md)** — Fan out the unblocked `[AFK]` sub-tasks of a parent issue into parallel `/tdd` sub-agents in worktrees; sub-agents commit but don't push. The orchestrator merges every slice branch onto the PRD branch in wave order, then opens a single consolidated integration PR. PR-style only.
 - **[to-issues](./skills/engineering/to-issues/SKILL.md)** — Break any plan, spec, or PRD into independently-grabbable GitHub issues using vertical slices.
 - **[to-prd](./skills/engineering/to-prd/SKILL.md)** — Turn the current conversation context into a PRD and submit it as a GitHub issue. No interview — just synthesizes what you've already discussed.
 - **[zoom-out](./skills/engineering/zoom-out/SKILL.md)** — Tell the agent to zoom out and give broader context or a higher-level perspective on an unfamiliar section of code.

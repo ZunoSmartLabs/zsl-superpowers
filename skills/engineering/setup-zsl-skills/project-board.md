@@ -26,16 +26,19 @@ This repo's triage labels and `/tdd` lifecycle sync to a GitHub Projects v2 boar
 
 Skills write Status at these lifecycle moments:
 
-| Skill action                                       | Status option |
-|----------------------------------------------------|---------------|
-| `/triage` → `needs-triage`                         | Backlog       |
-| `/triage` → `needs-info`                           | Backlog       |
-| `/triage` → `ready-for-agent`                      | Ready         |
-| `/triage` → `ready-for-human`                      | Ready         |
-| `/triage` → `tracking` *(or `/to-issues` step 7)*  | In progress   |
-| `/tdd` step 1 (work begins on the issue)           | In progress   |
-| `/tdd` ship in PR-style (PR opened, awaiting merge) | In review     |
-| `/triage` → `wontfix`                              | Done          |
+| Skill action                                                      | Status option |
+|-------------------------------------------------------------------|---------------|
+| `/triage` → `needs-triage`                                        | Backlog       |
+| `/triage` → `needs-info`                                          | Backlog       |
+| `/triage` → `ready-for-agent`                                     | Ready         |
+| `/triage` → `ready-for-human`                                     | Ready         |
+| `/triage` → `tracking` *(or `/to-issues` step 7)*                 | In progress   |
+| `/tdd` step 1 (work begins on the issue)                          | In progress   |
+| `/tdd` ship in PR-style (PR opened, awaiting merge)               | In review     |
+| `/tdd-parallel` step 4 (integration PR opened) — parent + every integrated sub-issue | In review     |
+| `/triage` → `wontfix`                                             | Done          |
+
+`/tdd` invoked with `--no-ship` (the mode used by `/tdd-parallel` sub-agents) skips the "PR opened → In review" update — no per-slice PR is created. The orchestrator handles the bulk transition for every integrated sub-issue when the consolidated integration PR opens.
 
 Issue closure (PR merged, direct-push commit, manual close) lands at `Done` automatically via the project's built-in **Auto-close issue** workflow — skills don't write `Done` themselves.
 
