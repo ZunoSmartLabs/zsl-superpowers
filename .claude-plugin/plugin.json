@@ -1,6 +1,6 @@
 {
   "name": "zsl",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "ZSL agentic engineering skills — daily-driver slash commands for triage, TDD, code review, and more.",
   "author": {
     "name": "ZunoSmartLabs",

@@ -177,7 +177,10 @@ Wait until **all** agents in the current wave have completed normally before mov
 The orchestrator is on the PRD branch. Merge each of the wave's slice branches in order — by letter for lettered slices (`1a`, `1b`, `1c`), by issue number otherwise. For each:
 
 1. `git merge --no-ff tdd/<num>-<slug> -m "Merge slice [AFK] <wave><letter> — <slice-title> (#<num>)"`.
-2. **If git reports a conflict**: leave the merge in its conflicted state (do *not* `git merge --abort` — the user inspects the conflict in place). Halt with hybrid RCA. Stop.
+2. **If git reports a conflict**: attempt auto-resolve before halting.
+   - For each conflicted file, read both sides. Understand the intent of the slice being merged in (its title, recent diff) and the integration tip (the last merged slice's title and diff). Produce a merged result that preserves both — don't pick one side blindly.
+   - After editing, run project lint and tests (`make lint test` if a Makefile exposes them; otherwise infer from repo conventions). On pass, `git add` the resolved files and `git commit --no-edit` to complete the merge, then continue to the next branch.
+   - If a clean merge isn't reachable — binary file, generated lockfile with a structural conflict, lint/tests still red after a couple of attempts, or genuine semantic conflict the orchestrator can't reason about — leave the merge in its conflicted state (do *not* `git merge --abort` — the user inspects in place) and halt with hybrid RCA. Stop.
 3. **On success**: add the slice's issue number to `merged`. Continue to the next branch.
 
 #### 3f. Loop
@@ -245,7 +248,7 @@ The orchestrator session can now be closed. Slice worktrees and branches remain 
 Three failure paths halt the run, all with the same shape: print a hybrid RCA, leave state inspectable, stop. The orchestrator does not attempt resume — the user takes over from the halted state.
 
 - **Agent failure** (3d): a sub-agent errored, refused, or returned without a mergeable branch.
-- **Merge conflict** (3e): `git merge --no-ff` reported a conflict. The merge is left in its conflicted state on the PRD branch.
+- **Unresolvable merge conflict** (3e): `git merge --no-ff` conflicted and the orchestrator's auto-resolve attempt couldn't produce a clean, lint+test-passing merge. The merge is left in its conflicted state on the PRD branch.
 - **Zero-progress** (3a): no slices unblock and the fanout isn't complete.
 
 When a halt fires while other agents are still in flight, the orchestrator waits for those agents to return (so it can capture their state in the RCA), then halts. It does *not* cancel them mid-flight — let them either complete or escalate, and surface their final state.
@@ -269,11 +272,12 @@ Every halt produces a structured RCA followed by an LLM-generated **Possible int
 - What the agent committed before failing (commit count, last commit subject, branch sha).
 - Suggested next action: `cd <agent-worktree>` to inspect, retry by re-running `/tdd <num>` manually, or amend the slice's brief and re-run `/tdd-parallel`.
 
-**Merge conflict (3e):**
+**Unresolvable merge conflict (3e):**
 
 - Slices involved: the source slice being merged in (number, title, wave/letter, branch) and the integration tip's last merged slice (number, title).
 - Files conflicted with line ranges (`git diff --check`).
 - A short diff hunk from each side of the conflict (so the user can see intent without leaving the orchestrator).
+- Auto-resolve outcome: what the orchestrator tried (which files it edited, which it skipped) and why it gave up (binary/lockfile, lint failure, test failure, semantic ambiguity).
 - Wave classification: `same-wave overlap` (both slices in wave N — indicates `/to-issues` mis-sliced), `cross-wave drift` (downstream slice rebased onto an upstream wave that touched the same area), or `unknown`.
 - `Blocked by` references each slice declared (helps spot a missing dependency that should have serialised them).
 - Suggested next action: resolve the conflict in the orchestrator's checkout (already on the PRD branch, mid-merge), commit, run `/tdd-parallel` again to continue.
