@@ -33,10 +33,9 @@ Then in Claude Code:
 
 ```
 /plugin marketplace update zsl-skills
-/plugin update zsl
 ```
 
-Restart Claude Code to apply.
+Restart Claude Code to apply. (`/plugin update <name>` is not a real command — `/plugin` on its own opens the plugin manager UI, and any trailing argument is ignored. The marketplace update + restart is the actual update path.)
 
 ### Per-repo setup
 
