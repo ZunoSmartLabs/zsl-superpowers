@@ -8,7 +8,7 @@
     {
       "name": "zsl",
       "source": "./",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "description": "ZSL agentic engineering skills — daily-driver slash commands for triage, TDD, code review, and more."
     }
   ]

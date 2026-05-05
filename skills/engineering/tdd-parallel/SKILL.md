@@ -228,7 +228,7 @@ Closes #<sub-issue-2>
 Integrated by `/tdd-parallel` across <N> waves.
 ```
 
-3. **Project board update** (best-effort, if `docs/agents/project-board.md` exists). Bulk-move the parent issue and every merged sub-issue's project card from "In progress" to the option mapped to "PR opened" (typically `In review`) via `updateProjectV2ItemFieldValue`. Use the same lookup-then-update procedure documented in `triage/SKILL.md` step 6. Log failures but do not abort — label/PR state is the source of truth, the board sync is best-effort.
+3. **Project board update** (if `docs/agents/project-board.md` exists). Bulk-move the parent issue and every merged sub-issue's project card from "In progress" to the option mapped to "PR opened" (typically `In review`) via `updateProjectV2ItemFieldValue`. Use the same lookup-then-update procedure documented in `triage/SKILL.md` step 6. **This step is mandatory when the file exists — do not treat it as optional.** If an individual update fails, log the failure and continue with the rest of the items; only abort if every update fails (that would indicate a credential or project-id problem worth surfacing).
 
 When the integration PR merges, GitHub's auto-close workflow closes every `Closes #N` issue and lands each card on `Done`.
 
