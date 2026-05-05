@@ -1,0 +1,14 @@
+{
+  "name": "zsl-skills",
+  "owner": {
+    "name": "ZunoSmartLabs",
+    "url": "https://github.com/ZunoSmartLabs"
+  },
+  "plugins": [
+    {
+      "name": "zsl",
+      "source": ".",
+      "description": "ZSL agentic engineering skills — daily-driver slash commands for triage, TDD, code review, and more."
+    }
+  ]
+}
