@@ -110,7 +110,7 @@ After all tests pass, look for [refactor candidates](refactoring.md):
 
 **Skip this entire step if `--no-ship` was passed.** Stop after the final refactor commit and report back: branch name, last commit sha, one-paragraph summary. The orchestrator (`/tdd-parallel`) will integrate the branch and ship a consolidated PR.
 
-Once tests are green and refactored, ship the slice. The repo's workflow is defined in `docs/agents/ship-style.md` (written by `/setup-zsl-skills`) — read it before doing anything.
+Once tests are green and refactored, ship the slice. The repo's workflow is defined in `docs/agents/ship-style.md` (written by `/setup-zsl-superpowers`) — read it before doing anything.
 
 - **Always commit via `/commit`** — never craft commits yourself. The commit body must reference both the sub-task and the parent issue so git history is navigable. Use `#<num>` for GitHub/GitLab (auto-linked in the UI) or full URLs for other trackers:
 
@@ -129,7 +129,7 @@ Once tests are green and refactored, ship the slice. The repo's workflow is defi
 - **Confirm with the user** before opening a PR or pushing to the default branch.
 - **Signal "in review" on the project board (PR-style only, if configured).** If `docs/agents/project-board.md` exists *and* the ship style is PR, update the issue's project item Status to the option mapped to "PR opened" (typically `In review`) once the PR is open. The project's existing `Auto-close issue` workflow will move Status to `Done` automatically when the PR merges and closes the issue. In direct-push mode, no skill-driven Status update is needed at ship time — the closing commit triggers the same Auto-close workflow directly.
 
-If `docs/agents/ship-style.md` doesn't exist, run `/setup-zsl-skills` first.
+If `docs/agents/ship-style.md` doesn't exist, run `/setup-zsl-superpowers` first.
 
 ## Checklist Per Cycle
 

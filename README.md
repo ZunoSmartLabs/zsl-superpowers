@@ -1,4 +1,4 @@
-# ZSL Skills
+# ZSL Superpowers
 
 Fork of [`mattpocock/skills`](https://github.com/mattpocock/skills), customized for the ZSL Agentic Engineering workflow. Agent skills we use every day for real engineering — not vibe coding.
 
@@ -9,14 +9,14 @@ Approaches like GSD, BMAD, and Spec-Kit try to help by owning the process. But w
 This is a private repo, so install via a local clone (which uses your existing git auth):
 
 ```bash
-git clone git@github.com:ZunoSmartLabs/zsl-skills.git ~/code/zsl-skills
+git clone git@github.com:ZunoSmartLabs/zsl-superpowers.git ~/code/zsl-superpowers
 ```
 
 Then in Claude Code, register the clone as a marketplace and install the plugin:
 
 ```
-/plugin marketplace add ~/code/zsl-skills
-/plugin install zsl@zsl-skills
+/plugin marketplace add ~/code/zsl-superpowers
+/plugin install zsl@zsl-superpowers
 ```
 
 Skills now surface namespaced as `/zsl:<skill-name>` (e.g. `/zsl:tdd`, `/zsl:triage`).
@@ -26,20 +26,20 @@ Skills now surface namespaced as `/zsl:<skill-name>` (e.g. `/zsl:tdd`, `/zsl:tri
 When new versions land, pull and refresh:
 
 ```bash
-git -C ~/code/zsl-skills pull
+git -C ~/code/zsl-superpowers pull
 ```
 
 Then in Claude Code:
 
 ```
-/plugin marketplace update zsl-skills
+/plugin marketplace update zsl-superpowers
 ```
 
 Restart Claude Code to apply. (`/plugin update <name>` is not a real command — `/plugin` on its own opens the plugin manager UI, and any trailing argument is ignored. The marketplace update + restart is the actual update path.)
 
 ### Per-repo setup
 
-Run `/zsl:setup-zsl-skills` in any repo where you want to use these skills. It will:
+Run `/zsl:setup-zsl-superpowers` in any repo where you want to use these skills. It will:
 
 - Ask which issue tracker you use (GitHub, GitLab, or local markdown files)
 - Ask which labels you apply when triaging issues (`/triage` uses these)
@@ -153,7 +153,7 @@ The skills compose into one end-to-end loop. Most days you only touch a few of t
 
 ### One-time setup
 
-- **[`/setup-zsl-skills`](./skills/engineering/setup-zsl-skills/SKILL.md)** — configure the issue tracker, triage label vocabulary, domain doc layout, and ship style for this repo. Run once before anything else.
+- **[`/setup-zsl-superpowers`](./skills/engineering/setup-zsl-superpowers/SKILL.md)** — configure the issue tracker, triage label vocabulary, domain doc layout, and ship style for this repo. Run once before anything else.
 
 ### Plan
 
@@ -198,7 +198,7 @@ Skills we use daily for code work.
 - **[grill-with-docs](./skills/engineering/grill-with-docs/SKILL.md)** — Grilling session that challenges your plan against the existing domain model, sharpens terminology, and updates `CONTEXT.md` and ADRs inline.
 - **[triage](./skills/engineering/triage/SKILL.md)** — Triage issues through a state machine of triage roles.
 - **[improve-codebase-architecture](./skills/engineering/improve-codebase-architecture/SKILL.md)** — Find deepening opportunities in a codebase, informed by the domain language in `CONTEXT.md` and the decisions in `docs/adr/`.
-- **[setup-zsl-skills](./skills/engineering/setup-zsl-skills/SKILL.md)** — Scaffold the per-repo config (issue tracker, triage label vocabulary, domain doc layout) that the other engineering skills consume. Run once per repo before using `to-issues`, `to-prd`, `triage`, `diagnose`, `tdd`, `improve-codebase-architecture`, or `zoom-out`.
+- **[setup-zsl-superpowers](./skills/engineering/setup-zsl-superpowers/SKILL.md)** — Scaffold the per-repo config (issue tracker, triage label vocabulary, domain doc layout) that the other engineering skills consume. Run once per repo before using `to-issues`, `to-prd`, `triage`, `diagnose`, `tdd`, `improve-codebase-architecture`, or `zoom-out`.
 - **[tdd](./skills/engineering/tdd/SKILL.md)** — Test-driven development with a red-green-refactor loop. Builds features or fixes bugs one vertical slice at a time.
 - **[tdd-parallel](./skills/engineering/tdd-parallel/SKILL.md)** — Fan out the unblocked `[AFK]` sub-tasks of a parent issue into parallel `/tdd` sub-agents in worktrees; sub-agents commit but don't push. The orchestrator merges every slice branch onto the PRD branch in wave order, then opens a single consolidated integration PR. PR-style only.
 - **[to-issues](./skills/engineering/to-issues/SKILL.md)** — Break any plan, spec, or PRD into independently-grabbable GitHub issues using vertical slices.
