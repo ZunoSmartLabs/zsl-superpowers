@@ -8,6 +8,25 @@ user-invocable: false
 
 When querying AWS infrastructure, use `steampipe query "SQL"` via Bash. Steampipe uses PostgreSQL-compatible SQL against the `aws` schema.
 
+## Multi-account setups
+
+If `~/.steampipe/config/aws.spc` defines an aggregator connection named `aws` over per-account connections (e.g. `aws_test`, `aws_prod`, `aws_mgmt`), unqualified queries fan out across all accounts in parallel:
+
+```sql
+-- Hits every account; account_id tells you which row came from where
+SELECT account_id, instance_id, tags ->> 'Name' AS name
+FROM aws_ec2_instance
+ORDER BY account_id;
+```
+
+To target a single account, prefix the table with the connection name:
+
+```sql
+SELECT instance_id FROM aws_prod.aws_ec2_instance;
+```
+
+Use `select distinct account_id from aws_account` to confirm which accounts the aggregator is reaching before relying on a fan-out result. If only one `account_id` comes back, the unqualified query is hitting a single connection — check for an aggregator named `aws` in `aws.spc`.
+
 ## Key Rules
 
 - All tables are in the `aws` schema (referenced without schema prefix in queries)
