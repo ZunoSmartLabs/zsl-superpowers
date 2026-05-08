@@ -36,7 +36,19 @@ The skills compose into one end-to-end loop. Most days you only touch a few of t
 ### Cleanup
 
 - After children merge, manually run `git worktree remove` and `git branch -d` to clean up the parallel-tdd worktrees and branches (the next `/tdd-parallel` run also sweeps these in its pre-flight).
-- The PRD parent auto-closes when the last child closes.
+
+### Track and close
+
+Every issue carries one category role (`bug` or `enhancement`) and one state role: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `tracking`, or `wontfix`. See [`/triage`](./skills/engineering/triage/SKILL.md) for the full state machine and transitions.
+
+Where state is stored and how closure works depends on the backend you picked in `/setup-zsl-superpowers`:
+
+**GitHub project dashboard** — state lives as labels on each issue and is mirrored to the project board's `Status` field via the mapping in `docs/agents/project-board.md`. `/triage` updates both. When a child issue's PR merges, GitHub closes the child; when the last child of a `tracking` PRD closes, GitHub auto-closes the parent — no manual transition needed.
+
+**Local markdown files** — state lives as a `Status:` line near the top of each `.md` file under `.scratch/<feature-slug>/`. Closure is folder-based, and nothing is deleted:
+
+- Close an issue → move `.scratch/<feature-slug>/issues/<NN>-<slug>.md` to `.scratch/<feature-slug>/issues/done/<NN>-<slug>.md`. The filename and final `Status:` line are preserved so the archive records why it closed (e.g. shipped from `ready-for-agent` vs `wontfix`).
+- Close a feature → move the whole `.scratch/<feature-slug>/` directory to `.scratch/done/<feature-slug>/`, preserving its internal layout. There's no auto-close: move the feature explicitly once all its issues sit in `issues/done/` (or you've decided to abandon it).
 
 ### Cross-cutting
 
