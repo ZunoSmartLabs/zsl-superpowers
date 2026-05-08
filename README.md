@@ -4,6 +4,9 @@ Agent skills for real engineering, not vibe coding. Small, composable, model-agn
 
 📖 **Full guide: [superpowers.zsl.dev](https://superpowers.zsl.dev)**
 
+> [!IMPORTANT]
+> **Built for Claude Code.** Skills depend on Claude Code's slash commands, `/plugin` install path, and tool surface (`Agent`, `Monitor`, `Bash`, `SendMessage`, `TaskStop`). They aren't drop-in for Cursor, Codex, Cline, or general LLM chat. ("Model-agnostic" above means any Claude model — Opus, Sonnet, Haiku — not any harness.) See [Compatibility](https://superpowers.zsl.dev/faq/#compatibility) for what porting would look like.
+
 ## Workflow
 
 The skills compose into one end-to-end loop. Most days you only touch a few of them.
