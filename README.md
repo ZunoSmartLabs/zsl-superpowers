@@ -237,3 +237,9 @@ Tools we keep around but rarely use.
 - **[git-guardrails-claude-code](./skills/misc/git-guardrails-claude-code/SKILL.md)** — Set up Claude Code hooks to block dangerous git commands (push, reset --hard, clean, etc.) before they execute.
 - **[setup-pre-commit](./skills/misc/setup-pre-commit/SKILL.md)** — Set up Husky pre-commit hooks with lint-staged, Prettier, type checking, and tests.
 - **[steampipe](./skills/misc/steampipe/SKILL.md)** — AWS infrastructure query reference for `steampipe query`. Auto-triggered (not user-invocable); provides table names, column schemas, and JSONB query patterns.
+
+## Drift from upstream
+
+This started as a fork of [`mattpocock/skills`](https://github.com/mattpocock/skills) and has diverged substantially. The end-to-end workflow (PRD → vertical-slice issues → parallel TDD → consolidated PR), the triage state machine with project-board sync, the local-markdown issue-tracker option, and the per-repo `/setup-zsl-superpowers` config are all ZSL additions. Several upstream skills have been removed or rewritten, and the bucket-folder layout under `skills/` is our own.
+
+We don't pull from upstream automatically — expect hand-picked cherry-picks at most. Credit and thanks to Matt for the original repo and the bones of the approach.
