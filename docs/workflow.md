@@ -2,6 +2,21 @@
 
 The skills compose into one engineering loop. Most days you only touch a few of them.
 
+```mermaid
+flowchart LR
+    setup([🛠️ One-time<br/>setup]) -.-> plan
+    plan["**Plan**<br/>grill-me<br/>grill-with-docs<br/>to-prd"] --> breakdown
+    breakdown["**Break down**<br/>to-issues<br/>triage"] --> build
+    build["**Build**<br/>tdd-parallel<br/>tdd<br/>diagnose"] --> ship
+    ship["**Ship**<br/>code-review<br/>commit"] --> track
+    track["**Track & close**<br/>(state machine<br/>+ project board)"] --> plan
+
+    classDef phase fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px,color:#1a237e;
+    classDef oneoff fill:#f5f5f5,stroke:#9e9e9e,stroke-dasharray: 5 5,color:#424242;
+    class plan,breakdown,build,ship,track phase;
+    class setup oneoff;
+```
+
 ## One-time setup
 
 [`/zsl:setup-zsl-superpowers`](setup.md)
@@ -9,35 +24,35 @@ The skills compose into one engineering loop. Most days you only touch a few of 
 
 ## Plan
 
-[`/zsl:grill-me`](skills.md#grill-me) or [`/zsl:grill-with-docs`](skills.md#grill-with-docs)
+[`/zsl:grill-me`](skills/grill-me.md) or [`/zsl:grill-with-docs`](skills/grill-with-docs.md)
 :   Interview yourself to surface what you're actually building. `grill-with-docs` also updates `CONTEXT.md` and ADRs inline.
 
-[`/zsl:to-prd`](skills.md#to-prd)
+[`/zsl:to-prd`](skills/to-prd.md)
 :   Synthesise that conversation into a PRD on the issue tracker.
 
 ## Break down
 
-[`/zsl:to-issues`](skills.md#to-issues)
+[`/zsl:to-issues`](skills/to-issues.md)
 :   Break the PRD into vertical-slice sub-issues. Children are labeled `needs-triage`; the PRD parent is auto-relabeled to `tracking`. Slice titles use the `[AFK|HITL] <wave>[<letter>] — <description>` format so the dependency graph reads at a glance (same wave = runnable in parallel).
 
-[`/zsl:triage`](skills.md#triage)
+[`/zsl:triage`](skills/triage.md)
 :   Triage **each child** to `ready-for-agent` (with an agent brief), `ready-for-human`, or `needs-info`. Skip triaging the PRD itself; you just wrote it.
 
 ## Build
 
-[`/zsl:tdd-parallel`](skills.md#tdd-parallel) `<PRD>`
+[`/zsl:tdd-parallel`](tdd-parallel.md) `<PRD>`
 :   Fan out the unblocked **`[AFK]`** `ready-for-agent` children into parallel `/tdd` sub-agents in worktrees. Sub-agents commit but do **not** push (`/tdd --no-ship`). The orchestrator merges every slice branch onto the PRD branch in wave order with `--no-ff`, then opens **one consolidated integration PR**. Halts with a structured RCA on agent failure, merge conflict, or zero-progress cycles. PR-style repos only; `[HITL]`, container, and blocked items are skipped.
 
-[`/zsl:tdd`](skills.md#tdd) `<child>`
+[`/zsl:tdd`](skills/tdd.md) `<child>`
 :   Single-issue red-green-refactor. Refuses if you point it at a container.
 
 ## Ship
 
 Each `/zsl:tdd` reads `docs/agents/ship-style.md`. PR-style opens a PR per slice; direct-push pushes the feature branch and you merge by hand.
 
-[`/zsl:commit`](skills.md#commit) for clean, attribution-free commits.
+[`/zsl:commit`](skills/commit.md) for clean, attribution-free commits.
 
-[`/zsl:code-review`](skills.md#code-review) before opening the PR.
+[`/zsl:code-review`](skills/code-review.md) before opening the PR.
 
 ## Cleanup
 
@@ -45,9 +60,43 @@ After children merge, manually run `git worktree remove` and `git branch -d` to 
 
 ## Track and close
 
-Every issue carries one category role (`bug` or `enhancement`) and one state role: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `tracking`, or `wontfix`. See [`/zsl:triage`](skills.md#triage) for the full state machine and transitions.
+Every issue carries one **category role** (`bug` or `enhancement`) and one **state role**:
 
-Where state is stored and how closure works depends on the backend you picked in [`/zsl:setup-zsl-superpowers`](setup.md):
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> needs_triage: created
+    needs_triage: needs-triage
+    needs_info: needs-info
+    ready_agent: ready-for-agent
+    ready_human: ready-for-human
+    tracking: tracking
+    wontfix: wontfix
+    done: closed
+
+    needs_triage --> needs_info: ask reporter
+    needs_info --> needs_triage: reporter replied
+    needs_triage --> ready_agent: agent brief written
+    needs_triage --> ready_human: needs human judgment
+    needs_triage --> tracking: /to-issues sliced it
+    needs_triage --> wontfix: declined
+    ready_agent --> done: PR merged
+    ready_human --> done: PR merged
+    tracking --> done: last child closed
+    wontfix --> done: closed with reason
+
+    note right of tracking
+        Auto-set by /to-issues.
+        Auto-closes when the last
+        child closes (GitHub) or
+        when you move the folder
+        to .scratch/done/ (local).
+    end note
+```
+
+See [`/zsl:triage`](skills/triage.md) for transition policy and brief templates.
+
+Where state lives, and how closure works, depends on the backend you picked in [`/zsl:setup-zsl-superpowers`](setup.md):
 
 **GitHub project dashboard** — state lives as labels on each issue and is mirrored to the project board's `Status` field via the mapping in `docs/agents/project-board.md`. `/zsl:triage` updates both. When a child issue's PR merges, GitHub closes the child; when the last child of a `tracking` PRD closes, GitHub auto-closes the parent — no manual transition needed.
 
@@ -58,10 +107,10 @@ Where state is stored and how closure works depends on the backend you picked in
 
 ## Cross-cutting
 
-[`/zsl:triage`](skills.md#triage) is also the entry point for **inbound issues** (bugs, feature requests from others) and re-evaluating stale ones — not just for the children you just sliced.
+[`/zsl:triage`](skills/triage.md) is also the entry point for **inbound issues** (bugs, feature requests from others) and re-evaluating stale ones — not just for the children you just sliced.
 
-[`/zsl:diagnose`](skills.md#diagnose) for hard bugs and performance regressions.
+[`/zsl:diagnose`](skills/diagnose.md) for hard bugs and performance regressions.
 
-[`/zsl:improve-codebase-architecture`](skills.md#improve-codebase-architecture) every few days to fight entropy.
+[`/zsl:improve-codebase-architecture`](skills/improve-codebase-architecture.md) every few days to fight entropy.
 
-[`/zsl:zoom-out`](skills.md#zoom-out) when you need a higher-level view of unfamiliar code.
+[`/zsl:zoom-out`](skills/zoom-out.md) when you need a higher-level view of unfamiliar code.

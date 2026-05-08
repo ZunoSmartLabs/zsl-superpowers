@@ -14,7 +14,7 @@ The HTTPS certificate is issued automatically by Let's Encrypt; this is a standa
 
 The `zsl` plugin you install via `/plugin install zsl@zsl-superpowers` runs entirely inside your local Claude Code session. The skills do not phone home, do not collect telemetry, and do not transmit any data to ZunoSmartLabs. They operate on the files in your repo and the conversation in your Claude Code session — both of which stay between you and Anthropic per your existing Claude Code agreement.
 
-The [`timesheet`](skills.md#timesheet) skill reads your local Claude Code session histories from `~/.claude/projects/` to summarise recent work. That data never leaves your machine; the skill writes nothing back to those files.
+The [`timesheet`](skills/timesheet.md) skill reads your local Claude Code session histories from `~/.claude/projects/` to summarise recent work. That data never leaves your machine; the skill writes nothing back to those files.
 
 ## Source code
 

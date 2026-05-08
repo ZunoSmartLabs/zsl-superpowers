@@ -1,6 +1,9 @@
 # mkdocs build output
 site/
 
+# mkdocs-material social plugin cache
+.cache/
+
 # Python
 __pycache__/
 *.pyc

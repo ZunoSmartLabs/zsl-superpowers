@@ -28,29 +28,78 @@ theme:
     - navigation.tracking
     - navigation.tabs
     - navigation.sections
+    - navigation.indexes
     - navigation.top
     - search.suggest
     - search.highlight
     - content.code.copy
     - content.action.edit
+    - toc.follow
+
+plugins:
+  - search
+  - social
+
+hooks:
+  - scripts/mkdocs_hooks/skill_pages.py
 
 nav:
   - Home: index.md
-  - Workflow: workflow.md
-  - Skills: skills.md
-  - Per-repo setup: setup.md
-  - Privacy: privacy.md
+  - Getting started:
+      - Quickstart: quickstart.md
+      - Per-repo setup: setup.md
+  - The loop:
+      - Workflow: workflow.md
+      - Parallel TDD deep-dive: tdd-parallel.md
+  - Skills:
+      - Overview: skills/index.md
+      - Engineering:
+          - skills/setup-zsl-superpowers.md
+          - skills/grill-with-docs.md
+          - skills/to-prd.md
+          - skills/to-issues.md
+          - skills/triage.md
+          - skills/tdd.md
+          - skills/tdd-parallel.md
+          - skills/diagnose.md
+          - skills/improve-codebase-architecture.md
+          - skills/zoom-out.md
+          - skills/prototype.md
+          - skills/code-review.md
+          - skills/commit.md
+          - skills/git-branch.md
+      - Productivity:
+          - skills/grill-me.md
+          - skills/timesheet.md
+          - skills/write-a-skill.md
+          - skills/caveman.md
+      - Misc:
+          - skills/edit-article.md
+          - skills/git-guardrails-claude-code.md
+          - skills/setup-pre-commit.md
+          - skills/steampipe.md
+  - Reference:
+      - FAQ: faq.md
+      - Contributing: contributing.md
+      - Changelog: changelog.md
+      - Privacy: privacy.md
 
 markdown_extensions:
   - admonition
   - attr_list
+  - md_in_html
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
+  - pymdownx.keys
   - toc:
       permalink: true

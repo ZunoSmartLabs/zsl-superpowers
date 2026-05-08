@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "docs/**"
+      - "skills/**/SKILL.md"
+      - "scripts/mkdocs_hooks/**"
       - "mkdocs.yml"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
@@ -26,7 +28,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - run: pip install mkdocs-material
+      - name: Install system deps for social cards
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcairo2-dev libfreetype6-dev libffi-dev libjpeg-dev libpng-dev libz-dev
+      - run: pip install 'mkdocs-material[imaging]'
       - run: mkdocs build --strict
       - uses: actions/upload-pages-artifact@v3
         with:
