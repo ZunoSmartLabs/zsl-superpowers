@@ -1,7 +1,7 @@
 {
   "name": "zsl",
-  "version": "0.4.0",
-  "description": "ZSL agentic engineering skills — daily-driver slash commands for triage, TDD, code review, and more.",
+  "version": "0.4.1",
+  "description": "Agent skills for real engineering, not vibe coding. End-to-end loop: PRD → vertical-slice issues → parallel TDD → one consolidated PR. Plus standalone helpers for triage, diagnose, and code-review.",
   "author": {
     "name": "ZunoSmartLabs",
     "url": "https://github.com/ZunoSmartLabs"

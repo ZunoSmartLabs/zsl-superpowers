@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Do a comprehensive code review of the current branch
+description: Comprehensive pre-PR code review of the current branch with an issues-only tone and an approval gate before applying fixes. Use when user wants a code review, mentions /code-review, or asks to scan the branch before opening a PR.
 model: opus
 ---
 

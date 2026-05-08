@@ -1,6 +1,6 @@
 ---
 name: commit
-description: Create git commits with user approval and no Claude attribution
+description: Plan and create git commits with explicit file lists (never `git add -A`), user approval before each commit, and no Claude attribution lines. Use when user wants to commit, says "/commit", or asks to land changes.
 ---
 
 # Commit Changes

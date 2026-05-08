@@ -1,8 +1,6 @@
 # ZSL Superpowers
 
-Fork of [`mattpocock/skills`](https://github.com/mattpocock/skills), customized for the ZSL Agentic Engineering workflow. Agent skills we use every day for real engineering — not vibe coding.
-
-Approaches like GSD, BMAD, and Spec-Kit try to help by owning the process. But while doing so, they take away control and make bugs in the process hard to resolve. The skills here are small, easy to adapt, and composable. They work with any model.
+Agent skills for real engineering, not vibe coding. Small, composable, model-agnostic — adapt them to your repo instead of letting a process framework take over.
 
 ## Workflow
 

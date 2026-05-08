@@ -1,6 +1,6 @@
 ---
 name: git-branch
-description: Create a git branch with a name that matches the auto-PR workflow prefix convention
+description: Create a git branch with the prefix convention (`feature/`, `fix/`, `chore/`, `refactor/`, `env/`) required by GitHub auto-PR workflows. Use when user wants to start a branch, says "new branch", or asks to begin a feature.
 ---
 
 # Create Git Branch
