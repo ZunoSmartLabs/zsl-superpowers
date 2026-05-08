@@ -10,6 +10,9 @@ Not vibe coding. Small, composable, model-agnostic skills you can adapt to your 
 instead of letting a process framework take over.
 </p>
 
+!!! warning "Built for Claude Code"
+    Skills depend on Claude Code's slash commands, `/plugin` install path, and tool surface (`Agent`, `Monitor`, `Bash`, `SendMessage`, `TaskStop`). They aren't drop-in for Cursor, Codex, Cline, or general LLM chat. ("Model-agnostic" above means any Claude model — Opus, Sonnet, Haiku — not any harness.) See [Compatibility](faq.md#compatibility) for what porting would look like.
+
 [Get started in 60 seconds :material-arrow-right:](quickstart.md){ .md-button .md-button--primary }
 [How the loop fits together](workflow.md){ .md-button }
 

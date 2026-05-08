@@ -4,15 +4,24 @@
 
 ### Does this work with Codex / Cursor / Cline / [other agent]?
 
-The skills are model-agnostic prose — there's nothing Anthropic-specific in
-them. But the **delivery mechanism** is Claude Code: skills surface via
+The skills are mostly model-agnostic prose, but **harness-specific in places**.
+Single-skill prose ones (the TDD red-green-refactor loop, the triage state
+machine, the grilling skills) are largely portable — the content describes a
+practice, not a tool surface. Multi-agent ones — most notably
+[`tdd-parallel`](skills/tdd-parallel.md) — reference Claude Code's tool surface
+directly (`Agent`, `Monitor`, `Bash` with `run_in_background`, `SendMessage`,
+`TaskStop`) because they orchestrate sub-agents and need real primitives, not
+abstractions.
+
+The **delivery mechanism** is also Claude Code: skills surface via
 `/plugin install` and route through Claude Code's slash-command and skill-matching
 infrastructure.
 
-To use them outside Claude Code today you'd need to manually copy the SKILL.md
-content of the skills you want into your agent's system prompt or equivalent,
-and lose the auto-trigger behaviour. There's no first-class adapter for other
-harnesses.
+To use them outside Claude Code today you'd manually copy the SKILL.md content
+of the skills you want into your agent's system prompt (losing auto-trigger),
+and for multi-agent skills, translate the Claude Code tool calls into your
+harness's equivalents — the orchestration shape carries over; the API doesn't.
+There's no first-class adapter for other harnesses.
 
 If you maintain another agent harness and want a clean integration, open an
 issue — we'd take a PR.
