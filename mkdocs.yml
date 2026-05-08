@@ -39,6 +39,7 @@ nav:
   - Workflow: workflow.md
   - Skills: skills.md
   - Per-repo setup: setup.md
+  - Privacy: privacy.md
 
 markdown_extensions:
   - admonition
