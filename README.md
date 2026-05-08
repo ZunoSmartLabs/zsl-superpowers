@@ -2,6 +2,8 @@
 
 Agent skills for real engineering, not vibe coding. Small, composable, model-agnostic — adapt them to your repo instead of letting a process framework take over.
 
+📖 **Full guide: [superpowers.zsl.dev](https://superpowers.zsl.dev)**
+
 ## Workflow
 
 The skills compose into one end-to-end loop. Most days you only touch a few of them.
