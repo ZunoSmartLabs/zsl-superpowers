@@ -32,10 +32,10 @@ flowchart TB
     prd --> done["`**Push & open integration PR**
     Closes #123, #124, #125, #126`"]
 
-    classDef branch fill:#e3f2fd,stroke:#1976d2,color:#0d47a1,rx:6,ry:6;
-    classDef wave fill:#fff8e1,stroke:#f9a825,color:#5d4037;
-    classDef agent fill:#f3e5f5,stroke:#8e24aa,color:#4a148c,rx:6,ry:6;
-    classDef terminal fill:#e8f5e9,stroke:#388e3c,color:#1b5e20,rx:6,ry:6;
+    classDef branch fill:var(--md-default-bg-color),stroke:#1976d2,stroke-width:1.5px,color:var(--md-default-fg-color),rx:6,ry:6;
+    classDef wave fill:var(--md-default-bg-color),stroke:#f9a825,stroke-width:1.5px,color:var(--md-default-fg-color);
+    classDef agent fill:var(--md-default-bg-color),stroke:#8e24aa,stroke-width:1.5px,color:var(--md-default-fg-color),rx:6,ry:6;
+    classDef terminal fill:var(--md-default-bg-color),stroke:#388e3c,stroke-width:1.5px,color:var(--md-default-fg-color),rx:6,ry:6;
     class prd branch;
     class w1,w2 wave;
     class s1,s2,s3 agent;

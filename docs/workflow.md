@@ -17,7 +17,7 @@ flowchart LR
 
     plan --> breakdown --> build --> ship --> track --> plan
 
-    classDef phase fill:#e8eaf6,stroke:#3f51b5,stroke-width:1.5px,color:#1a237e,rx:6,ry:6;
+    classDef phase fill:var(--md-default-bg-color),stroke:var(--md-primary-fg-color),stroke-width:1.5px,color:var(--md-default-fg-color),rx:6,ry:6;
     class plan,breakdown,build,ship,track phase;
 ```
 
