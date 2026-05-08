@@ -13,21 +13,29 @@ well.
 
 ```mermaid
 flowchart TB
-    user(["You<br/>(orchestrator session)"]) --> prd
-    prd["**PRD branch**<br/>feature/123-add-export"] --> w1
-    w1{"Wave 1<br/>unblocked AFK slices"} -->|".worktrees/124-..."| s1["/tdd 124<br/>--no-ship"]
-    w1 -->|".worktrees/125-..."| s2["/tdd 125<br/>--no-ship"]
+    user(["`You
+    (orchestrator session)`"]) --> prd
+    prd["`**PRD branch**
+    feature/123-add-export`"] --> w1
+    w1{{"`**Wave 1**
+    unblocked AFK slices`"}} -->|".worktrees/124-…"| s1["`/tdd 124
+    --no-ship`"]
+    w1 -->|".worktrees/125-…"| s2["`/tdd 125
+    --no-ship`"]
     s1 -->|"merge --no-ff"| prd
     s2 -->|"merge --no-ff"| prd
-    prd --> w2{"Wave 2<br/>newly unblocked"}
-    w2 -->|".worktrees/126-..."| s3["/tdd 126<br/>--no-ship"]
+    prd --> w2{{"`**Wave 2**
+    newly unblocked`"}}
+    w2 -->|".worktrees/126-…"| s3["`/tdd 126
+    --no-ship`"]
     s3 -->|"merge --no-ff"| prd
-    prd --> done["**Push & open<br/>integration PR**<br/>Closes #123, #124, #125, #126"]
+    prd --> done["`**Push & open integration PR**
+    Closes #123, #124, #125, #126`"]
 
-    classDef branch fill:#e3f2fd,stroke:#1976d2,color:#0d47a1;
+    classDef branch fill:#e3f2fd,stroke:#1976d2,color:#0d47a1,rx:6,ry:6;
     classDef wave fill:#fff8e1,stroke:#f9a825,color:#5d4037;
-    classDef agent fill:#f3e5f5,stroke:#8e24aa,color:#4a148c;
-    classDef terminal fill:#e8f5e9,stroke:#388e3c,color:#1b5e20;
+    classDef agent fill:#f3e5f5,stroke:#8e24aa,color:#4a148c,rx:6,ry:6;
+    classDef terminal fill:#e8f5e9,stroke:#388e3c,color:#1b5e20,rx:6,ry:6;
     class prd branch;
     class w1,w2 wave;
     class s1,s2,s3 agent;

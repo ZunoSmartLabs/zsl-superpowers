@@ -1,20 +1,24 @@
 # The end-to-end loop
 
-The skills compose into one engineering loop. Most days you only touch a few of them.
+The skills compose into one engineering loop. Most days you only touch a few of them. Run [`/zsl:setup-zsl-superpowers`](setup.md) once per repo before any of this; from then on it's the loop:
 
 ```mermaid
 flowchart LR
-    setup([🛠️ One-time<br/>setup]) -.-> plan
-    plan["**Plan**<br/>grill-me<br/>grill-with-docs<br/>to-prd"] --> breakdown
-    breakdown["**Break down**<br/>to-issues<br/>triage"] --> build
-    build["**Build**<br/>tdd-parallel<br/>tdd<br/>diagnose"] --> ship
-    ship["**Ship**<br/>code-review<br/>commit"] --> track
-    track["**Track & close**<br/>(state machine<br/>+ project board)"] --> plan
+    plan["`**Plan**
+    grill-me · grill-with-docs · to-prd`"]
+    breakdown["`**Break down**
+    to-issues · triage`"]
+    build["`**Build**
+    tdd-parallel · tdd · diagnose`"]
+    ship["`**Ship**
+    code-review · commit`"]
+    track["`**Track & close**
+    state machine · project board`"]
 
-    classDef phase fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px,color:#1a237e;
-    classDef oneoff fill:#f5f5f5,stroke:#9e9e9e,stroke-dasharray: 5 5,color:#424242;
+    plan --> breakdown --> build --> ship --> track --> plan
+
+    classDef phase fill:#e8eaf6,stroke:#3f51b5,stroke-width:1.5px,color:#1a237e,rx:6,ry:6;
     class plan,breakdown,build,ship,track phase;
-    class setup oneoff;
 ```
 
 ## One-time setup
