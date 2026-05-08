@@ -59,16 +59,10 @@ Where state is stored and how closure works depends on the backend you picked in
 
 ## Install
 
-This is a private repo, so install via a local clone (which uses your existing git auth):
-
-```bash
-git clone git@github.com:ZunoSmartLabs/zsl-superpowers.git ~/code/zsl-superpowers
-```
-
-Then in Claude Code, register the clone as a marketplace and install the plugin:
+In Claude Code:
 
 ```
-/plugin marketplace add ~/code/zsl-superpowers
+/plugin marketplace add ZunoSmartLabs/zsl-superpowers
 /plugin install zsl@zsl-superpowers
 ```
 
@@ -76,19 +70,26 @@ Skills now surface namespaced as `/zsl:<skill-name>` (e.g. `/zsl:tdd`, `/zsl:tri
 
 ### Updating
 
-When new versions land, pull and refresh:
-
-```bash
-git -C ~/code/zsl-superpowers pull
-```
-
-Then in Claude Code:
-
 ```
 /plugin marketplace update zsl-superpowers
 ```
 
 Restart Claude Code to apply. (`/plugin update <name>` is not a real command — `/plugin` on its own opens the plugin manager UI, and any trailing argument is ignored. The marketplace update + restart is the actual update path.)
+
+### Hacking on the skills
+
+To edit skills locally and see changes in Claude Code, clone and register the path instead:
+
+```bash
+git clone git@github.com:ZunoSmartLabs/zsl-superpowers.git ~/code/zsl-superpowers
+```
+
+```
+/plugin marketplace add ~/code/zsl-superpowers
+/plugin install zsl@zsl-superpowers
+```
+
+Pull and `/plugin marketplace update zsl-superpowers` to refresh.
 
 ### Per-repo setup
 
