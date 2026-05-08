@@ -1,0 +1,20 @@
+[tool.ruff]
+line-length = 104
+
+[tool.basedpyright]
+typeCheckingMode = "standard"
+
+[tool.ruff.lint]
+select = [
+    "F",   # pyflakes
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "I",   # isort
+    "B",   # bugbear
+    "UP",  # pyupgrade
+    "SIM", # simplify
+    "RUF", # ruff-specific
+]
+ignore = [
+    "E501", # long lines — formatter handles what it can; remaining cases are string literals
+]
