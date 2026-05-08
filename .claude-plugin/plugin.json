@@ -25,7 +25,6 @@
     "./skills/productivity/write-a-skill",
     "./skills/misc/edit-article",
     "./skills/misc/git-guardrails-claude-code",
-    "./skills/misc/scaffold-exercises",
     "./skills/misc/setup-pre-commit",
     "./skills/misc/steampipe"
   ]
