@@ -42,7 +42,27 @@ RIGHT (vertical):
 
 ## Flags
 
-- `--no-ship` — skip step 5 (Ship it). After the final refactor commit, stop and report back: branch name (`git rev-parse --abbrev-ref HEAD`), last commit sha (`git rev-parse HEAD`), and a one-paragraph summary of the changes. Do not push, do not open a PR, do not update the project board's "in review" Status. Used by `/tdd-parallel` so the orchestrator can integrate slice branches locally and ship a single consolidated PR. Step 1's "in progress" Status update still happens — the work is real, only the ship step is deferred.
+- `--no-ship` — skip step 5 (Ship it). After the final refactor commit, stop and report back: branch name (`git rev-parse --abbrev-ref HEAD`), last commit sha (`git rev-parse HEAD`), and a one-paragraph summary of the changes. Do not push, do not open a PR, do not update the project board's "in review" Status. Used by `/tdd-parallel` so the orchestrator can integrate slice branches locally and ship a single consolidated PR. Step 1's "in progress" Status update still happens — the work is real, only the ship step is deferred. Also engages **Progress heartbeat** (see below) — the orchestrator depends on it for live status.
+
+## Progress heartbeat
+
+Under `--no-ship` (running inside `/tdd-parallel`), emit one JSON line to `.tdd-progress.jsonl` in the current working directory at each phase below. The orchestrator tails the file to render live progress; without these lines it sees nothing until you return, and a silent slice looks indistinguishable from a hung one.
+
+Schema: `{"slice": <num>, "ts": "<ISO-8601 UTC>", "phase": "<phase>", "note": "<short>"}`. `slice` is the input issue number, passed through verbatim.
+
+Phases (in order; `red` / `green` repeat per cycle):
+
+- `started` — immediately after pre-flight, before planning.
+- `planned` — once the behavior list is decided. `note`: `"N behaviors: ..."`.
+- `red` — each failing test written. `note`: `"<n>/<N>: <behavior>"`.
+- `green` — each test now passing.
+- `refactor` — after each refactor step that touched files. `note`: what was extracted/renamed.
+- `committed` — after each commit. `note`: short sha.
+- `done` — final phase, just before returning to the parent.
+- `escalating` — instead of `done`, if you escalate. `note`: one-line question.
+- `error` — instead of `done`, if you halt. `note`: one-line cause.
+
+Emit via `bash -c "printf '%s\n' '<json>' >> .tdd-progress.jsonl"` — one `printf` per line, no buffering, append-only. Without `--no-ship`, emission is optional and harmless.
 
 ## Workflow
 

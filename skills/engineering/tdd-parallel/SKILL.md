@@ -33,6 +33,12 @@ Sub-agents spawned by this skill operate AFK. They make reasonable decisions and
 
 When an agent escalates, the orchestrator relays the question to the user and resumes the agent via `SendMessage` with the user's answer. Anything that would routinely need human input mid-flight isn't AFK and shouldn't be in the fanout — it belongs as an `[HITL]` slice.
 
+## Progress visibility
+
+Sub-agents emit a one-line JSON heartbeat to `.tdd-progress.jsonl` in their worktree at each TDD phase. The orchestrator runs one `Monitor` per wave (with `tail -n +1 -F` over the wave's progress files) and renders a live wave board, so the user sees progress mid-flight rather than waiting for completion. `Monitor`'s stdout-line-per-notification model maps directly to one heartbeat record per notification.
+
+Schema and phase list: see `engineering/tdd/SKILL.md` § Progress heartbeat. The contract is one direction only — agents emit, the orchestrator reads. Heartbeats are **not** an escalation channel: escalations still go through agent return + `SendMessage`. They are advisory; never gate merge logic on them.
+
 ## Process
 
 ### 1. Pre-flight
@@ -130,9 +136,16 @@ Then:
 
 1. `git worktree add .worktrees/<num>-<slug> -b tdd/<num>-<slug> HEAD` — `HEAD` is the PRD branch's current tip, so the slice inherits any prior waves' merges.
 2. Handle residue: if the worktree dir already exists from a prior partial run, reuse it; if the branch exists but no worktree, attach without `-b`.
-3. Spawn the sub-agent (all in a single message so they run concurrently):
+3. In one message (so they fire concurrently), start the wave's heartbeat `Monitor` and spawn each sub-agent:
 
 ```
+Monitor({
+  command: "tail -n +1 -F .worktrees/<num1>-<slug1>/.tdd-progress.jsonl .worktrees/<num2>-<slug2>/.tdd-progress.jsonl ...",
+  description: "wave <N> heartbeat",
+  persistent: true,
+  timeout_ms: 3600000
+})
+
 Agent({
   description: "TDD <num>",
   subagent_type: "general-purpose",
@@ -140,7 +153,15 @@ Agent({
   name: "tdd-<num>",
   prompt: <see template below>
 })
+// ... one Agent call per slice in the wave ...
 ```
+
+Notes:
+
+- `tail -n +1 -F` reads from line 1 and retries on missing files, so timing relative to agent emission is forgiving — heartbeat files don't need to exist when the `Monitor` starts.
+- `persistent: true` is required: a wave can run longer than `Monitor`'s 60-minute hard cap on `timeout_ms`. With `persistent`, the watcher runs until you call `TaskStop`.
+- Capture the `Monitor` task id from the response — you'll need it for `TaskStop` at end of wave.
+- Don't filter the tail with `grep`. The progress file only contains heartbeat lines, so every line is signal. (`Monitor`'s "use grep" guidance is for raw log streams; this isn't one.)
 
 Sub-agent prompt template:
 
@@ -156,12 +177,19 @@ You operate under the AFK contract:
 - Escalate (return early with a question) ONLY for: destructive ops needing confirmation per auto mode rules, missing access/credentials, or genuine architectural ambiguity that would change a public contract.
 - Be specific about what you need if you do escalate.
 
+Progress heartbeat: your invocation of `/tdd <num> --no-ship` MUST emit one-line JSON records to `.tdd-progress.jsonl` in the worktree at each TDD phase per `engineering/tdd/SKILL.md` § Progress heartbeat. Don't skip — the orchestrator depends on these for live status, and silence looks like a hang.
+
 When done, report: branch name, last commit sha, the slice issue number you worked on (so the orchestrator can map slice → issue), and a one-paragraph summary of changes. Do NOT push. Do NOT open a PR.
 ```
 
 Add each spawned issue number to `attempted`. Pass the *absolute* worktree path in the prompt — the sub-agent's first action must be to `cd` there before doing anything else, so its Bash CWD lands in the right worktree for the remainder of its session.
 
 #### 3d. Wait for the wave to finish
+
+While the wave runs, two streams of notifications interleave:
+
+- **Heartbeat notifications** from the wave's `Monitor` — one JSONL record per notification. Parse `slice` + `phase` + `note`, update an in-memory wave board (`slice → latest phase + ts + last note`), and re-render to the user when a phase advances. Don't render on every notification — that's noise; render on phase change or every ~10s, whichever comes first.
+- **Agent completion notifications** — handled per the steps below.
 
 Process completion notifications as they arrive. For each completing agent:
 
@@ -171,6 +199,8 @@ Process completion notifications as they arrive. For each completing agent:
 4. **If completed normally**: record the branch name and commit sha.
 
 Wait until **all** agents in the current wave have completed normally before moving to merge. (Halts in 3d cancel the rest — see "Halt semantics" below.)
+
+Once the wave is done (or a halt fires), stop the wave's heartbeat `Monitor` with `TaskStop({ task_id: <wave-monitor-task-id> })`. Per-wave watchers (one `Monitor` spun up in 3c, stopped here) are simpler than one long-running watcher because the file set changes every wave. The final state of `.tdd-progress.jsonl` in each worktree survives — useful evidence on halt.
 
 #### 3e. Merge the wave
 
