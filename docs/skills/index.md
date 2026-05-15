@@ -42,6 +42,5 @@ General workflow tools, not code-specific.
 Tools we keep around but rarely reach for.
 
 - [edit-article](edit-article.md) — restructure and tighten article drafts.
-- [git-guardrails-claude-code](git-guardrails-claude-code.md) — Claude Code hooks that block dangerous git commands before they execute.
 - [setup-pre-commit](setup-pre-commit.md) — Husky + lint-staged + Prettier + type-check + tests pre-commit setup.
 - [steampipe](steampipe.md) — reference for AWS infra queries via Steampipe (auto-triggered, not user-invocable).

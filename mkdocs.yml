@@ -75,7 +75,6 @@ nav:
           - skills/caveman.md
       - Misc:
           - skills/edit-article.md
-          - skills/git-guardrails-claude-code.md
           - skills/setup-pre-commit.md
           - skills/steampipe.md
   - Reference:

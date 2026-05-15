@@ -79,6 +79,10 @@ Then restart Claude Code. (`/plugin update <name>` is not a real command —
 `/plugin` on its own opens the plugin manager UI, and any trailing argument is
 ignored. Marketplace update + restart is the actual update path.)
 
+After updating, skim the [changelog](changelog.md) for version-specific upgrade
+notes — breaking-ish releases include an **Upgrading from X.Y** block with any
+migration steps.
+
 ### How do I uninstall?
 
 ```

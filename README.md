@@ -28,7 +28,7 @@ The skills compose into one end-to-end loop. Most days you only touch a few of t
 ### Build
 
 - **[`/tdd-parallel`](./skills/engineering/tdd-parallel/SKILL.md) `<PRD>`** — fan out the unblocked **`[AFK]`** `ready-for-agent` children into parallel `/tdd` sub-agents in worktrees. Sub-agents commit but do **not** push (`/tdd --no-ship`). The orchestrator merges every slice branch onto the PRD branch in wave order with `--no-ff`, then opens **one consolidated integration PR**. Halts with a structured RCA on agent failure, merge conflict, or zero-progress cycles. PR-style repos only; `[HITL]`, container, and blocked items are skipped.
-- **[`/tdd`](./skills/engineering/tdd/SKILL.md) `<child>`** — single-issue red-green-refactor. Refuses if you point it at a container.
+- **[`/tdd`](./skills/engineering/tdd/SKILL.md) `<child>`** — single-issue red-green-refactor. Refuses if you point it at a container. On local-markdown trackers, you can also call it with **no argument** — it scans `.scratch/`, resolves each open issue's `## Blocked by` against the `issues/done/` archive, and lets you pick from the unblocked ones.
 
 ### Ship
 
@@ -50,8 +50,8 @@ Where state is stored and how closure works depends on the backend you picked in
 
 **Local markdown files** — state lives as a `Status:` line near the top of each `.md` file under `.scratch/<feature-slug>/`. Closure is folder-based, and nothing is deleted:
 
-- Close an issue → move `.scratch/<feature-slug>/issues/<NN>-<slug>.md` to `.scratch/<feature-slug>/issues/done/<NN>-<slug>.md`. The filename and final `Status:` line are preserved so the archive records why it closed (e.g. shipped from `ready-for-agent` vs `wontfix`).
-- Close a feature → move the whole `.scratch/<feature-slug>/` directory to `.scratch/done/<feature-slug>/`, preserving its internal layout. There's no auto-close: move the feature explicitly once all its issues sit in `issues/done/` (or you've decided to abandon it).
+- Close an issue → on ship, [`/tdd`](./skills/engineering/tdd/SKILL.md) flips the `Status:` line to `shipped` and runs `git mv .scratch/<feature-slug>/issues/<NN>-<slug>.md .scratch/<feature-slug>/issues/done/<NN>-<slug>.md` in the same commit as the slice's code. The filename and `Status:` line are preserved so the archive records why it closed (e.g. `shipped` vs `wontfix`).
+- Close a feature → move the whole `.scratch/<feature-slug>/` directory to `.scratch/done/<feature-slug>/`, preserving its internal layout. When an issue's close empties the feature's open `issues/`, [`/tdd`](./skills/engineering/tdd/SKILL.md) **prompts** you to run the feature-level `git mv` (never automatic — you might still want to add a follow-up issue first). You can also do it by hand if you're abandoning the feature.
 
 ### Cross-cutting
 
@@ -78,6 +78,8 @@ Skills now surface namespaced as `/zsl:<skill-name>` (e.g. `/zsl:tdd`, `/zsl:tri
 ```
 
 Restart Claude Code to apply. (`/plugin update <name>` is not a real command — `/plugin` on its own opens the plugin manager UI, and any trailing argument is ignored. The marketplace update + restart is the actual update path.)
+
+After updating, skim the [changelog](./docs/changelog.md) for version-specific upgrade notes — breaking-ish releases include an **Upgrading from X.Y** block with any migration steps.
 
 ### Hacking on the skills
 
@@ -239,7 +241,6 @@ General workflow tools, not code-specific.
 Tools we keep around but rarely use.
 
 - **[edit-article](./skills/misc/edit-article/SKILL.md)** — Edit and improve articles by restructuring sections, improving clarity, and tightening prose.
-- **[git-guardrails-claude-code](./skills/misc/git-guardrails-claude-code/SKILL.md)** — Set up Claude Code hooks to block dangerous git commands (push, reset --hard, clean, etc.) before they execute.
 - **[setup-pre-commit](./skills/misc/setup-pre-commit/SKILL.md)** — Set up Husky pre-commit hooks with lint-staged, Prettier, type checking, and tests.
 - **[steampipe](./skills/misc/steampipe/SKILL.md)** — AWS infrastructure query reference for `steampipe query`. Auto-triggered (not user-invocable); provides table names, column schemas, and JSONB query patterns.
 

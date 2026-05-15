@@ -8,7 +8,7 @@
     {
       "name": "zsl",
       "source": "./",
-      "version": "0.4.1",
+      "version": "0.5.0",
       "description": "Agent skills for real engineering, not vibe coding. End-to-end loop: PRD → vertical-slice issues → parallel TDD → one consolidated PR. Plus standalone helpers for triage, diagnose, and code-review."
     }
   ]

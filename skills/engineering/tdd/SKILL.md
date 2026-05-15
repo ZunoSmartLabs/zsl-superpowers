@@ -68,7 +68,21 @@ Emit via `bash -c "printf '%s\n' '<json>' >> .tdd-progress.jsonl"` — one `prin
 
 ### 1. Planning
 
-**Pre-flight: refuse container issues.** If you were given an issue identifier as input, fetch it and check whether it has open sub-issues. If it does, it's a tracking parent (likely a PRD), not a unit of work. Refuse and tell the user to run `/to-issues` to break it down first, then `/tdd` against one of the leaf children.
+**Pre-flight: no-arg discovery (local-markdown trackers only).** If no issue identifier was passed AND `docs/agents/issue-tracker.md` describes a local-markdown tracker (H1 reads `# Issue tracker: Local Markdown`, or the file describes the `.scratch/<feature>/issues/` convention), discover what's ready to pick up instead of asking:
+
+1. List every `.scratch/<feature>/issues/*.md` file across all features. Exclude `issues/done/` and any feature already under `.scratch/done/` — those are archived.
+2. For each open issue, parse its `## Blocked by` section. A reference is satisfied if the cited file (or the cited number under the same feature's `issues/`) resolves to a path inside `issues/done/`. A reference that doesn't resolve to any file is a malformed issue — surface it to the user but don't crash.
+3. Present three buckets to the user:
+   - **Ready to grab** (numbered): feature slug, issue number, title, and a one-line summary (first non-heading line of the issue body). Sort by feature, then issue number.
+   - **Pending future waves**: blocked open issues + the `Blocked by` references each is still waiting on. Shown for context only — not pickable.
+   - **Features fully archived but not closed**: features whose `issues/` directory contains only the `done/` subdirectory. Suggest running the feature-level close from step 5 against any of these before picking new work.
+4. Let the user pick by number or by path. Use that pick as the issue identifier for the remaining pre-flights and the rest of the workflow.
+
+If the picked-from set is empty (no open issues anywhere under `.scratch/`), say so and stop — there's nothing to do.
+
+If invoked with no argument against a GitHub/GitLab/other tracker, fall through to the next pre-flight, which will refuse for lack of an identifier. (Auto-discovery for remote trackers is out of scope here — use `/triage` to find work-ready issues.)
+
+**Pre-flight: refuse container issues.** If you were given an issue identifier as input (or picked one in the previous pre-flight), fetch it and check whether it has open sub-issues. If it does, it's a tracking parent (likely a PRD), not a unit of work. Refuse and tell the user to run `/to-issues` to break it down first, then `/tdd` against one of the leaf children.
 
 **Pre-flight: signal "in progress" on the project board (if configured).** If you were given an issue identifier *and* `docs/agents/project-board.md` exists, update the issue's project item Status to the option mapped to "work begins" (typically `In progress`). Use the same lookup-then-update procedure documented in `triage/SKILL.md` step 6: fetch the project item via `gh api graphql` filtered by the configured project node ID, then `updateProjectV2ItemFieldValue` with the mapped Status option ID. If the issue isn't on the configured project, log and continue. Best-effort — failure to update Status doesn't block the TDD work. Skip entirely if `docs/agents/project-board.md` doesn't exist or you weren't given an issue identifier.
 
@@ -132,7 +146,7 @@ After all tests pass, look for [refactor candidates](refactoring.md):
 
 Once tests are green and refactored, ship the slice. The repo's workflow is defined in `docs/agents/ship-style.md` (written by `/setup-zsl-superpowers`) — read it before doing anything.
 
-- **Always commit via `/commit`** — never craft commits yourself. The commit body must reference both the sub-task and the parent issue so git history is navigable. Use `#<num>` for GitHub/GitLab (auto-linked in the UI) or full URLs for other trackers:
+- **Always commit via `/commit`** — never craft commits yourself. The commit body must reference both the sub-task and the parent issue so git history is navigable. Use `#<num>` for GitHub/GitLab (auto-linked in the UI), paths for local-markdown trackers (e.g. `.scratch/auth/issues/03-add-oauth.md`), or full URLs for other trackers:
 
   ```
   <subject>
@@ -141,11 +155,17 @@ Once tests are green and refactored, ship the slice. The repo's workflow is defi
   Parent: #<parent>
   ```
 
-- **Close the sub-task on merge:**
-  - PR-style — put `Closes #<sub-task>` in the PR body, alongside the same sub-task/parent references.
-  - Direct-push — put `Closes #<sub-task>` in the commit body itself (replaces the `Sub-task:` line).
+- **Close the sub-task on merge.** How depends on `docs/agents/issue-tracker.md` (check its H1 — `# Issue tracker: <Name>`):
+  - **GitHub / GitLab:**
+    - PR-style — put `Closes #<sub-task>` in the PR body, alongside the same sub-task/parent references.
+    - Direct-push — put `Closes #<sub-task>` in the commit body itself (replaces the `Sub-task:` line).
 
-  GitHub auto-closes the parent once its last child closes (the sub-issue link was set at `/to-issues` time).
+    The tracker auto-closes the parent once its last child closes (the sub-issue link was set at `/to-issues` time).
+  - **Local markdown** (issue is a file under `.scratch/<feature>/issues/`):
+    - Update the `Status:` line near the top of the issue file to its final state — typically `shipped`. Use `wontfix` only if the maintainer is closing without delivery; since you just got the tests green, default to `shipped`.
+    - `git mv .scratch/<feature>/issues/<NN>-<slug>.md .scratch/<feature>/issues/done/<NN>-<slug>.md`. The filename stays the same — `NN` is permanent and unique across both folders.
+    - Include both the `Status:` edit and the `git mv` in the same commit as the slice's code change so the close is atomic with the work that earned it. (The commit ref convention above already accommodates path-style sub-task/parent references.)
+    - **Feature-level close (optional, prompt first):** after the `git mv`, list `.scratch/<feature>/issues/` and check whether any `.md` files remain outside the `done/` subdirectory. If none, tell the maintainer every issue in the feature is now archived and ask whether to archive the feature itself: `git mv .scratch/<feature>/ .scratch/done/<feature>/`. Don't move it without confirmation — the maintainer may want to spin up a follow-up issue first.
 - **Confirm with the user** before opening a PR or pushing to the default branch.
 - **Signal "in review" on the project board (PR-style only, if configured).** If `docs/agents/project-board.md` exists *and* the ship style is PR, update the issue's project item Status to the option mapped to "PR opened" (typically `In review`) once the PR is open. The project's existing `Auto-close issue` workflow will move Status to `Done` automatically when the PR merges and closes the issue. In direct-push mode, no skill-driven Status update is needed at ship time — the closing commit triggers the same Auto-close workflow directly.
 
