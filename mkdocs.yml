@@ -48,6 +48,11 @@ nav:
   - Getting started:
       - Quickstart: quickstart.md
       - Per-repo setup: setup.md
+  - Concepts:
+      - Overview: concepts/index.md
+      - The loop: concepts/the-loop.md
+      - Triage state machine: concepts/state-machine.md
+      - Git branching: concepts/branching.md
   - The loop:
       - Workflow: workflow.md
       - Parallel TDD deep-dive: tdd-parallel.md

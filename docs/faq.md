@@ -13,6 +13,24 @@ directly (`Agent`, `Monitor`, `Bash` with `run_in_background`, `SendMessage`,
 `TaskStop`) because they orchestrate sub-agents and need real primitives, not
 abstractions.
 
+```mermaid
+flowchart LR
+    subgraph portable["✅ Portable<br/>(prose-only)"]
+        p1["tdd · triage<br/>grill-me · grill-with-docs<br/>to-prd · to-issues<br/>diagnose · code-review<br/>commit · git-branch"]
+    end
+    subgraph harness["⚠️ Harness-bound"]
+        h1["tdd-parallel<br/>(uses Agent, Monitor,<br/>SendMessage, TaskStop)"]
+        h2["timesheet<br/>(reads ~/.claude/projects/)"]
+    end
+    portable -.->|"copy SKILL.md body<br/>to your agent's prompt"| other["any other harness"]
+    harness -->|"requires Claude Code"| cc["Claude Code"]
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef bound fill:#fef3c7,stroke:#d97706;
+    class p1 good
+    class h1,h2 bound
+```
+
 The **delivery mechanism** is also Claude Code: skills surface via
 `/plugin install` and route through Claude Code's slash-command and skill-matching
 infrastructure.
@@ -36,6 +54,19 @@ Sonnet, and Haiku family models without modification.
 Claude Code applies the plugin name as a prefix to every skill it owns, so
 `/zsl:tdd` is the plugin's `tdd` skill specifically. This avoids collisions if
 you install another plugin that also defines a `tdd` skill.
+
+```mermaid
+flowchart LR
+    user["/tdd typed"] --> match{"matches any<br/>plugin's tdd?"}
+    match -->|"only zsl"| zsl["/zsl:tdd runs"]
+    match -->|"two plugins<br/>define tdd"| ambig["Claude Code asks<br/>which one you meant"]
+    user2["/zsl:tdd typed"] --> exact["zsl plugin's tdd runs<br/>(unambiguous)"]
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef warn fill:#fef3c7,stroke:#d97706;
+    class zsl,exact good
+    class ambig warn
+```
 
 You can drop the `zsl:` prefix only inside the *plugin's own* development setup
 (e.g. when hacking on the plugin from a local clone). In normal use, type the
@@ -68,6 +99,25 @@ The engineering skills do depend on each other, though: `/zsl:tdd-parallel`
 expects sub-issues sliced by `/zsl:to-issues`; `/zsl:triage` expects the labels
 from `/zsl:setup-zsl-superpowers`. You can use any of them on their own, but the
 end-to-end loop assumes the chain.
+
+```mermaid
+flowchart LR
+    setup["/zsl:setup-zsl-superpowers<br/>(writes labels + tracker config)"]
+    setup -->|"labels"| triage["/zsl:triage"]
+    setup -->|"tracker"| to_prd["/zsl:to-prd"]
+    setup -->|"tracker"| to_issues["/zsl:to-issues"]
+    to_prd --> to_issues
+    to_issues -->|"sub-issues w/ wave format"| tddp["/zsl:tdd-parallel"]
+    to_issues -->|"sub-issues"| tdd["/zsl:tdd"]
+    triage -.->|"ready-for-agent"| tdd
+    triage -.->|"ready-for-agent"| tddp
+
+    classDef root fill:#e0e7ff,stroke:#3f51b5;
+    class setup root
+```
+
+If you don't run `setup-zsl-superpowers`, the engineering skills bail
+with a setup hint instead of guessing.
 
 ### How do I update?
 
@@ -142,6 +192,17 @@ integration PR by definition. Either switch the repo to PR-style for the
 duration (edit `docs/agents/ship-style.md`), or run individual `/zsl:tdd`
 sessions in parallel by hand.
 
+```mermaid
+flowchart LR
+    invoke["/zsl:tdd-parallel"] --> check{"ship-style.md<br/>says PR-style?"}
+    check -->|"yes"| go["proceed with<br/>worktree fanout"]:::good
+    check -->|"no (direct-push)"| refuse["refuse with error<br/>'PR-style only'"]:::bad
+    refuse --> options["options:<br/>1. edit ship-style.md → PR-style<br/>2. run /zsl:tdd sessions by hand"]
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+```
+
 ### Lost a slice worktree, can I recover?
 
 Yes — pre-flight 1b in [`/zsl:tdd-parallel`](skills/tdd-parallel.md) only sweeps
@@ -158,6 +219,27 @@ each other. They aren't — they're vertical slices of one feature, designed to 
 cohesive only as a set. The integration PR groups them in wave order with
 `--no-ff` merge commits, so per-slice diffs are still inspectable, just inside
 one PR review surface.
+
+```mermaid
+flowchart LR
+    subgraph naive["❌ N PRs (the alternative)"]
+        n1["PR for slice 124"] --> ci1["CI run 1"]
+        n2["PR for slice 125"] --> ci2["CI run 2"]
+        n3["PR for slice 126"] --> ci3["CI run 3"]
+    end
+    subgraph one["✅ One integration PR"]
+        o1["push consolidated branch"] --> oci["CI run 1<br/>(only one)"]
+        oci --> review["reviewer reads<br/>--first-parent log<br/>to see wave shape"]
+    end
+
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    class n1,n2,n3,ci1,ci2,ci3 bad
+    class o1,oci,review good
+```
+
+See [Concepts → Branching → Why `--no-ff` and why one PR](concepts/branching.md#why-no-ff-and-why-one-pr)
+for the full rationale.
 
 ### Why TDD specifically?
 

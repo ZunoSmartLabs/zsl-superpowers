@@ -21,6 +21,46 @@ flowchart LR
     class plan,breakdown,build,ship,track phase;
 ```
 
+!!! tip "Looking for the conceptual map?"
+    This page is the walkthrough with slash-command examples. For the
+    conceptual map — what each phase produces, what flows between them,
+    the cross-cutting band — read [The loop](concepts/the-loop.md) in
+    the Concepts section.
+
+## Loop skills vs cross-cutting helpers
+
+Some skills sit *on* the loop arrow; others run *across* it. The lane
+diagram below shows which is which — the second lane is the band of
+skills you can reach for at any time, regardless of which phase you're
+in.
+
+```mermaid
+flowchart TB
+    subgraph loop["📦 On the loop"]
+        direction LR
+        a["**Plan**<br/>grill-me<br/>grill-with-docs<br/>to-prd"] --> b["**Break down**<br/>to-issues<br/>triage"]
+        b --> c["**Build**<br/>tdd-parallel<br/>tdd"]
+        c --> d["**Ship**<br/>git-branch<br/>commit<br/>code-review"]
+        d --> e["**Track**<br/>state machine"]
+        e --> a
+    end
+    subgraph cross["🧭 Cross-cutting"]
+        direction LR
+        x1["diagnose<br/><i>bugs / perf</i>"]
+        x2["improve-codebase-architecture<br/><i>fight entropy</i>"]
+        x3["zoom-out<br/><i>find your footing</i>"]
+        x4["triage<br/><i>inbound issues</i>"]
+    end
+    subgraph offloop["✋ Off-loop"]
+        direction LR
+        o1["prototype<br/><i>throwaway exploration</i>"]
+        o2["timesheet<br/><i>standup notes</i>"]
+        o3["caveman<br/><i>compressed mode</i>"]
+        o4["write-a-skill<br/><i>meta</i>"]
+    end
+    cross -.-> loop
+```
+
 ## One-time setup
 
 [`/zsl:setup-zsl-superpowers`](setup.md)
@@ -118,3 +158,27 @@ Where state lives, and how closure works, depends on the backend you picked in [
 [`/zsl:improve-codebase-architecture`](skills/improve-codebase-architecture.md) every few days to fight entropy.
 
 [`/zsl:zoom-out`](skills/zoom-out.md) when you need a higher-level view of unfamiliar code.
+
+## Catalogue at a glance
+
+For the full per-skill descriptions and decision tree, see the
+[Skills overview](skills/index.md).
+
+| Phase | Skill | What it does |
+|---|---|---|
+| Setup | [setup-zsl-superpowers](skills/setup-zsl-superpowers.md) | One-time per-repo scaffold: tracker, label vocab, ship style |
+| Plan | [grill-with-docs](skills/grill-with-docs.md) | Interview + updates `CONTEXT.md` and ADRs |
+| Plan | [grill-me](skills/grill-me.md) | Interview only (non-code) |
+| Plan | [to-prd](skills/to-prd.md) | Conversation → PRD on tracker |
+| Break down | [to-issues](skills/to-issues.md) | PRD → vertical-slice children with wave/letter dependency graph |
+| Break down | [triage](skills/triage.md) | Walk each child through the [state machine](concepts/state-machine.md) |
+| Build | [tdd](skills/tdd.md) | Single-issue red-green-refactor |
+| Build | [tdd-parallel](skills/tdd-parallel.md) | Worktree fanout + wave-ordered merges + one PR |
+| Build | [diagnose](skills/diagnose.md) | Reproduce → minimise → hypothesise → fix |
+| Ship | [git-branch](skills/git-branch.md) | Branch with the prefix convention |
+| Ship | [commit](skills/commit.md) | Explicit-file-list commits |
+| Ship | [code-review](skills/code-review.md) | Pre-PR review with approval gate |
+| Cross-cut | [improve-codebase-architecture](skills/improve-codebase-architecture.md) | Find deepening opportunities |
+| Cross-cut | [zoom-out](skills/zoom-out.md) | Broader context on unfamiliar code |
+| Off-loop | [prototype](skills/prototype.md) | Throwaway exploration |
+| Off-loop | [timesheet](skills/timesheet.md), [caveman](skills/caveman.md), [write-a-skill](skills/write-a-skill.md) | Productivity helpers |

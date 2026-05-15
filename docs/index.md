@@ -88,14 +88,17 @@ Codex, and other coding agents:
 [Quickstart](quickstart.md)
 :   Install, run one skill, see what changed. Five minutes.
 
+[Concepts](concepts/index.md)
+:   Mental models for the plugin — the three-layer architecture, the loop, the triage state machine, and the git branching topology used by `/zsl:tdd` and `/zsl:tdd-parallel`.
+
 [The workflow](workflow.md)
-:   How the skills compose into one engineering loop, end to end.
+:   The canonical walkthrough of the engineering loop with slash-command examples.
 
 [Parallel TDD deep-dive](tdd-parallel.md)
 :   Why we built it, how the wave model works, what an integration PR looks like.
 
 [Skills](skills/index.md)
-:   Every skill, what it does, when it activates.
+:   Every skill, what it does, when it activates — plus a "which skill do I want?" decision tree.
 
 [FAQ](faq.md)
 :   Compatibility, telemetry, namespacing, opt-in subset.
