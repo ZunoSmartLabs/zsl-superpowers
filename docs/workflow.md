@@ -87,6 +87,9 @@ flowchart TB
 [`/zsl:tdd-parallel`](tdd-parallel.md) `<PRD>`
 :   Fan out the unblocked **`[AFK]`** `ready-for-agent` children into parallel `/tdd` sub-agents in worktrees. Sub-agents commit but do **not** push (`/tdd --no-ship`). The orchestrator merges every slice branch onto the PRD branch in wave order with `--no-ff`, then opens **one consolidated integration PR**. Halts with a structured RCA on agent failure, merge conflict, or zero-progress cycles. PR-style repos only; `[HITL]`, container, and blocked items are skipped.
 
+[`/zsl:human-itl`](skills/human-itl.md) `<PRD>`
+:   Clear the `[HITL]` slices `/tdd-parallel` skipped — the manual actions a coding agent can't perform (console clicks, credential rotation, sign-off). Records each as an audit-trail comment, marks them done so the dependent `[AFK]` slices unblock, then hands back; re-run `/zsl:tdd-parallel` after. Hard-refuses slices that are really decisions in disguise — those belong upstream in `/zsl:grill-with-docs` + an ADR.
+
 [`/zsl:tdd`](skills/tdd.md) `<child>`
 :   Single-issue red-green-refactor. Refuses if you point it at a container. **On local-markdown trackers, you can also run `/zsl:tdd` with no argument** — it scans `.scratch/`, resolves each open issue's `## Blocked by` against the `issues/done/` archive, and lets you pick from the unblocked ones. The picker also surfaces "features fully archived but not closed" so you can run the feature-level close before grabbing more work.
 

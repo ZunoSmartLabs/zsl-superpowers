@@ -106,12 +106,43 @@ wave N+1, so wave N+1 inherits the integration tip from wave N's merges.
 
 `/zsl:tdd-parallel` is intentionally narrow:
 
-- **`[HITL]` slices** — anything that needs human interaction mid-flight.
-  Run these by hand with `/zsl:tdd <num>` after the AFK fanout lands.
+- **`[HITL]` slices** — slices needing a manual action a coding agent
+  can't perform (console clicks, credential rotation, external sign-off,
+  a hand-run migration). Clear them with
+  [`/zsl:human-itl <parent>`](skills/human-itl.md) *before* re-running the
+  fanout — not `/zsl:tdd`, since a HITL slice is a manual action, not a
+  unit of red-green-refactor. (A `[HITL]` slice that's actually a decision
+  is a process leak — resolve it upstream in `/zsl:grill-with-docs` + an
+  ADR and relabel it `[AFK]`.)
 - **Container issues** — issues that themselves have open sub-issues. The work
   lives in the children.
 - **Direct-push repos** — fanouts that land on `main` defeat the
   consolidation point. Refuses with a clear error.
+
+`[HITL]` slices aren't run here and aren't run with `/zsl:tdd` either —
+they're a manual action, not a unit of red-green-refactor. They have
+their own serial, human-present skill, and clearing them feeds back into
+the fanout:
+
+```mermaid
+flowchart LR
+    tp["/zsl:tdd-parallel &lt;PRD&gt;"] -->|"filter out [HITL]"| skip["Skipped — HITL<br/>bucket reported"]
+    tp -->|"fan out [AFK]"| afk["build + merge<br/>onto PRD branch"]
+    skip --> hi["/zsl:human-itl &lt;PRD&gt;<br/>do the manual action,<br/>record it, mark done"]
+    hi -->|"dependent [AFK] slices<br/>now unblock"| rerun["re-run<br/>/zsl:tdd-parallel &lt;PRD&gt;"]
+    rerun --> afk
+    afk -->|"all discovered AFK merged"| pr["push once →<br/>ONE integration PR"]
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef ok fill:#fef3c7,stroke:#d97706;
+    class tp,afk,rerun,pr good
+    class skip,hi ok
+```
+
+A decision masquerading as `[HITL]` (`Decide …`, `Pick …`) is a process
+leak, not a slice: [`/zsl:human-itl`](skills/human-itl.md) hard-refuses
+it and sends you upstream to [`/zsl:grill-with-docs`](skills/grill-with-docs.md)
++ an ADR, after which you relabel the slice `[AFK]`.
 
 ## A sample integration PR
 

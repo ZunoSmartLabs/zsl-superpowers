@@ -23,7 +23,7 @@ If you have not already explored the codebase, do so to understand the current s
 
 Break the plan into **tracer bullet** issues. Each issue is a thin vertical slice that cuts through ALL integration layers end-to-end, NOT a horizontal slice of one layer.
 
-Slices may be 'HITL' or 'AFK'. HITL slices require human interaction, such as an architectural decision or a design review. AFK slices can be implemented and merged without human interaction. Prefer AFK over HITL where possible.
+Slices may be 'HITL' or 'AFK'. A HITL slice requires a manual action a coding agent **physically cannot perform** — clicking through a third-party console, rotating a real credential, obtaining external sign-off, running a one-off production migration by hand. It is **not** an architectural decision or a design review: those must be resolved upstream via `/grill-with-docs` and recorded as ADRs *before* slices are cut, so the work falls out maximally AFK. AFK slices can be implemented and merged without human interaction. Prefer AFK over HITL where possible — a `[HITL]` slice that's really a decision in disguise is a process leak, not a slice. HITL slices are cleared by `/human-itl`, not `/tdd`.
 
 <vertical-slice-rules>
 - Each slice delivers a narrow but COMPLETE path through every layer (schema, API, UI, tests)
@@ -43,7 +43,7 @@ Each slice gets a title in the form `[<TYPE>] <wave>[<letter>] — <description>
 
 Examples:
 
-- `[HITL] 1 — Decide auth provider`
+- `[HITL] 1 — Register the OAuth app in the provider console and capture client id/secret`
 - `[AFK] 2a — Add OAuth callback endpoint`
 - `[AFK] 2b — Render login button`
 - `[AFK] 3 — Wire callback to session store`
@@ -63,7 +63,7 @@ Ask the user:
 - Does the granularity feel right? (too coarse / too fine)
 - Are the dependency relationships correct?
 - Should any slices be merged or split further?
-- Are the correct slices marked as HITL and AFK?
+- Are the correct slices marked as HITL and AFK? Is every `[HITL]` slice a genuine manual action, not a disguised decision (which belongs upstream in `/grill-with-docs` + an ADR)?
 
 Iterate until the user approves the breakdown.
 
