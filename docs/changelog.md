@@ -4,6 +4,53 @@ For the full commit history, see
 [github.com/ZunoSmartLabs/zsl-superpowers/commits/main](https://github.com/ZunoSmartLabs/zsl-superpowers/commits/main).
 This page summarises the user-facing changes per plugin version.
 
+## 0.6.0
+
+- New skill: [`/zsl:human-itl`](skills/human-itl.md). The serial,
+  human-present counterpart to [`/zsl:tdd-parallel`](skills/tdd-parallel.md):
+  it walks you through the `[HITL]` slices the fanout skips — the manual
+  actions a coding agent physically can't perform (third-party console
+  clicks, credential rotation, external sign-off, a hand-run migration) —
+  records each as an audit-trail comment, marks them done so the dependent
+  `[AFK]` slices unblock, then stops with the hint to re-run
+  `/zsl:tdd-parallel`. It never writes code (that's `/zsl:tdd`) and never
+  chains the fanout for you.
+- **Narrowed the `[HITL]` definition.** [`/zsl:to-issues`](skills/to-issues.md)
+  previously called a slice HITL if it needed "human interaction, such as
+  an architectural decision or a design review." That conflated two things.
+  A `[HITL]` slice is now strictly a *manual action an agent can't perform*.
+  Architectural decisions and design reviews are **not** HITL slices —
+  they're resolved upstream in [`/zsl:grill-with-docs`](skills/grill-with-docs.md)
+  + an ADR *before* issues are cut, so slices fall out maximally AFK. A
+  `[HITL]` slice that's really a decision in disguise is a process leak,
+  and `/zsl:human-itl` hard-refuses it with a pointer back to grilling.
+- `/zsl:tdd-parallel`'s "Skipped — HITL" guidance no longer tells you to
+  run `/zsl:tdd <num>` (you don't red-green-refactor a manual action). It
+  now points at `/zsl:human-itl <parent>`, after which you re-run the
+  fanout.
+- `/zsl:tdd-parallel` now **resumes correctly after a `/zsl:human-itl`
+  round-trip.** Previously its "is this blocker satisfied?" check only
+  recognised slice branches *it* merged during the current run, so an
+  `[AFK]` slice `Blocked by` a `[HITL]` slice would zero-progress halt
+  *again* on re-run even though `/zsl:human-itl` had finished the blocker
+  (it was closed/done, never a merged branch) — and the RCA would
+  mislabel the finished blocker as `unresolvable`. The unblocked rule now
+  also counts a blocker that is closed/done within the parent's sub-tree
+  (sub-tree-scoped, so an unrelated closed issue can't spuriously satisfy
+  a dependency). This also fixes the quieter cousin: a blocker shipped by
+  a prior independent `/zsl:tdd` is now recognised too.
+
+**Upgrading from 0.5:** standard refresh — `/plugin marketplace update zsl-superpowers`
+then restart Claude Code. One thing worth knowing:
+
+- The `[HITL]` definition is narrower. Any existing open issue titled
+  `[HITL] … — Decide …` / `… — Pick …` / `… — Review …` is now considered
+  mislabeled: it's a decision, not a manual action. Resolve those with
+  `/zsl:grill-with-docs` (capture the outcome as an ADR), then relabel the
+  slice and its dependents `[AFK]` so `/zsl:tdd-parallel` will pick them
+  up. Genuine manual-action `[HITL]` slices need no change — just clear
+  them with `/zsl:human-itl` instead of `/zsl:tdd` from now on.
+
 ## 0.5.0
 
 - [`/zsl:tdd`](skills/tdd.md) now closes local-markdown sub-tasks itself on

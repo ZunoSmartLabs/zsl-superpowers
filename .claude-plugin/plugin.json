@@ -1,6 +1,6 @@
 {
   "name": "zsl",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Agent skills for real engineering, not vibe coding. End-to-end loop: PRD → vertical-slice issues → parallel TDD → one consolidated PR. Plus standalone helpers for triage, diagnose, and code-review.",
   "author": {
     "name": "ZunoSmartLabs",
@@ -9,6 +9,7 @@
   "skills": [
     "./skills/engineering/diagnose",
     "./skills/engineering/grill-with-docs",
+    "./skills/engineering/human-itl",
     "./skills/engineering/improve-codebase-architecture",
     "./skills/engineering/prototype",
     "./skills/engineering/setup-zsl-superpowers",

@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Fan out the unblocked **[AFK]** sub-tasks of a parent issue into parallel `/tdd` sub-agents. Each sub-agent runs `/tdd <num> --no-ship` in its own worktree, committing locally but never pushing. The orchestrator merges every slice branch onto the parent's PRD branch (which doubles as the integration branch) in wave order with `--no-ff`, then opens a single integration PR.
 
-`[HITL]` slices are filtered out — they require human interaction and must be run via `/tdd` directly. PR-style repos only — direct-push fanouts merge straight to `main` without consolidation.
+`[HITL]` slices are filtered out — they require a manual human action and are cleared via `/human-itl` (not `/tdd` — a HITL slice is a manual action, not a unit of red-green-refactor). PR-style repos only — direct-push fanouts merge straight to `main` without consolidation.
 
 ## Why one PR
 
@@ -31,7 +31,7 @@ Sub-agents spawned by this skill operate AFK. They make reasonable decisions and
 - A missing access or credential they can't proceed without.
 - A genuine architectural ambiguity that would change a public contract.
 
-When an agent escalates, the orchestrator relays the question to the user and resumes the agent via `SendMessage` with the user's answer. Anything that would routinely need human input mid-flight isn't AFK and shouldn't be in the fanout — it belongs as an `[HITL]` slice.
+When an agent escalates, the orchestrator relays the question to the user and resumes the agent via `SendMessage` with the user's answer. Anything that routinely needs a manual human action mid-flight isn't AFK and shouldn't be in the fanout — it belongs as an `[HITL]` slice, cleared via `/human-itl`. (Routine *decisions* don't belong as `[HITL]` slices either — they're resolved upstream in `/grill-with-docs` + an ADR so the slice stays AFK.)
 
 ## Progress visibility
 
@@ -98,19 +98,25 @@ For each surviving slice, parse the `## Blocked by` section to extract reference
 
 Maintain orchestrator state across iterations:
 
-- `merged` — set of sub-task issue numbers whose branches have been merged onto the PRD branch.
+- `merged` — set of sub-task issue numbers whose branches **this run** merged onto the PRD branch.
 - `attempted` — set of sub-task issue numbers we've spawned an agent for.
+- `satisfied_oob` — set of blocker issue numbers confirmed satisfied *out of band*: closed/done in the parent's sub-tree but never merged by this run (e.g. a `[HITL]` slice cleared by `/human-itl`, or a slice a prior independent `/tdd` shipped). Populated lazily by 3a and cached so each blocker is queried at most once per run.
 
 #### 3a. Pick the next wave
 
-A slice is **unblocked** when every issue in its `Blocked by` section is in `merged`. (Issue *closure* is irrelevant in this architecture — sub-issues never close mid-fanout because they're never pushed.)
+A slice is **unblocked** when every issue in its `Blocked by` section is **satisfied**. A blocker `b` is satisfied when *either*:
+
+- `b ∈ merged` — its branch was merged onto the PRD branch this run; **or**
+- `b ∈ satisfied_oob` — it is closed/done in the parent's sub-tree but was not merged by this run.
+
+For any blocker that is in neither set, resolve it **once** via `docs/agents/issue-tracker.md` conventions: if that issue is **closed/done** *and* a member of the parent PRD's sub-tree, add it to `satisfied_oob`; otherwise leave it unsatisfied. The sub-tree-membership guard is mandatory — an unrelated closed issue number elsewhere on the tracker must **not** satisfy a dependency (that guard is the safety the old `merged`-only rule gave implicitly; don't drop it). Closure of slices *inside* this fanout stays irrelevant — AFK sub-issues never close mid-run, so `merged` remains their only signal; this second clause exists solely for blockers satisfied *outside* the fanout: `[HITL]` slices `/human-itl` cleared, or work a prior `/tdd` shipped.
 
 Pick all unblocked, not-yet-attempted slices, sorted by issue number, capped by `--max`.
 
 If the picked set is empty:
 
-- If `merged` covers every discovered slice → fanout complete. Go to step 4.
-- Otherwise → **zero-progress halt** with hybrid RCA (see "RCA shape" below). Most likely cause: a circular `Blocked by`, a slice depending on an issue outside this fanout, or a reference to a non-existent issue. Stop.
+- If every discovered slice is in `merged` → fanout complete. Go to step 4.
+- Otherwise → **zero-progress halt** with hybrid RCA (see "RCA shape" below). By construction this now means a genuine graph fault — a circular `Blocked by`, a slice depending on an *open* issue outside this fanout, or a reference to a non-existent issue — because any blocker satisfiable by an out-of-band close was already absorbed into `satisfied_oob` above. Stop.
 
 #### 3b. Show the wave to the user
 
@@ -118,8 +124,9 @@ Print buckets:
 
 - **Selected** (numbered): issue number + title + branch name + worktree path.
 - **Skipped — over cap (this wave)**: issue number + title.
-- **Skipped — HITL**: issue number + title; tell the user to run `/tdd <num>` directly in a normal session.
+- **Skipped — HITL**: issue number + title; tell the user to clear them with `/human-itl <parent>` (the manual steps a coding agent can't perform), then re-run this fanout — not `/tdd`.
 - **Already merged**: list of issue numbers from prior waves.
+- **Satisfied out-of-band**: issue numbers in `satisfied_oob` (closed/done outside this fanout — e.g. a `[HITL]` slice cleared by `/human-itl`), each with the slice it unblocked. Empty on a clean first run; non-empty after a `/human-itl` round-trip.
 - **Pending future waves**: issue number + title + the `Blocked by` references it's still waiting on.
 
 Confirm with the user before proceeding.
@@ -215,7 +222,7 @@ The orchestrator is on the PRD branch. Merge each of the wave's slice branches i
 
 #### 3f. Loop
 
-Go back to 3a. Newly-unblocked slices (whose `Blocked by` references are now all in `merged`) become the next wave's candidates.
+Go back to 3a. Newly-unblocked slices (whose `Blocked by` references are now all **satisfied** per 3a — in `merged` or `satisfied_oob`) become the next wave's candidates.
 
 ### 4. Open the integration PR
 
@@ -268,7 +275,7 @@ Print a final summary:
 
 - Parent issue + integration PR URL.
 - Slices integrated, in merge order: number + title.
-- HITL slices skipped (with the hint to run `/tdd <num>` directly).
+- HITL slices skipped (with the hint to clear them with `/human-itl <parent>`, then re-run this fanout).
 - Total waves processed.
 
 The orchestrator session can now be closed. Slice worktrees and branches remain on disk; pre-flight 1b will sweep them on the next `/tdd-parallel` run, or you can clean them sooner by hand.
@@ -315,8 +322,8 @@ Every halt produces a structured RCA followed by an LLM-generated **Possible int
 **Zero-progress (3a):**
 
 - Un-attempted slices remaining: number, title, `Blocked by` references each is waiting on.
-- Reference classification per blocker: `cycle` (other un-attempted siblings forming a cycle), `external` (issue outside the parent's sub-tree), `unresolvable` (non-existent issue number).
-- Suggested next action: edit the offending `Blocked by` sections in the issue tracker to break the cycle / reference the right issue / drop the external dep, then re-run `/tdd-parallel`.
+- Reference classification per blocker: `cycle` (other un-attempted siblings forming a cycle), `external-open` (an *open* issue outside the parent's sub-tree), `unresolvable` (non-existent issue number), `open-hitl` (a `[HITL]` slice in the parent's sub-tree, not yet cleared). A blocker that is closed/done within the parent's sub-tree never reaches this list — 3a absorbs it into `satisfied_oob` — so it is never classified `unresolvable`; a halt that names a blocker you know is finished is a bug in the 3a predicate, not bad tracker data.
+- Suggested next action: for `cycle` / `external-open` / `unresolvable`, edit the offending `Blocked by` sections to break the cycle / reference the right issue / drop the external dep. For `open-hitl`, run `/human-itl <parent>` to clear the manual step. Then re-run `/tdd-parallel` — the cleared blocker is now picked up via `satisfied_oob`.
 
 ## Cleanup
 

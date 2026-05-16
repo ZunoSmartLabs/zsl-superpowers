@@ -43,8 +43,10 @@ flowchart TB
 
     build --> single["one slice<br/>at a time"]
     build --> many["multiple unblocked<br/>[AFK] slices"]
+    build --> manual["manual steps the<br/>agent can't do"]
     single --> tdd["/zsl:tdd"]:::build
     many --> tddp["/zsl:tdd-parallel"]:::build
+    manual --> hitl["/zsl:human-itl<br/><i>clear skipped HITL slices</i>"]:::build
 
     bug --> diagnose["/zsl:diagnose"]:::diag
 
@@ -101,6 +103,7 @@ matters for picking a skill.
 |---|---|
 | [tdd](tdd.md) | Single-issue red-green-refactor on whatever branch you hand it. |
 | [tdd-parallel](tdd-parallel.md) | Fan unblocked `[AFK]` slices into worktrees, merge in wave order, open *one* integration PR. See the [deep-dive](../tdd-parallel.md). |
+| [human-itl](human-itl.md) | Clear the `[HITL]` slices `/tdd-parallel` skipped — manual actions an agent can't perform — then hand back to the fanout. Hard-refuses disguised-decision slices. |
 | [diagnose](diagnose.md) | Reproduce → minimise → hypothesise → instrument → fix → regression-test. The bug-hunting loop. |
 
 ### Ship

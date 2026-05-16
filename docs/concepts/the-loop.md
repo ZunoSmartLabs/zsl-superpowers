@@ -16,7 +16,7 @@ flowchart LR
     setup(["one-time<br/>setup-zsl-superpowers"]):::oneoff
     plan["**Plan**<br/>grill-me<br/>grill-with-docs<br/>to-prd"]
     breakdown["**Break down**<br/>to-issues<br/>triage"]
-    build["**Build**<br/>tdd-parallel<br/>tdd<br/>diagnose"]
+    build["**Build**<br/>tdd-parallel<br/>human-itl<br/>tdd<br/>diagnose"]
     ship["**Ship**<br/>code-review<br/>commit<br/>git-branch"]
     track["**Track & close**<br/>state machine<br/>project board / .scratch"]
 
@@ -91,7 +91,7 @@ vertical-slice sub-issues. The `[AFK|HITL] <wave><letter>` title format
 is the **dependency contract** that the rest of the loop consumes:
 
 - `[AFK]` = the agent can run it unattended
-- `[HITL]` = needs human in the loop mid-flight
+- `[HITL]` = needs a manual action an agent can't perform (cleared by `/zsl:human-itl`, not a disguised decision)
 - `<wave>` = serialisation level (wave 1 before wave 2)
 - `<letter>` = parallelism within a wave (same wave = disjoint)
 
@@ -124,6 +124,43 @@ integration PR.
 [`/zsl:diagnose`](../skills/diagnose.md) sits beside both — the
 disciplined bug/perf-regression loop you use when something specific is
 broken rather than when you're building new behavior.
+
+### How a slice routes by type
+
+The `[AFK|HITL]` prefix from Phase 2 isn't decoration — it decides
+*which* skill picks the slice up. A slice is one of three things, and
+only two of them are work:
+
+```mermaid
+flowchart TB
+    s["a slice from /zsl:to-issues"] --> q{"what does it need?"}
+    q -->|"agent can do it"| afk["[AFK]"]
+    q -->|"a manual action<br/>a human must perform"| man["[HITL]"]
+    q -->|"a decision / review<br/>(no manual action, no code)"| dec["mislabelled —<br/>a decision in disguise"]
+
+    afk --> tddp["/zsl:tdd-parallel<br/>fan out in worktrees"]
+    man --> hitl["/zsl:human-itl<br/>walk the human through it,<br/>record it, mark done"]
+    hitl --> unblock["dependent [AFK] slices unblock<br/>→ re-run /zsl:tdd-parallel"]
+    dec --> leak["process leak"]
+    leak --> grill["/zsl:grill-with-docs + ADR<br/>resolve upstream,<br/>then relabel the slice [AFK]"]
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef ok fill:#fef3c7,stroke:#d97706;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+    class afk,tddp,unblock,grill good
+    class man,hitl ok
+    class dec,leak bad
+```
+
+[`/zsl:human-itl`](../skills/human-itl.md) is the serial, human-present
+counterpart to the fanout: `/zsl:tdd-parallel` filters `[HITL]` slices
+out (an unattended sub-agent can't click a console or rotate a
+credential), and `/zsl:human-itl` walks you through those manual actions,
+records each as an audit-trail comment, and marks them done so the
+`[AFK]` slices that were `Blocked by` them unblock — then it stops with a
+hint to re-run the fanout. It never writes code (that's `/zsl:tdd`) and
+hard-refuses a slice that's really a decision in disguise, sending you
+back to `/zsl:grill-with-docs` + an ADR.
 
 ## Phase 4: Ship
 
