@@ -36,7 +36,9 @@ flowchart TB
     w2 -->|".worktrees/126-…"| s3["`/tdd 126
     --no-ship`"]
     s3 -->|"merge --no-ff"| prd
-    prd --> done["`**Push & open integration PR**
+    prd --> gate{{"`**4a coverage gate**
+    valid verify-coverage receipt?`"}}
+    gate -->|"valid receipt for the tip"| done["`**Push & open integration PR**
     Closes #123, #124, #125, #126`"]
 
     classDef branch stroke:#1976d2,stroke-width:1.5px,rx:6,ry:6;
@@ -181,7 +183,7 @@ on `Done` automatically.
 
 ## What halts a run
 
-Three failure paths halt the orchestrator. All three halt the same way: print a
+Four failure paths halt the orchestrator. All four halt the same way: print a
 structured RCA, leave the state inspectable, stop. The orchestrator does **not**
 attempt resume — the user takes over from the halted state.
 
@@ -190,6 +192,7 @@ attempt resume — the user takes over from the halted state.
 | **Agent failure** | A sub-agent errored, refused, or returned without a mergeable branch | Bad agent brief, missing access, ambiguous architectural decision | On the PRD branch; failing slice's worktree intact at `.worktrees/<num>-<slug>/` with partial commits on its branch |
 | **Unresolvable merge conflict** | Auto-resolve attempt couldn't produce a clean lint+test-passing merge | Mis-sliced wave (slices in the same wave touched the same area), or genuine cross-wave drift | **On the PRD branch, mid-merge** — no `git merge --abort`. Conflict markers in place; resolve in your main checkout. |
 | **Zero-progress** | No slices unblock and the fanout isn't complete | Circular `Blocked by`, reference outside the parent's sub-tree, or non-existent issue number | On the PRD branch with whatever has merged so far; un-attempted slices' `Blocked by` sections reveal the cycle |
+| **Coverage gate declined** | User replied `skip` to the mandatory step-4a coverage gate | Chose not to run `/zsl:verify-coverage` against the integrated tip | All slices merged onto the PRD branch but **unpushed, no PR** — push and open it by hand, or re-run the fanout and satisfy the gate |
 
 The RCA includes the merge tip's last commit sha, every slice's final branch
 state, the conflict files (if any) with line ranges, and a possible

@@ -85,13 +85,18 @@ flowchart TB
 ## Build
 
 [`/zsl:tdd-parallel`](tdd-parallel.md) `<PRD>`
-:   Fan out the unblocked **`[AFK]`** `ready-for-agent` children into parallel `/tdd` sub-agents in worktrees. Sub-agents commit but do **not** push (`/tdd --no-ship`). The orchestrator merges every slice branch onto the PRD branch in wave order with `--no-ff`, then opens **one consolidated integration PR**. Halts with a structured RCA on agent failure, merge conflict, or zero-progress cycles. PR-style repos only; `[HITL]`, container, and blocked items are skipped.
+:   Fan out the unblocked **`[AFK]`** `ready-for-agent` children into parallel `/tdd` sub-agents in worktrees. Sub-agents commit but do **not** push (`/tdd --no-ship`). The orchestrator merges every slice branch onto the PRD branch in wave order with `--no-ff`, then — gated on a valid `/zsl:verify-coverage` receipt for the integrated tip (see **Verify** below) — opens **one consolidated integration PR**. Halts with a structured RCA on agent failure, merge conflict, zero-progress cycles, or a declined coverage gate. PR-style repos only; `[HITL]`, container, and blocked items are skipped.
 
 [`/zsl:human-itl`](skills/human-itl.md) `<PRD>`
 :   Clear the `[HITL]` slices `/tdd-parallel` skipped — the manual actions a coding agent can't perform (console clicks, credential rotation, sign-off). Records each as an audit-trail comment, marks them done so the dependent `[AFK]` slices unblock, then hands back; re-run `/zsl:tdd-parallel` after. Hard-refuses slices that are really decisions in disguise — those belong upstream in `/zsl:grill-with-docs` + an ADR.
 
 [`/zsl:tdd`](skills/tdd.md) `<child>`
 :   Single-issue red-green-refactor. Refuses if you point it at a container. **On local-markdown trackers, you can also run `/zsl:tdd` with no argument** — it scans `.scratch/`, resolves each open issue's `## Blocked by` against the `issues/done/` archive, and lets you pick from the unblocked ones. The picker also surfaces "features fully archived but not closed" so you can run the feature-level close before grabbing more work.
+
+## Verify
+
+[`/zsl:verify-coverage`](skills/verify-coverage.md) `<PRD>`
+:   After the fanout integrates, check every PRD `## User Stories` entry against the *implemented code via tests*, not prose. Tier A maps each story to an existing passing behavioral test; Tier B generates one for the rest, proves it non-vacuous by mutation, and runs it; visual/UX/external stories go to a human-attestation lane (HITL). Quarantines failing tests, auto-files genuine gaps as `needs-triage` sub-issues of the PRD, and writes a coverage receipt against the verified sha. `/zsl:tdd-parallel` **enforces** this at step 4a: it refuses to open the integration PR until a valid receipt for the integrated tip exists. It's an *execution* gate (did the check run?), not an *outcome* gate — open gaps still pass; only skipping the check is blocked. The matrix outcome itself stays a review surface, never an auto-gate.
 
 ## Ship
 
@@ -178,6 +183,7 @@ For the full per-skill descriptions and decision tree, see the
 | Build | [tdd](skills/tdd.md) | Single-issue red-green-refactor |
 | Build | [tdd-parallel](skills/tdd-parallel.md) | Worktree fanout + wave-ordered merges + one PR |
 | Build | [diagnose](skills/diagnose.md) | Reproduce → minimise → hypothesise → fix |
+| Verify | [verify-coverage](skills/verify-coverage.md) | PRD-story coverage via tests; gates the fanout's integration PR |
 | Ship | [git-branch](skills/git-branch.md) | Branch with the prefix convention |
 | Ship | [commit](skills/commit.md) | Explicit-file-list commits |
 | Ship | [code-review](skills/code-review.md) | Pre-PR review with approval gate |

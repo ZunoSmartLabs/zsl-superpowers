@@ -4,6 +4,61 @@ For the full commit history, see
 [github.com/ZunoSmartLabs/zsl-superpowers/commits/main](https://github.com/ZunoSmartLabs/zsl-superpowers/commits/main).
 This page summarises the user-facing changes per plugin version.
 
+## 0.7.0
+
+- New skill: [`/zsl:verify-coverage`](skills/verify-coverage.md). Closes
+  the loop's missing half. Until now the only post-implementation
+  completeness signal was structural — the tracker auto-closes a PRD when
+  its last child closes — but "all slices shipped" is not "all user
+  stories covered"; they diverge exactly when slicing drops or misframes
+  a story. `/verify-coverage <PRD>` takes the PRD's `## User Stories` as
+  an *acceptance oracle* (never as `/tdd` implementation context) and
+  proves each story against the **implemented code via tests**, not
+  prose or code-search judgement: **Tier A** maps a story to an existing
+  passing behavioral test; **Tier B** generates a test for stories with
+  none, proves it non-vacuous by mutation (it must go RED when the code
+  path is perturbed), then runs it; a **HITL lane** routes visual / UX /
+  external-system stories to human attestation. Genuine gaps are
+  quarantined as skipped tests (referencing the gap issue) and auto-filed
+  as `needs-triage` sub-issues of the PRD, so they re-enter the loop
+  through `/zsl:triage` → `/zsl:tdd-parallel`. The coverage matrix is a
+  review surface that ends in a user decision — never a silent auto-gate.
+  Run it between a `/zsl:tdd-parallel` fanout and merging the integration
+  PR so gaps close in the same cycle. `disable-model-invocation` —
+  user-invoked only.
+- [`/zsl:to-issues`](skills/to-issues.md) now **persists** the
+  story→slice mapping. Previously the "User stories covered" mapping was
+  only spoken in the step-4 quiz and then lost; each published issue now
+  carries a `## User stories covered` section in its body. This is what
+  `/zsl:verify-coverage`'s Tier A reads back as its oracle — without it,
+  coverage would be re-derived from scratch every run.
+- [`/zsl:tdd-parallel`](skills/tdd-parallel.md) now **enforces a coverage
+  gate** (new step 4a) before opening the integration PR. After the
+  fanout integrates, it refuses to push until a valid `/zsl:verify-coverage`
+  receipt exists for the integrated tip — `mode: full` and
+  `verified-sha` equal to the PRD branch HEAD. Missing, `--no-generate`
+  partial, or stale → the run blocks (a checkpoint, not a restart):
+  invoke `/zsl:verify-coverage <parent>` in the still-open session, then
+  continue; reply `skip` for a new **coverage-gate-declined halt** that
+  leaves the merged branch unpushed for you to PR by hand. It is an
+  *execution* gate, not an *outcome* gate — open gaps still pass; only
+  skipping the check is blocked. `/zsl:verify-coverage` writes the
+  receipt as a PRD comment (GitHub/GitLab) or
+  `.scratch/<feature>/verify-coverage-receipt.md` (local-markdown) on
+  every completed run. (Supersedes the soft nudge that briefly shipped in
+  this release's drafts — the gate is the shipped behavior.)
+
+**Upgrading from 0.6:** standard refresh — `/plugin marketplace update zsl-superpowers`
+then restart Claude Code. One thing worth knowing:
+
+- Slice issues created by `/zsl:to-issues` *before* this release have no
+  `## User stories covered` section. `/zsl:verify-coverage` still works
+  against them — it falls back to inferring the story→slice map from each
+  slice's `## What to build` plus its merged diff — but warns that the
+  map is inferred and lower-confidence for those slices. New issues cut
+  after upgrading carry the section and get the exact map. No action
+  required; re-slicing old PRDs is optional and only sharpens Tier A.
+
 ## 0.6.0
 
 - New skill: [`/zsl:human-itl`](skills/human-itl.md). The serial,

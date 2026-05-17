@@ -228,6 +228,44 @@ Go back to 3a. Newly-unblocked slices (whose `Blocked by` references are now all
 
 After all discovered slices are merged:
 
+#### 4a. Coverage gate (mandatory)
+
+An **execution gate, not an outcome gate**: it enforces that
+`/verify-coverage` *ran* against the integrated tip, never that its
+matrix came back clean. Open gaps are fine — they ride a later fanout;
+skipping the check is what's blocked.
+
+1. Fetch the latest coverage receipt for this PRD per
+   `docs/agents/issue-tracker.md`: GitHub/GitLab → the most recent PRD
+   comment whose first line is `## Coverage receipt — verify-coverage`;
+   local-markdown → `.scratch/<feature>/verify-coverage-receipt.md`.
+2. The receipt is **valid** iff *both*:
+   - `mode: full` (a `--no-generate` `partial` receipt does not count), and
+   - its `verified-sha` equals the PRD branch tip (`git rev-parse HEAD`) —
+     nothing was integrated after it ran.
+3. **Valid** → proceed to 4b.
+4. **Missing, partial, or stale** → block. Do not push, do not open the
+   PR. Tell the user verbatim:
+
+   > Coverage gate: this fanout integrated <N> slices, but
+   > `/verify-coverage <parent>` has not been run against the current
+   > integrated tip (<no receipt | partial `--no-generate` run | receipt
+   > is for an older sha>). This run stays open — invoke
+   > `/verify-coverage <parent>` now (it's `disable-model-invocation`;
+   > the orchestrator never chains it), then reply to continue. Reply
+   > `skip` to abandon the PR and take the integrated branch over by hand.
+
+   This is a blocking checkpoint, like an escalating sub-agent — the
+   orchestrator session is required to stay open anyway (Constraints).
+   When the user says they're done, re-fetch and re-validate (step 2);
+   loop until valid. The user's `/verify-coverage` run commits its
+   quarantined tests onto the PRD branch, so they ride this same PR; any
+   gap sub-issues it files ride a *later* `/tdd-parallel <parent>`, not
+   this run. If the user replies `skip` → **coverage-gate halt** (see
+   Halt semantics): leave the integrated branch in place, unpushed, no PR.
+
+#### 4b. Push and open the PR
+
 1. `git push -u origin <prd-branch>`.
 2. Open the PR:
 
@@ -282,11 +320,12 @@ The orchestrator session can now be closed. Slice worktrees and branches remain 
 
 ## Halt semantics
 
-Three failure paths halt the run, all with the same shape: print a hybrid RCA, leave state inspectable, stop. The orchestrator does not attempt resume — the user takes over from the halted state.
+Four failure paths halt the run, all with the same shape: print a hybrid RCA, leave state inspectable, stop. The orchestrator does not attempt resume — the user takes over from the halted state.
 
 - **Agent failure** (3d): a sub-agent errored, refused, or returned without a mergeable branch.
 - **Unresolvable merge conflict** (3e): `git merge --no-ff` conflicted and the orchestrator's auto-resolve attempt couldn't produce a clean, lint+test-passing merge. The merge is left in its conflicted state on the PRD branch.
 - **Zero-progress** (3a): no slices unblock and the fanout isn't complete.
+- **Coverage gate declined** (4a): the user replied `skip` to the mandatory coverage gate. All slices are merged onto the PRD branch but it is left unpushed with no PR — the user pushes and opens it by hand if they choose to.
 
 When a halt fires while other agents are still in flight, the orchestrator waits for those agents to return (so it can capture their state in the RCA), then halts. It does *not* cancel them mid-flight — let them either complete or escalate, and surface their final state.
 
@@ -324,6 +363,13 @@ Every halt produces a structured RCA followed by an LLM-generated **Possible int
 - Un-attempted slices remaining: number, title, `Blocked by` references each is waiting on.
 - Reference classification per blocker: `cycle` (other un-attempted siblings forming a cycle), `external-open` (an *open* issue outside the parent's sub-tree), `unresolvable` (non-existent issue number), `open-hitl` (a `[HITL]` slice in the parent's sub-tree, not yet cleared). A blocker that is closed/done within the parent's sub-tree never reaches this list — 3a absorbs it into `satisfied_oob` — so it is never classified `unresolvable`; a halt that names a blocker you know is finished is a bug in the 3a predicate, not bad tracker data.
 - Suggested next action: for `cycle` / `external-open` / `unresolvable`, edit the offending `Blocked by` sections to break the cycle / reference the right issue / drop the external dep. For `open-hitl`, run `/human-itl <parent>` to clear the manual step. Then re-run `/tdd-parallel` — the cleared blocker is now picked up via `satisfied_oob`.
+
+**Coverage gate declined (4a):**
+
+- Integration tip sha (the PRD branch HEAD, fully merged, unpushed).
+- Slices merged into it (issue numbers) — the work is intact, only the PR step was skipped.
+- Receipt state at decline: `none` / `partial (--no-generate)` / `stale (verified-sha <sha> ≠ tip <sha>)`.
+- Suggested next action: run `/verify-coverage <parent>` against the PRD branch (it commits its quarantined tests onto this same branch), then `git push -u origin <prd-branch>` and open the PR by hand — or re-run `/tdd-parallel <parent>`, which finds every slice already merged and stops again at the now-satisfiable gate.
 
 ## Cleanup
 

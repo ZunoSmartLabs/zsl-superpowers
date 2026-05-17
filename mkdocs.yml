@@ -67,6 +67,7 @@ nav:
           - skills/tdd.md
           - skills/tdd-parallel.md
           - skills/human-itl.md
+          - skills/verify-coverage.md
           - skills/diagnose.md
           - skills/improve-codebase-architecture.md
           - skills/zoom-out.md
