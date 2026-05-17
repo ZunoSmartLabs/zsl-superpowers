@@ -50,6 +50,7 @@ flowchart TB
 
     bug --> diagnose["/zsl:diagnose"]:::diag
 
+    review --> verifycov["/zsl:verify-coverage<br/><i>PRD stories all covered?</i>"]:::ship
     review --> commit["/zsl:commit<br/><i>explicit file list</i>"]:::ship
     review --> code_review["/zsl:code-review<br/><i>pre-PR scan</i>"]:::ship
     review --> branch["/zsl:git-branch<br/><i>before /zsl:tdd</i>"]:::ship
@@ -105,6 +106,12 @@ matters for picking a skill.
 | [tdd-parallel](tdd-parallel.md) | Fan unblocked `[AFK]` slices into worktrees, merge in wave order, open *one* integration PR. See the [deep-dive](../tdd-parallel.md). |
 | [human-itl](human-itl.md) | Clear the `[HITL]` slices `/tdd-parallel` skipped — manual actions an agent can't perform — then hand back to the fanout. Hard-refuses disguised-decision slices. |
 | [diagnose](diagnose.md) | Reproduce → minimise → hypothesise → instrument → fix → regression-test. The bug-hunting loop. |
+
+### Verify
+
+| Skill | What it does |
+|---|---|
+| [verify-coverage](verify-coverage.md) | After a fanout, prove every PRD user story is covered by a passing, non-vacuous behavioral test (Tier A maps to existing tests; Tier B generates + mutation-proves one); HITL lane for non-automatable stories; auto-files genuine gaps as `needs-triage` sub-issues; writes a receipt `/tdd-parallel` step 4a requires before opening the PR. Execution gate (did the check run?), not an outcome gate — the matrix itself stays advisory. |
 
 ### Ship
 

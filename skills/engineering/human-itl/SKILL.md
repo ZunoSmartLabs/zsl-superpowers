@@ -109,5 +109,3 @@ step — do not chain:
 - Writing code or running red-green-refactor — that's `/tdd`.
 - Resolving decisions — that's `/grill-with-docs` + an ADR, upstream.
 - Invoking `/tdd-parallel` for the user — this skill ends with the hint.
-</content>
-</invoke>

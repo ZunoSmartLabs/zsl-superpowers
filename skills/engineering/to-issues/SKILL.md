@@ -56,7 +56,7 @@ Present the proposed breakdown as a numbered list. For each slice, show:
 - **Title**: as drafted in step 3 (with the `[TYPE] wave[letter] — description` format)
 - **Type**: HITL / AFK
 - **Blocked by**: which other slices (if any) must complete first
-- **User stories covered**: which user stories this addresses (if the source material has them)
+- **User stories covered**: which user stories this addresses (if the source material has them). Whatever the user approves here is persisted verbatim into the issue body's `## User stories covered` section in step 5 — it is not just a quiz aid; `/verify-coverage` reads it back as its Tier A oracle.
 
 Ask the user:
 
@@ -87,6 +87,17 @@ A concise description of this vertical slice. Describe the end-to-end behavior, 
 - [ ] Criterion 1
 - [ ] Criterion 2
 - [ ] Criterion 3
+
+## User stories covered
+
+The PRD user story numbers this slice addresses, each with its short text
+(e.g. `7 — User can reset password via email`). This is the persisted
+form of the quiz mapping from step 4 — `/verify-coverage` consumes it as
+its Tier A story→slice map, so it must be in the body, not only spoken in
+the quiz. Write `None — enabling/infrastructure slice` for a slice that
+delivers no user-facing story on its own. Omit this whole section only
+when the source had no user stories (a freeform plan), the same way
+`## Parent` is omitted when there's no parent.
 
 ## Blocked by
 

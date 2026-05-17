@@ -16,7 +16,7 @@ flowchart LR
     setup(["one-time<br/>setup-zsl-superpowers"]):::oneoff
     plan["**Plan**<br/>grill-me<br/>grill-with-docs<br/>to-prd"]
     breakdown["**Break down**<br/>to-issues<br/>triage"]
-    build["**Build**<br/>tdd-parallel<br/>human-itl<br/>tdd<br/>diagnose"]
+    build["**Build**<br/>tdd-parallel<br/>human-itl<br/>tdd<br/>verify-coverage<br/>diagnose"]
     ship["**Ship**<br/>code-review<br/>commit<br/>git-branch"]
     track["**Track & close**<br/>state machine<br/>project board / .scratch"]
 
@@ -35,7 +35,7 @@ flowchart LR
 | **Plan** | A PRD issue on the tracker (or a `.scratch/<feature>/PRD.md`) describing what you're building and why | Break down |
 | **Break down** | A set of vertical-slice sub-issues with `[AFK\|HITL] <wave><letter>` titles and `Blocked by` graphs, each triaged to a state | Build |
 | **Build** | Slice branches with red-green-refactor commits, each closing one sub-issue | Ship |
-| **Ship** | A merged PR (or pushed commit) per slice, *or* one consolidated integration PR for an AFK fanout | Track |
+| **Ship** | A merged PR (or pushed commit) per slice, *or* one consolidated integration PR for an AFK fanout (gated on a `/zsl:verify-coverage` receipt for the integrated tip) | Track |
 | **Track & close** | Closed issues. The PRD parent auto-closes when its last child closes. | Next loop |
 
 ## Phase 1: Plan
@@ -119,7 +119,12 @@ flowchart TB
 red-green-refactor loop on whatever branch you're on.
 [`/zsl:tdd-parallel`](../skills/tdd-parallel.md) fans out the unblocked
 `[AFK]` slices into worktrees and consolidates everything into one
-integration PR.
+integration PR. Before that PR opens, step 4a enforces a **coverage
+gate**: [`/zsl:verify-coverage`](../skills/verify-coverage.md) must have
+run against the integrated tip, proving every PRD user story is covered
+by a passing test (or routed to the HITL lane). It's an *execution* gate,
+not an *outcome* gate — open gaps still pass and ride a later fanout;
+only skipping the check is blocked.
 
 [`/zsl:diagnose`](../skills/diagnose.md) sits beside both — the
 disciplined bug/perf-regression loop you use when something specific is
