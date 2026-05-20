@@ -184,6 +184,8 @@ You operate under the AFK contract:
 - Escalate (return early with a question) ONLY for: destructive ops needing confirmation per auto mode rules, missing access/credentials, or genuine architectural ambiguity that would change a public contract.
 - Be specific about what you need if you do escalate.
 
+Lean slices: the slice's refactor phase must apply `/tdd`'s deletion discipline (see `engineering/tdd/SKILL.md` § Refactor) — dead code, unused imports, debug statements, commented-out blocks, comments explaining *what* code does. Bloated slices compound into a bloated integration PR.
+
 Progress heartbeat: your invocation of `/tdd <num> --no-ship` MUST emit one-line JSON records to `.tdd-progress.jsonl` in the worktree at each TDD phase per `engineering/tdd/SKILL.md` § Progress heartbeat. Don't skip — the orchestrator depends on these for live status, and silence looks like a hang.
 
 When done, report: branch name, last commit sha, the slice issue number you worked on (so the orchestrator can map slice → issue), and a one-paragraph summary of changes. Do NOT push. Do NOT open a PR.
@@ -228,7 +230,15 @@ Go back to 3a. Newly-unblocked slices (whose `Blocked by` references are now all
 
 After all discovered slices are merged:
 
-#### 4a. Coverage gate (mandatory)
+#### 4a. Integration code review (mandatory)
+
+Run `/code-review --auto` against the PRD branch tip. Per-slice reviews ran inside each `/tdd` invocation; this pass catches the cross-slice issues those can't see — duplicate helpers introduced by parallel slices, stylistic drift, redundant imports after merge, leftover debug statements that slipped through individual refactors.
+
+Auto-fixes commit onto the PRD branch (subject: `review: post-integration cleanup`) and ride into the same PR. Mid-confidence (60–79) findings get captured into the PR body under a **Deferred review findings** section with `file:line` references.
+
+If `/code-review --auto` halts (lint or tests fail after applying review commits, and the review commit was reverted), surface in RCA per "Halt semantics" — **integration review failure**. The PRD branch is left at its pre-review state; the user inspects and decides whether to re-run the fanout (which re-enters 4a) or merge by hand.
+
+#### 4b. Coverage gate (mandatory)
 
 An **execution gate, not an outcome gate**: it enforces that
 `/verify-coverage` *ran* against the integrated tip, never that its
@@ -238,12 +248,12 @@ skipping the check is what's blocked.
 1. Fetch the latest coverage receipt for this PRD per
    `docs/agents/issue-tracker.md`: GitHub/GitLab → the most recent PRD
    comment whose first line is `## Coverage receipt — verify-coverage`;
-   local-markdown → `.scratch/<feature>/verify-coverage-receipt.md`.
+   local-markdown → `.scratch/<NNN>-<feature-slug>/verify-coverage-receipt.md`.
 2. The receipt is **valid** iff *both*:
    - `mode: full` (a `--no-generate` `partial` receipt does not count), and
    - its `verified-sha` equals the PRD branch tip (`git rev-parse HEAD`) —
      nothing was integrated after it ran.
-3. **Valid** → proceed to 4b.
+3. **Valid** → proceed to 4c.
 4. **Missing, partial, or stale** → block. Do not push, do not open the
    PR. Tell the user verbatim:
 
@@ -264,7 +274,7 @@ skipping the check is what's blocked.
    this run. If the user replies `skip` → **coverage-gate halt** (see
    Halt semantics): leave the integrated branch in place, unpushed, no PR.
 
-#### 4b. Push and open the PR
+#### 4c. Push and open the PR
 
 1. `git push -u origin <prd-branch>`.
 2. Open the PR:
@@ -320,12 +330,13 @@ The orchestrator session can now be closed. Slice worktrees and branches remain 
 
 ## Halt semantics
 
-Four failure paths halt the run, all with the same shape: print a hybrid RCA, leave state inspectable, stop. The orchestrator does not attempt resume — the user takes over from the halted state.
+Five failure paths halt the run, all with the same shape: print a hybrid RCA, leave state inspectable, stop. The orchestrator does not attempt resume — the user takes over from the halted state.
 
 - **Agent failure** (3d): a sub-agent errored, refused, or returned without a mergeable branch.
 - **Unresolvable merge conflict** (3e): `git merge --no-ff` conflicted and the orchestrator's auto-resolve attempt couldn't produce a clean, lint+test-passing merge. The merge is left in its conflicted state on the PRD branch.
 - **Zero-progress** (3a): no slices unblock and the fanout isn't complete.
-- **Coverage gate declined** (4a): the user replied `skip` to the mandatory coverage gate. All slices are merged onto the PRD branch but it is left unpushed with no PR — the user pushes and opens it by hand if they choose to.
+- **Integration review failure** (4a): `/code-review --auto` applied ≥80 findings to the merged PRD tip but lint or tests failed afterward; the review commit was reverted. The PRD branch is at pre-review state with all slices merged.
+- **Coverage gate declined** (4b): the user replied `skip` to the mandatory coverage gate. All slices are merged onto the PRD branch but it is left unpushed with no PR — the user pushes and opens it by hand if they choose to.
 
 When a halt fires while other agents are still in flight, the orchestrator waits for those agents to return (so it can capture their state in the RCA), then halts. It does *not* cancel them mid-flight — let them either complete or escalate, and surface their final state.
 
@@ -364,7 +375,15 @@ Every halt produces a structured RCA followed by an LLM-generated **Possible int
 - Reference classification per blocker: `cycle` (other un-attempted siblings forming a cycle), `external-open` (an *open* issue outside the parent's sub-tree), `unresolvable` (non-existent issue number), `open-hitl` (a `[HITL]` slice in the parent's sub-tree, not yet cleared). A blocker that is closed/done within the parent's sub-tree never reaches this list — 3a absorbs it into `satisfied_oob` — so it is never classified `unresolvable`; a halt that names a blocker you know is finished is a bug in the 3a predicate, not bad tracker data.
 - Suggested next action: for `cycle` / `external-open` / `unresolvable`, edit the offending `Blocked by` sections to break the cycle / reference the right issue / drop the external dep. For `open-hitl`, run `/human-itl <parent>` to clear the manual step. Then re-run `/tdd-parallel` — the cleared blocker is now picked up via `satisfied_oob`.
 
-**Coverage gate declined (4a):**
+**Integration review failure (4a):**
+
+- PRD branch tip sha at review start.
+- Findings the autonomous review tried to apply: count by severity, with `file:line` references.
+- Lint/test failure: which command failed, last 50 lines of output.
+- Reverted review commit sha (for inspection via `git show <sha>`).
+- Suggested next action: inspect the reverted commit to see what the review attempted. Either fix the underlying issue and re-run `/tdd-parallel <parent>` (which finds slices already merged and re-enters 4a), or apply the review findings selectively by hand and continue from 4b manually.
+
+**Coverage gate declined (4b):**
 
 - Integration tip sha (the PRD branch HEAD, fully merged, unpushed).
 - Slices merged into it (issue numbers) — the work is intact, only the PR step was skipped.

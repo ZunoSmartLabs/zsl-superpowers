@@ -19,7 +19,7 @@ The engineering skills in this plugin make assumptions about your repo's setup �
 
 **GitHub project dashboard** — state lives as labels on each issue and is mirrored to the project board's `Status` field via the mapping in `docs/agents/project-board.md`. `/zsl:triage` updates both. Closure is automatic via GitHub's PR-merge → issue-close behaviour.
 
-**Local markdown files** — state lives as a `Status:` line near the top of each `.md` file under `.scratch/<feature-slug>/`. Closure is folder-based: move issue files to `.scratch/<feature-slug>/issues/done/` when complete, and the whole feature folder to `.scratch/done/<feature-slug>/` when shipped. Nothing is deleted; the archive records why each issue closed.
+**Local markdown files** — state lives as a `Status:` line near the top of each `.md` file under `.scratch/<NNN>-<feature-slug>/`, where `<NNN>` is a 3-digit feature number assigned at creation (auto-incremented). Features can be addressed by number alone — `/zsl:triage 23` resolves to feature `023-*` via glob. Closure is folder-based: move issue files to `.scratch/<NNN>-<feature-slug>/issues/done/` when complete, and the whole feature folder to `.scratch/done/<YYYYMMDD>-<NNN>-<feature-slug>/` when shipped (date prefix orders archived features chronologically; the feature number stays embedded). Nothing is deleted; the archive records why each issue closed.
 
 ## When to re-run
 

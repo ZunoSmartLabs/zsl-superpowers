@@ -6,134 +6,102 @@ model: opus
 
 # Pre-PR Code Review
 
-Please review this pull request and provide feedback on:
-- Code quality and best practices
-- Potential bugs or issues
-- Performance considerations
-- Security concerns
-- Test coverage (see coverage analysis below)
+Review like Uncle Bob would. Clean code is **simple, correct, and minimal** — single responsibility, small functions with names that don't lie, no dead code, no defensive padding, no premature abstraction. The diff should leave the codebase clearer than it found it.
 
-Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
+Focus the review on:
+- Clean-code principles (see below)
+- Bugs and correctness
+- Performance
+- Security
+- Test coverage — every behavior change should ship with a test change
+- Scope — flag PRs that mix unrelated changes
 
-## Sentry / Error Handling Analysis
+Use the repository's CLAUDE.md for project-specific style and conventions.
 
-Before suggesting Sentry additions:
+## Clean code lens
 
-1. **Check existing patterns** — Search for similar code in the codebase. If 5+ routes handle 401s without Sentry, that's the project pattern.
+Apply these standards to every diff. They are what "issues" means.
 
-2. **Distinguish error types**:
-   - **DO log to Sentry**: Unexpected exceptions, external API failures, missing configuration, data corruption, catch blocks
-   - **DO NOT log to Sentry**: Expected HTTP responses (401 unauthenticated, 403 forbidden, 400 validation errors, 404 not found for user input)
+- **Single responsibility violated** — Functions or classes doing multiple unrelated things. Name the seams and suggest a split.
+- **Names that lie or obscure** — `data`, `handleStuff`, `processItem`, getters that mutate, queries with side effects, booleans named for the wrong default. Rename.
+- **Functions too large to hold in your head** — Long bodies, deep nesting, many parameters. Suggest extraction along a natural seam.
+- **Dead code** — Commented-out blocks, unused imports, unreachable branches, debug statements (`console.log`, `print`, `dbg!`). Delete.
+- **Comments compensating for unclear code** — A comment that explains *what* the code does (rather than *why*) usually signals the code itself should be rewritten.
+- **Mixed concerns** — Happy-path and error-recovery logic deeply intertwined, or unrelated changes bundled in one diff. Separate.
+- **Behavior change without test change** — A diff that alters logic but touches no test file. Flag and ask which test should cover it.
+- **ENV files modified** — `.env`, `.env.local`, etc. typically contain secrets and shouldn't be in version control. Always call out.
 
-3. **Apply the "would this wake someone up?" test**: If this condition happening at 3am shouldn't trigger an alert, don't log it as an exception.
+Carry this lens into every sub-agent prompt below.
 
-4. **Expected conditions are not exceptions**:
-   - User not authenticated → 401 (expected, don't log)
-   - Invalid input → 400 (expected, don't log)
-   - External API down → 503 (unexpected, DO log)
-   - Database query fails → (unexpected, DO log)
+## Do not flag
 
-**If suggesting Sentry, verify the codebase doesn't already handle similar cases differently.**
+These are noise — never include in findings:
 
-## Coverage Exclusion Analysis
+- **Pre-existing issues** — bugs on lines this branch didn't touch. Verify with `git blame` before flagging.
+- **Issues the CI catches** — type errors, lint violations, formatting, import order, broken tests. CI handles these.
+- **Pedantic nitpicks** — style preferences not codified in CLAUDE.md, "I would have written this differently."
+- **Intentional functionality changes** — the diff is the spec; don't flag behavior changes as bugs.
+- **Issues silenced by escape hatches** — `// eslint-disable`, `// @ts-expect-error`, `# noqa` mean the author already considered it.
+- **Generic code-quality wishes** — "this could be more testable", "consider adding documentation" — unless CLAUDE.md explicitly requires it.
 
-Before suggesting coverage exclusions:
+When in doubt, drop it.
 
-1. **Read existing config** — `jest.config.ts` (`collectCoverageFrom`) and `codecov.yml` (`ignore`). Skip files already excluded or outside collection scope.
+## Before suggesting changes
 
-2. **Analyze file content** (don't pattern-match paths):
-   - **SHOULD HAVE UNIT TESTS**: Exports pure functions (no Supabase/React/fetch imports, input→output, no side effects). Examples: `validation.ts`, `*-utils.ts`, `mock-data.ts` with logic.
-   - **SHOULD BE EXCLUDED**: Direct `createClient()` usage, route handlers, React components with `useEffect`/`useState`.
+A few patterns produce most false-positive review comments. Apply these before flagging:
 
-3. **Verify before suggesting**: Is file in collection scope? Does existing pattern cover it? Does file contain ANY pure functions?
+1. **Match existing conventions** — Search the codebase before flagging style, naming, or structural choices. If the project does it one way fifty times, suggesting a different way is noise unless CLAUDE.md explicitly requires it.
 
-**If pure functions exist → suggest unit tests, not exclusion.**
+2. **Trust enforcement layers** — Don't suggest runtime validation for states the database (CHECK / FK / NOT NULL / enum types), the type system (discriminated unions, branded types), or the input-validation layer (schema validation, form validation) already prevents. Defensive code for impossible states adds noise.
 
-## SQL Migration Analysis
+3. **Don't push abstraction prematurely** — Constants are not env vars; use env vars only for values that must differ per environment. Inline code is not a service. Suggest extraction or configurability only when there's a concrete second caller or a real runtime-configuration need.
 
-Before suggesting SQL changes:
+## Parallel multi-lens scan
 
-1. **Check existing comments** — Inline SQL comments (`-- comment`) are valid documentation. Don't suggest `COMMENT ON` statements if inline comments already explain the logic.
+Before writing findings, launch six parallel sub-agents — each gets the diff and one job. Issue all six Agent calls in a single message so they run concurrently.
 
-2. **COMMENT ON is for tooling** — Use `COMMENT ON` when database documentation tools need metadata. Use inline comments for developer readability. Both are valid; don't require both.
+1. **CLAUDE.md compliance** — Read root `CLAUDE.md` and any `CLAUDE.md` in modified directories. Audit changes against codified rules. Skip rules that are about code generation but not review.
+2. **Shallow bug scan** — Read the diff only (no extra context). Surface obvious bugs in the changes themselves. Ignore nitpicks.
+3. **Git history** — Run `git blame` / `git log` on modified hunks. Flag bugs visible only in historical context ("this line was added in PR #X to handle Y; the new change breaks that").
+4. **Prior PR comments** — Use `gh pr list --search` to find previous PRs touching these files. Read review comments. Surface guidance that also applies here.
+5. **Inline code comments** — Read comments in modified files. Surface any guidance the changes contradict.
+6. **Spec alignment** — Find the originating spec for this branch, then check the diff against it. Lookup order: (a) issue references in commit messages (`#123`, `Closes #45`, `Closes <path-to-md>`, GitLab `!67`) — fetch via the workflow in `docs/agents/issue-tracker.md`; (b) a PRD/spec path the user passed as an argument; (c) a PRD or AGENT-BRIEF under `docs/`, `specs/`, or `.scratch/` matching the branch slug or feature name. If nothing is found, this lens returns "no spec available" and is skipped. Otherwise report: (i) requirements the spec asked for that are missing or partial, with the spec line quoted; (ii) behaviour in the diff that wasn't asked for (scope creep); (iii) requirements that look implemented but where the implementation looks wrong relative to the spec.
 
-3. **Index comments** — Partial indexes with `WHERE` clauses benefit from inline comments explaining the filtering logic. `COMMENT ON INDEX` is optional and only useful if you use database documentation generators.
+Each agent returns a list of issues with `file:line` references and a one-line reason per issue. The Spec lens additionally quotes the relevant spec line (file:line or section heading).
 
-## Type Safety / Runtime Validation Analysis
+## Confidence scoring
 
-Before suggesting runtime type checks or validation:
+Score every collected finding 0–100 before presenting:
 
-1. **Check database constraints first** — If a column has `CHECK`, `FOREIGN KEY`, `NOT NULL`, or enum type constraints, the database already enforces valid values. Runtime validation is redundant.
+- **0–25** — Doesn't survive light scrutiny, or it's a pre-existing issue on lines this branch didn't touch.
+- **50** — Real but low-impact. Nitpicky relative to the rest of the diff.
+- **75** — Verified real, will hit in practice, or directly violates CLAUDE.md.
+- **100** — Concrete evidence the issue is real and frequent.
 
-2. **Type casts from DB are often necessary** — Supabase generates `string` for constrained columns (e.g., `country: string` even with `CHECK (country IN ('NZ', 'AU'))`). A type cast like `as "NZ" | "AU"` is correct—it tells TypeScript what the DB guarantees.
+**Drop everything below 60.** The approval gate catches the rest — but the scoring filter is what keeps the gate from drowning in noise.
 
-3. **Don't add validation for impossible states**:
-   - **Redundant**: `if (country !== "NZ" && country !== "AU") throw` when DB has CHECK constraint
-   - **Appropriate**: Validation at API boundaries where user input hasn't been validated yet
+## Autonomous mode (`--auto`)
 
-4. **If suggesting runtime checks**, verify the constraint isn't already enforced at:
-   - Database level (CHECK, FK, NOT NULL, enum types)
-   - API/form validation layer (zod schemas, form validation)
-   - Type system (discriminated unions, branded types)
+When invoked with `--auto`, the approval gate is dropped and high-confidence findings auto-apply. Designed for AFK contexts — `/tdd` calls this under `--no-ship`, and `/tdd-parallel` calls it at integration time.
 
-**Defensive code for impossible states adds noise without value.**
+- **≥80** — auto-apply as a single follow-up commit (subject: `review: <one-line summary>`). Revertible with one `git revert`.
+- **60–79** — report in the return summary with `file:line` references. Do not apply.
+- **<60** — dropped, per the standard confidence rule.
 
-## Documentation Convention Analysis
+After auto-applying, run lint (and tests if the project exposes them — `make test` or equivalent). If either fails, `git revert` the review commit and halt with the failure surfaced in the return summary.
 
-Before suggesting JSDoc, comments, or documentation:
+Return a single message: auto-applied count, deferred (60–79) list with `file:line` refs, lint/test status. No follow-up questions.
 
-1. **Check existing conventions** — Search for `@param`, `@returns`, `/**` patterns in the codebase. If <5% of functions have JSDoc, don't suggest adding it to one file.
+## Workflow
 
-2. **Self-documenting code is preferred** — Clear prop names, TypeScript interfaces, and descriptive function names often eliminate the need for JSDoc.
+1. Run `git diff main...HEAD` (or the project's base branch) to identify the diff.
+2. Read modified files in full before judging changes against them.
+3. Launch the six-agent parallel scan above. Collect and dedupe findings.
+4. Score each finding 0–100. Drop everything below 60.
+5. Branch on mode:
+   - **Interactive (default)** — Group survivors by severity (Critical / Important / Minor) and present as a numbered list with `file:line` references and confidence scores. Search for similar patterns in the codebase before flagging style issues. Propose a fix plan: which findings you'll fix, which to skip and why, marking suspected false positives. Ask: "Shall I proceed with these fixes?" Wait for explicit approval before editing. After fixes, run `make lint` (or the project's equivalent).
+   - **Autonomous (`--auto`)** — Apply each ≥80 finding, then commit them as a single follow-up. Run lint and tests; revert the commit and halt if either fails. Return the summary described in *Autonomous mode* above. Do not stay in conversation.
 
-3. **Don't suggest inconsistent documentation**:
-   - **Wrong**: Add JSDoc to one component when 50 others have none
-   - **Right**: Note that documentation is sparse project-wide (if it's actually a problem)
+**Tone: issues only.** Never praise or summarize what went well. If nothing survives scoring, say "No issues found." and stop.
 
-4. **CLAUDE.md guidance**: "Don't add docstrings, comments, or type annotations to code you didn't change"
-
-**Documentation suggestions should match codebase conventions, not ideal-world standards.**
-
-## Over-Engineering Analysis
-
-Before suggesting configurability or abstraction:
-
-1. **Constants vs environment variables**:
-   - **Use constants**: Values that rarely change and have sensible defaults (cache TTLs, timeouts, retry counts)
-   - **Use env vars**: Values that MUST differ per environment (API keys, URLs, feature flags for A/B tests)
-
-2. **Apply the "how often would this change?" test**: If the answer is "rarely" or "never in production," a constant is sufficient. Environment variables add deployment complexity for no benefit.
-
-3. **DRY without over-abstracting**:
-   - **DO suggest**: Extracting magic numbers to named constants (improves readability)
-   - **DO NOT suggest**: Environment variables for internal implementation details
-
-4. **Examples**:
-   - Cache duration `300` → `CACHE_MAX_AGE_SECONDS = 300` (good)
-   - Cache duration → `process.env.CACHE_MAX_AGE` (over-engineering unless proven need)
-   - Debounce delay `150` → `BLUR_DELAY_MS = 150` (good)
-   - Creating a `ConfigService` for 3 constants (over-engineering)
-
-**If suggesting configurability, explain the concrete use case requiring runtime changes.**
-
-## Instructions
-
-1. Use `git diff main...HEAD` (or `staging...HEAD` depending on the project's base branch) to see changes since branching
-2. Read all modified files completely (minimum 1500 lines)
-3. **Before suggesting any change**, search for similar patterns in the codebase to understand existing conventions
-4. Review against the checklist above
-5. Provide specific, actionable feedback with file:line references
-6. Highlight any issues that should be fixed before creating a PR
-7. Note any validation that should be run (`make lint`)
-8. **Tone: issues only** — Do not praise code or summarize what was done well. Only report things that should be improved, fixed, or reconsidered. If there are no issues, state "No issues found." and nothing else.
-
-## Workflow (IMPORTANT)
-
-1. **Present findings first** — After reviewing, present ALL findings as a numbered list with file:line references and confidence levels. Group by severity (Critical / Important / Minor).
-2. **Propose a fix plan** — List which findings you plan to fix and which you recommend skipping (with reasoning). For any findings you believe are false positives, mark them and explain why.
-3. **Ask for approval** — End with: "Shall I proceed with these fixes?" Wait for explicit approval.
-4. **Only then apply fixes** — Do not edit files until the user approves the plan.
-
-This approval gate prevents applying incorrect fixes based on false positives and lets the user decide which issues are worth addressing.
-
-Be thorough and critical - this review should catch issues before they reach the PR stage.
+The approval gate is the differentiator versus `/review`: in interactive mode you stay in the loop and decide what's worth fixing. `--auto` is for AFK contexts only.

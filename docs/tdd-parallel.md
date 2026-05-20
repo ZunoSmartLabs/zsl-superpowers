@@ -36,9 +36,11 @@ flowchart TB
     w2 -->|".worktrees/126-…"| s3["`/tdd 126
     --no-ship`"]
     s3 -->|"merge --no-ff"| prd
-    prd --> gate{{"`**4a coverage gate**
+    prd --> review{{"`**4a integration review**
+    /code-review --auto`"}}
+    review -->|"≥80 fixes auto-applied;<br/>60–79 deferred to PR body"| gate{{"`**4b coverage gate**
     valid verify-coverage receipt?`"}}
-    gate -->|"valid receipt for the tip"| done["`**Push & open integration PR**
+    gate -->|"valid receipt for the tip"| done["`**4c · Push & open integration PR**
     Closes #123, #124, #125, #126`"]
 
     classDef branch stroke:#1976d2,stroke-width:1.5px,rx:6,ry:6;
@@ -183,7 +185,7 @@ on `Done` automatically.
 
 ## What halts a run
 
-Four failure paths halt the orchestrator. All four halt the same way: print a
+Five failure paths halt the orchestrator. All five halt the same way: print a
 structured RCA, leave the state inspectable, stop. The orchestrator does **not**
 attempt resume — the user takes over from the halted state.
 
@@ -192,7 +194,8 @@ attempt resume — the user takes over from the halted state.
 | **Agent failure** | A sub-agent errored, refused, or returned without a mergeable branch | Bad agent brief, missing access, ambiguous architectural decision | On the PRD branch; failing slice's worktree intact at `.worktrees/<num>-<slug>/` with partial commits on its branch |
 | **Unresolvable merge conflict** | Auto-resolve attempt couldn't produce a clean lint+test-passing merge | Mis-sliced wave (slices in the same wave touched the same area), or genuine cross-wave drift | **On the PRD branch, mid-merge** — no `git merge --abort`. Conflict markers in place; resolve in your main checkout. |
 | **Zero-progress** | No slices unblock and the fanout isn't complete | Circular `Blocked by`, reference outside the parent's sub-tree, or non-existent issue number | On the PRD branch with whatever has merged so far; un-attempted slices' `Blocked by` sections reveal the cycle |
-| **Coverage gate declined** | User replied `skip` to the mandatory step-4a coverage gate | Chose not to run `/zsl:verify-coverage` against the integrated tip | All slices merged onto the PRD branch but **unpushed, no PR** — push and open it by hand, or re-run the fanout and satisfy the gate |
+| **Integration review failure** | `/zsl:code-review --auto` (step 4a) applied ≥80 findings on the merged tip but lint or tests then failed; the review commit was reverted | Slice-level reviews missed a cross-cutting issue that the integration scan tried to fix, and the fix broke something | On the PRD branch at its pre-review state, all slices merged. RCA names the reverted commit sha so you can inspect what the review attempted with `git show <sha>`. |
+| **Coverage gate declined** | User replied `skip` to the mandatory step-4b coverage gate | Chose not to run `/zsl:verify-coverage` against the integrated tip | All slices merged onto the PRD branch but **unpushed, no PR** — push and open it by hand, or re-run the fanout and satisfy the gate |
 
 The RCA includes the merge tip's last commit sha, every slice's final branch
 state, the conflict files (if any) with line ranges, and a possible

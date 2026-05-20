@@ -83,7 +83,7 @@ like:
 | `ready-for-agent` | `Ready` | Brief written, pickable |
 | `ready-for-human` | `Ready` | Same column, different role |
 | `(in tdd loop)` | `In progress` | `/zsl:tdd` step 1 sets this |
-| `(PR open, PR-style)` | `In review` | `/zsl:tdd` step 5 (or `/zsl:tdd-parallel` step 4) sets this |
+| `(PR open, PR-style)` | `In review` | `/zsl:tdd` step 6 (or `/zsl:tdd-parallel` step 4c) sets this |
 | `tracking` | `Tracking` (custom option) | Parent of an active fanout |
 | `(closed)` | `Done` | GitHub `Auto-close` workflow handles this |
 | `wontfix` | `Done` | Declined with reason |
@@ -101,7 +101,7 @@ flowchart TB
     state --> gh_label["GitHub:<br/>labels[] on the issue"]
     state --> gh_board["GitHub:<br/>project board Status field<br/>(if docs/agents/project-board.md exists)"]
     state --> gl_label["GitLab:<br/>labels[] on the issue"]
-    state --> local["Local markdown:<br/>'Status:' line near top of .md file<br/>under .scratch/&lt;feature&gt;/issues/"]
+    state --> local["Local markdown:<br/>'Status:' line near top of .md file<br/>under .scratch/&lt;NNN&gt;-&lt;feature-slug&gt;/issues/"]
 
     classDef src fill:#e0e7ff,stroke:#3f51b5;
     classDef mirror fill:#dcfce7,stroke:#16a34a;

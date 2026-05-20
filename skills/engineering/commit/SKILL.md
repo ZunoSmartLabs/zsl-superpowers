@@ -1,46 +1,56 @@
 ---
 name: commit
-description: Plan and create git commits with explicit file lists (never `git add -A`), user approval before each commit, and no Claude attribution lines. Use when user wants to commit, says "/commit", or asks to land changes.
+description: Plan and create git commits autonomously for changes made in this session (no per-commit approval prompt). Cross-session dirty files — files modified outside this conversation's tool calls — get confirmed before inclusion. Explicit file lists only, never `git add -A`. No Claude attribution lines. Use when user wants to commit, says "/commit", or asks to land changes.
 ---
 
 # Commit Changes
 
-You are tasked with creating git commits for the changes in this repository.
+Fully autonomous for changes made in this session. The user invoked `/commit` — *that* is the approval. Don't pause to ask "Shall I proceed?"
 
-## Process:
+The only legitimate reason to stop and ask is **cross-session ambiguity**: dirty files in the tree that this conversation didn't produce.
 
-1. **Think about what changed:**
-   - Review the conversation history and understand what was accomplished
-   - Run `git status` to see current changes
-   - Run `git diff` to understand the modifications
-   - Consider whether changes should be one commit or multiple logical commits
+## Process
 
-2. **Plan your commit(s):**
-   - Identify which files belong together
-   - Draft clear, descriptive commit messages
-   - Use imperative mood in commit messages
-   - Focus on why the changes were made, not just what
+1. **Classify the dirty tree.**
+   - Run `git status` to list every dirty and untracked file.
+   - For each, decide which bucket it falls into:
+     - **Session changes** — files this conversation modified via `Edit`, `Write`, `NotebookEdit`, or files you created/modified through `Bash` commands you ran. You have the full conversation history; you know what you touched.
+     - **Other-origin changes** — files that were already dirty when the session started, or modified by something outside your tool calls (the user editing in another window, a build process, a pre-commit hook, a sibling agent).
+   - When in doubt, classify as other-origin — better to confirm than to over-include.
 
-3. **Present your plan to the user:**
-   - List the files you plan to add for each commit
-   - Show the commit message(s) you'll use
-   - Ask: "I plan to create [N] commit(s) with these changes. Shall I proceed?"
+2. **Confirm the other-origin bucket (only if non-empty).**
+   - Show the list, one line per file: `<path> — <one-line note on what kind of change, if known>`.
+   - Ask once: *"These files are dirty but I didn't touch them this session. Include in the commit, leave them out, or stage them as a separate commit?"*
+   - Default to "leave them out" if the user is uncertain — they can always re-run `/commit` after staging by hand.
+   - If the bucket is empty, skip this step entirely.
 
-4. **Execute upon confirmation:**
-   - Use `git add` with specific files (never use `-A` or `.`)
-   - Create commits with your planned messages
-   - Show the result with `git log --oneline -n [number]`
+3. **Plan the commit(s).**
+   - Group session changes into **one logical commit by default**. Always include all the session's code changes — don't ask which subset to land. Split into multiple commits only when the diff genuinely covers two unrelated concerns (e.g. a feature change plus a doc typo that crept in).
+   - Draft a clear, imperative commit message focused on *why*, not what. Multi-line if there's substance worth recording; one line for a small change. Match the repo's existing commit-message style (check `git log --oneline -n 20` if unsure).
 
-## Important:
-- **NEVER add co-author information or Claude attribution**
-- Commits should be authored solely by the user
-- Do not include any "Generated with Claude" messages
-- Do not add "Co-Authored-By" lines
-- Write commit messages as if the user wrote them
-- Ensure you commit all changes across the project. No changes should be left uncommitted.
+4. **Execute.**
+   - `git add <file1> <file2> …` — explicit paths only. **Never `git add -A`, `git add .`, or any wildcard form** that could sweep in untracked files you didn't intend.
+   - `git commit -m "<message>"` — use a heredoc for multi-line messages.
+   - `git log --oneline -n <count>` to verify.
 
-## Remember:
-- You have the full context of what was done in this session
-- Group related changes together
-- Keep commits focused and atomic when possible
-- The user trusts your judgment - they asked you to commit
+5. **Report.** One short line per commit: sha + subject. Done.
+
+## Safety rails (override autonomy)
+
+These checks fire automatically and **do not** count as "confirmation prompts" — they protect the commit, they don't ask permission:
+
+- **Refuse to stage** `.env*`, `*credentials*`, `*secret*`, `*.pem`, `*.key`, files matching any pattern in `.gitignore` that somehow got dirty, and large binaries (>10 MB). Surface them in the final report as "skipped for safety" with a one-line reason each.
+- **Pre-commit hook failure** — fix the underlying issue and create a **new** commit. Never use `--no-verify`; never `git commit --amend` after a failed hook (the previous commit may not have been created at all, so amend would modify the wrong target).
+- **Pre-existing commit on main/master** — if the current branch is `main` and the repo's ship style is PR (per `docs/agents/ship-style.md`), refuse to commit directly and surface the mistake. The user should be on a feature branch.
+
+## Important
+
+- **No co-author lines, no Claude attribution.** Commits should read as if the user wrote them. No `Co-Authored-By:`, no "🤖 Generated with…", no trailer of any kind beyond what the repo's own commit convention requires.
+- **No `git add -A`.** Ever. Explicit file lists are how we prevent unrelated dirt from sneaking into a commit.
+- **Autonomous means autonomous.** Don't draft a plan and ask "Shall I proceed?" — just execute. The user already said yes when they typed `/commit`.
+
+## Why this shape
+
+- **Autonomous for session changes** because `/commit` is invoked after work the user already knows about. Re-confirming each commit was friction without value.
+- **Confirm for other-origin changes** because the conversation history can't account for them — they're a genuine signal of ambiguity, the one case where stopping is the right call.
+- **Never `-A`** because the cost of a bad surprise (committing `.env` or a stash file) is far higher than the cost of typing a few paths.

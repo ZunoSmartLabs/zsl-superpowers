@@ -32,7 +32,7 @@ flowchart LR
 
 | Phase | Produces | Consumed by |
 |---|---|---|
-| **Plan** | A PRD issue on the tracker (or a `.scratch/<feature>/PRD.md`) describing what you're building and why | Break down |
+| **Plan** | A PRD issue on the tracker (or a `.scratch/<NNN>-<feature-slug>/PRD.md`) describing what you're building and why | Break down |
 | **Break down** | A set of vertical-slice sub-issues with `[AFK\|HITL] <wave><letter>` titles and `Blocked by` graphs, each triaged to a state | Build |
 | **Build** | Slice branches with red-green-refactor commits, each closing one sub-issue | Ship |
 | **Ship** | A merged PR (or pushed commit) per slice, *or* one consolidated integration PR for an AFK fanout (gated on a `/zsl:verify-coverage` receipt for the integrated tip) | Track |
@@ -116,15 +116,21 @@ flowchart TB
 ```
 
 [`/zsl:tdd`](../skills/tdd.md) handles a single sub-issue with the
-red-green-refactor loop on whatever branch you're on.
+red-green-refactor loop on whatever branch you're on — and now runs
+[`/zsl:code-review`](../skills/code-review.md) automatically between
+Refactor and Ship (step 5), so the author's blind spots get a second
+pass before the slice leaves the agent's hands.
 [`/zsl:tdd-parallel`](../skills/tdd-parallel.md) fans out the unblocked
 `[AFK]` slices into worktrees and consolidates everything into one
-integration PR. Before that PR opens, step 4a enforces a **coverage
-gate**: [`/zsl:verify-coverage`](../skills/verify-coverage.md) must have
-run against the integrated tip, proving every PRD user story is covered
-by a passing test (or routed to the HITL lane). It's an *execution* gate,
-not an *outcome* gate — open gaps still pass and ride a later fanout;
-only skipping the check is blocked.
+integration PR. Before that PR opens it enforces **two gates**:
+**step 4a** runs `/zsl:code-review --auto` against the merged tip to
+catch cross-slice issues per-slice reviews can't see (duplicate helpers,
+drift, debug leftovers); **step 4b** is the **coverage gate** —
+[`/zsl:verify-coverage`](../skills/verify-coverage.md) must have run
+against the integrated tip, proving every PRD user story is covered by a
+passing test (or routed to the HITL lane). The coverage gate is an
+*execution* gate, not an *outcome* gate — open gaps still pass and ride a
+later fanout; only skipping the check is blocked.
 
 [`/zsl:diagnose`](../skills/diagnose.md) sits beside both — the
 disciplined bug/perf-regression loop you use when something specific is
@@ -169,27 +175,37 @@ back to `/zsl:grill-with-docs` + an ADR.
 
 ## Phase 4: Ship
 
+Most of what looks like "ship" actually happens inside `/zsl:tdd` — by
+the time you reach the ship step, the slice has already been
+red-green-refactored and reviewed.
+
 ```mermaid
 flowchart LR
-    branch["slice branch with<br/>red→green→refactor commits"] --> commit{{"/zsl:commit"}}
-    commit -->|"explicit file list<br/>no -A<br/>no Claude attribution"| committed["clean commit"]
-    committed --> review{{"/zsl:code-review"}}
-    review -->|"approval gate before fixes"| pr_or_push["ship style"]
-    pr_or_push -->|"PR-style"| pr[("PR opened<br/>Closes #&lt;sub-task&gt;")]
-    pr_or_push -->|"direct-push"| push[("commits pushed<br/>Closes in commit body")]
-    pr_or_push -->|"local-markdown"| mv[("Status: shipped<br/>git mv to done/")]
+    branch["slice branch with<br/>red→green→refactor commits"] --> review{{"/zsl:code-review<br/>(inside /zsl:tdd step 5)"}}
+    review -->|"interactive: approval gate<br/>--auto: ≥80 auto-apply"| fixes_commit["review fixes<br/>committed via /zsl:commit"]
+    fixes_commit --> ship["/zsl:tdd step 6: ship it"]
+    ship -->|"PR-style"| pr[("PR opened<br/>Closes #&lt;sub-task&gt;")]
+    ship -->|"direct-push"| push[("commits pushed<br/>Closes in commit body")]
+    ship -->|"local-markdown"| mv[("Status: shipped<br/>git mv to done/")]
 
     classDef skill fill:#e0e7ff,stroke:#3f51b5;
-    class commit,review skill
+    class review,fixes_commit skill
 ```
 
-[`/zsl:commit`](../skills/commit.md) is non-negotiable for the
-commit-crafting step: explicit file lists (never `git add -A`), no
-Claude attribution, sub-task and parent issue references in the body.
-
 [`/zsl:code-review`](../skills/code-review.md) runs an issues-only
-pre-PR review with an approval gate before applying any fixes — so the
-review itself doesn't silently mutate your branch.
+pre-PR scan with a confidence-scored, multi-lens parallel agent search
+under the hood. Interactive mode keeps the approval gate (you decide
+which findings to fix); `--auto` mode (used by `/zsl:tdd --no-ship` and
+by `/zsl:tdd-parallel` at step 4a) drops the gate, auto-applies
+≥80-confidence findings as a single revertible commit, and reports
+60–79 findings in the return summary for the orchestrator to surface.
+
+[`/zsl:commit`](../skills/commit.md) is now fully autonomous for
+session changes — invoking `/commit` *is* the approval, so it doesn't
+re-prompt before landing. It still uses explicit file lists (never
+`git add -A`), still refuses to stage secrets, and still confirms
+*only* the "other-origin" bucket (dirty files this conversation didn't
+produce) before including or excluding them.
 
 Ship behaviour depends on `docs/agents/ship-style.md` (written by
 [`/zsl:setup-zsl-superpowers`](../setup.md)). See

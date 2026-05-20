@@ -34,7 +34,7 @@ flowchart TB
 | Layer | What lives there | Who reads it |
 |---|---|---|
 | **Runtime** | Claude Code itself — slash commands, the `Agent` tool, `Monitor`, `SendMessage`, `Worktree`. | The skill body, at execution time. |
-| **Knowledge** | 21 `SKILL.md` files. Markdown with YAML frontmatter that tells the harness *when* to fire. Sibling resource files (scripts, templates) referenced by relative paths. | Claude Code loads the relevant SKILL.md as context when the skill activates. |
+| **Knowledge** | 23 `SKILL.md` files. Markdown with YAML frontmatter that tells the harness *when* to fire. Sibling resource files (scripts, templates) referenced by relative paths. | Claude Code loads the relevant SKILL.md as context when the skill activates. |
 | **Distribution** | `plugin.json` (the manifest), `marketplace.json` (the catalogue entry), the docs site, the README. | Users discovering, installing, and updating the plugin. |
 
 !!! info "Why this matters when revising skills"

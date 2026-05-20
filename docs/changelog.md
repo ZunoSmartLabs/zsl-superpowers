@@ -4,6 +4,212 @@ For the full commit history, see
 [github.com/ZunoSmartLabs/zsl-superpowers/commits/main](https://github.com/ZunoSmartLabs/zsl-superpowers/commits/main).
 This page summarises the user-facing changes per plugin version.
 
+## 0.9.0
+
+A focused release that ports three high-leverage additions from
+upstream [`mattpocock/skills`](https://github.com/mattpocock/skills),
+adds a sixth lens to `/code-review`, and aligns one skill with the
+structured `<what-to-do>` / `<supporting-info>` SKILL.md pattern.
+No breaking changes.
+
+- **New skill: [`/zsl:handoff`](skills/handoff.md).** Compacts the
+  current conversation into a handoff document so a fresh agent (or
+  session) can continue cleanly without re-deriving context. Saves to
+  the OS temp directory (`$TMPDIR` on macOS/Linux, `%TEMP%` on
+  Windows) with a dated slug. Redacts API keys, tokens, JWTs, signed
+  URLs, internal hostnames, and `.env`-derived values before writing.
+  References existing artifacts (PRDs, ADRs, issue bodies, commits)
+  by path/line/URL rather than duplicating them. Includes a
+  *Suggested skills for next session* section that names specific
+  `/zsl:<skill>` calls in order. Accepts an argument-hint so the
+  doc can be tailored when the user knows what the next session will
+  focus on. Filling the long-standing gap around session end / `/clear`
+  / cross-agent handoff.
+- **`/zsl:code-review` grows a sixth lens: Spec alignment.** The
+  existing five lenses (clean-code, CLAUDE.md compliance, git
+  history, prior PR comments, inline comments) all read the diff and
+  the surrounding repo. None of them asked *"did this faithfully
+  implement what the spec asked for?"* — the new Spec lens does. It
+  looks up the originating PRD/issue (via commit-message references
+  → user argument → matching path under `docs/`, `specs/`, or
+  `.scratch/`) and reports missing requirements, scope creep, and
+  wrong-implementation findings with the relevant spec line quoted.
+  Returns "no spec available" and skips itself if nothing is found.
+  Inspired by upstream's two-axis `/review` skill; merged as one more
+  lens in our existing parallel scan rather than a separate skill.
+- **`/zsl:improve-codebase-architecture` gains an HTML report
+  output.** Architectural review's value is in the *seeing* —
+  markdown bullets undersell deepening opportunities. The new
+  [`HTML-REPORT.md`](skills/improve-codebase-architecture.md) scaffold
+  renders candidates as a single self-contained HTML file in the OS
+  temp dir, mixing Mermaid graphs (dependencies, call flow,
+  sequences) with hand-built SVG diagrams (mass diagrams,
+  cross-sections, call-graph collapse) for editorial weight Mermaid
+  alone can't carry. Tailwind + Mermaid both come from CDNs; no build
+  tooling. Strict glossary enforcement: prose must use the
+  `LANGUAGE.md` terms (module, interface, depth, seam, adapter,
+  leverage, locality) exactly — never "component", "API",
+  "boundary". An optional new step 4 in the SKILL.md; conversational
+  presentation in step 2 stays primary.
+- **`/zsl:grill-me` adopts the
+  `<what-to-do>` / `<supporting-info>` SKILL.md pattern** (matching
+  `/zsl:grill-with-docs`, which already uses it). No behavioural
+  change — same content, sectioned so the model can find "what to do
+  right now" vs "design-tree format reference" without re-skimming.
+  Not migrated: `/zsl:tdd`, `/zsl:tdd-parallel`, `/zsl:triage`,
+  `/zsl:code-review`, and other skills with explicit numbered phases.
+  The structured sections would clutter docs whose body IS the
+  workflow; the pattern is for skills with a "here's the action;
+  here's the reference" shape.
+
+**Upgrading from 0.8:** standard refresh —
+`/plugin marketplace update zsl-superpowers` then restart Claude
+Code. Nothing breaking; nothing to migrate. `/zsl:handoff` is
+available immediately; `/zsl:code-review` automatically picks up the
+Spec lens; `/zsl:improve-codebase-architecture` runs unchanged but
+will now offer an HTML report when it would land better than a
+numbered list.
+
+## 0.8.0
+
+- **Code review becomes a first-class part of the loop.**
+  [`/zsl:code-review`](skills/code-review.md) was rewritten as a
+  more rigorous, less noisy review pass with three structural changes:
+  - **Clean-code lens.** Opens with Uncle Bob framing — simple, correct,
+    minimal; single responsibility; small functions with names that
+    don't lie; no dead code; no premature abstraction. Eight concrete
+    "always flag" standards (incl. behavior changes without test
+    changes, modified `.env*` files, comments that explain *what* the
+    code does instead of *why*).
+  - **Parallel multi-lens scan.** Five concurrent sub-agents handle
+    distinct concerns — CLAUDE.md compliance, shallow bug scan,
+    git history/blame, prior PR comments on the same files, inline code
+    comments — instead of one head doing everything sequentially.
+    Findings are deduplicated, then **scored 0–100**; anything below 60
+    is dropped before you ever see it, reducing the noise the approval
+    gate has to filter. The git-blame and prior-PR-comment lenses in
+    particular catch "this looks wrong but it's pre-existing" and "we
+    already debated this exact thing on PR #142" — blind spots the
+    previous single-pass review couldn't see.
+  - **`--auto` flag for autonomous use.** Drops the approval gate,
+    applies findings ≥80 as a single revertible commit
+    (subject `review: <summary>`), reports 60–79 findings in the return
+    summary for the orchestrator to surface, runs lint+tests post-fix
+    and self-reverts on failure. Designed for AFK contexts — the
+    interactive approval gate stays default and remains the
+    differentiator versus the built-in `/review`.
+
+  A **genericisation pass** also removed Sentry / coverage /
+  SQL / Supabase-specific heuristics that didn't belong in a portable
+  skill. The remaining "Before suggesting changes" section keeps three
+  universal principles (match existing conventions, trust enforcement
+  layers, don't push abstraction prematurely). Net effect: file is 47%
+  shorter and applies to any project.
+
+- **[`/zsl:tdd`](skills/tdd.md) now auto-triggers a review** between
+  Refactor (step 4) and Ship (step 6, renumbered) as new step 5.
+  Interactive mode runs `/code-review` with the approval gate (fixes
+  commit via `/commit`, same discipline as ship); AFK mode (`--no-ship`)
+  runs `/code-review --auto`, with deferred 60–79 findings riding out in
+  the return summary under a **Deferred review findings** section.
+  A new `reviewed` heartbeat phase fires after the review pass so the
+  parent orchestrator sees progress. Catches what the author missed
+  without leaving the loop. The Refactor checklist also gained a
+  **Delete aggressively** discipline — every refactor pass should remove
+  dead code, unused imports, debug statements, commented-out blocks, and
+  comments that explain *what* instead of *why* (TDD that only adds is
+  half-done).
+
+- **[`/zsl:tdd-parallel`](skills/tdd-parallel.md) now runs an
+  integration code review** before the coverage gate. New step 4a fires
+  `/code-review --auto` against the merged PRD tip and rides any
+  cross-slice fixes (duplicate helpers, drift between slices, redundant
+  imports after merge) into the same integration PR. The per-slice
+  review inside each `/tdd` invocation can't see across slices; this
+  pass can. Old subsections 4a/4b shifted to 4b/4c, and a new
+  **Integration review failure** halt path joins the other four —
+  `/code-review --auto` reverts its own commit on lint/test failure and
+  the orchestrator surfaces it in RCA with the reverted commit sha for
+  inspection. The sub-agent prompt template also got a **Lean slices**
+  reinforcement pointing at `/tdd`'s deletion discipline, so bloated
+  slices don't compound into a bloated integration PR.
+
+- **[`/zsl:grill-me`](skills/grill-me.md) and
+  [`/zsl:grill-with-docs`](skills/grill-with-docs.md) now print a design
+  tree** at the start of every session and reprint it whenever the
+  shape or status changes (node resolved, new branch discovered, focus
+  moved, scope shifted). Status markers `[ ] / [→] / [✓]` show where
+  you are in the decision space — pacing and progress become visible at
+  a glance instead of being implicit in the running dialogue.
+
+- **[`/zsl:commit`](skills/commit.md) is now fully autonomous.** Invoking
+  `/commit` no longer pauses for a "Shall I proceed?" approval prompt —
+  the invocation itself is the approval, and all session changes land
+  in one logical commit by default. The skill still classifies dirty
+  files into **session changes** (modified via this conversation's tool
+  calls) versus **other-origin** (files dirty before the session
+  started, or modified outside the conversation) and confirms **only**
+  the other-origin bucket before including or excluding it. Safety
+  rails are unchanged: still never `git add -A`, still refuses to stage
+  `.env*` / `*credentials*` / `*.pem` and other obvious secret patterns,
+  still no Claude attribution lines, still creates a fresh commit
+  (never `--amend`) after a pre-commit hook failure. This composes
+  cleanly with `/zsl:tdd`'s default-on review (Section 1 above) — the
+  user approves fixes once at the review gate; `/commit` then lands
+  them without a second prompt.
+
+- **Local-markdown tracker convention: features now carry a number prefix,
+  archives carry a date prefix.** Active features live at
+  `.scratch/<NNN>-<feature-slug>/` (was `.scratch/<feature-slug>/`),
+  where `<NNN>` is a 3-digit feature number assigned at creation —
+  auto-incremented from the highest existing number across active +
+  archived. Archived features live at
+  `.scratch/done/<YYYYMMDD>-<NNN>-<feature-slug>/` (was
+  `.scratch/done/<feature-slug>/`), with the close date stamped before
+  the feature number so `ls .scratch/done/` shows close order while the
+  number stays embedded for lookup. **Net effect**: features can be
+  addressed by number alone — `/zsl:triage 23`, `/zsl:to-issues 45`, or
+  any other skill that accepts a feature reference resolves via glob
+  (`.scratch/023-*/` for active, `.scratch/done/*-023-*/` for archived).
+  No more typing the slug, no more guessing what the directory was
+  called. [`/zsl:tdd`](skills/tdd.md)'s feature-level close `git mv` now
+  stamps both the date and the embedded number; the number itself is
+  permanent across the active→archive transition. Numbers and dates are
+  unique enough on their own that lookups never have to disambiguate.
+
+**Upgrading from 0.7:** standard refresh — `/plugin marketplace update zsl-superpowers`
+then restart Claude Code. Two things worth knowing:
+
+- **Local-markdown trackers only**: existing features either lack the
+  number prefix (active and archive) or lack the date prefix (archive
+  only), and won't pick up the new lookup semantics or chronological
+  archive sort without a one-time rename. Re-run
+  [`/zsl:setup-zsl-superpowers`](skills/setup-zsl-superpowers.md) — it
+  now detects unprefixed and partially-prefixed features (new step 5)
+  and offers a **single unified backfill** that assigns the missing
+  numbers in date order (from `git log --diff-filter=A`) and stamps any
+  missing archive dates, all in one commit. Confirmation is required
+  before any `git mv` runs; the maintainer can edit dates, override
+  numbers, or skip specific entries. Existing numbered features keep
+  their numbers; new assignments start from `max(existing) + 1`.
+  Alternatively, rename by hand — but the unified backfill is much
+  easier to keep consistent. GitHub, GitLab, and "Other" trackers are
+  unaffected.
+- **`/zsl:tdd`'s interactive flow is slightly longer** because step 5
+  (Review) is now default-on. The review pass is the differentiator
+  versus running `/zsl:code-review` manually after — it stays in the
+  slice's commit graph and gates Ship. If you want fast iteration on a
+  trivial slice, the `--auto` path runs unattended; otherwise the
+  approval gate stays in force and you decide which findings to fix.
+- **`/zsl:commit` no longer asks "Shall I proceed?"** Previously the
+  skill drafted a commit plan and waited for confirmation; now it
+  commits directly after classifying the dirty tree. If you relied on
+  the prompt to catch an unintended file, the **other-origin
+  confirmation** (files dirty before this session) still fires and the
+  **safety rails** (no `git add -A`, refuse to stage `.env*`,
+  credentials, large binaries) still hold. If you want a dry run, run
+  `git status` / `git diff` yourself before invoking `/commit`.
+
 ## 0.7.0
 
 - New skill: [`/zsl:verify-coverage`](skills/verify-coverage.md). Closes

@@ -80,6 +80,7 @@ nav:
           - skills/timesheet.md
           - skills/write-a-skill.md
           - skills/caveman.md
+          - skills/handoff.md
       - Misc:
           - skills/edit-article.md
           - skills/setup-pre-commit.md

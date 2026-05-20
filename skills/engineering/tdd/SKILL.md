@@ -42,7 +42,7 @@ RIGHT (vertical):
 
 ## Flags
 
-- `--no-ship` — skip step 5 (Ship it). After the final refactor commit, stop and report back: branch name (`git rev-parse --abbrev-ref HEAD`), last commit sha (`git rev-parse HEAD`), and a one-paragraph summary of the changes. Do not push, do not open a PR, do not update the project board's "in review" Status. Used by `/tdd-parallel` so the orchestrator can integrate slice branches locally and ship a single consolidated PR. Step 1's "in progress" Status update still happens — the work is real, only the ship step is deferred. Also engages **Progress heartbeat** (see below) — the orchestrator depends on it for live status.
+- `--no-ship` — skip step 6 (Ship it) and switch step 5 (Review) into autonomous mode (`/code-review --auto`). After review and any auto-applied fixes commit, stop and report back: branch name (`git rev-parse --abbrev-ref HEAD`), last commit sha (`git rev-parse HEAD`), a one-paragraph summary of the changes, and a **Deferred review findings** section listing the 60–79 confidence findings that weren't auto-applied. Do not push, do not open a PR, do not update the project board's "in review" Status. Used by `/tdd-parallel` so the orchestrator can integrate slice branches locally and ship a single consolidated PR. Step 1's "in progress" Status update still happens — the work is real, only the ship step is deferred. Also engages **Progress heartbeat** (see below) — the orchestrator depends on it for live status.
 
 ## Progress heartbeat
 
@@ -58,6 +58,7 @@ Phases (in order; `red` / `green` repeat per cycle):
 - `green` — each test now passing.
 - `refactor` — after each refactor step that touched files. `note`: what was extracted/renamed.
 - `committed` — after each commit. `note`: short sha.
+- `reviewed` — after the `/code-review` pass completes. `note`: `"auto-applied N, deferred M"` (AFK) or `"approved N fixes"` (interactive).
 - `done` — final phase, just before returning to the parent.
 - `escalating` — instead of `done`, if you escalate. `note`: one-line question.
 - `error` — instead of `done`, if you halt. `note`: one-line cause.
@@ -75,7 +76,7 @@ Emit via `bash -c "printf '%s\n' '<json>' >> .tdd-progress.jsonl"` — one `prin
 3. Present three buckets to the user:
    - **Ready to grab** (numbered): feature slug, issue number, title, and a one-line summary (first non-heading line of the issue body). Sort by feature, then issue number.
    - **Pending future waves**: blocked open issues + the `Blocked by` references each is still waiting on. Shown for context only — not pickable.
-   - **Features fully archived but not closed**: features whose `issues/` directory contains only the `done/` subdirectory. Suggest running the feature-level close from step 5 against any of these before picking new work.
+   - **Features fully archived but not closed**: features whose `issues/` directory contains only the `done/` subdirectory. Suggest running the feature-level close from step 6 against any of these before picking new work.
 4. Let the user pick by number or by path. Use that pick as the issue identifier for the remaining pre-flights and the rest of the workflow.
 
 If the picked-from set is empty (no open issues anywhere under `.scratch/`), say so and stop — there's nothing to do.
@@ -133,6 +134,7 @@ Rules:
 After all tests pass, look for [refactor candidates](refactoring.md):
 
 - [ ] Extract duplication
+- [ ] **Delete aggressively** — every refactor pass should remove something. Hunt for: dead code from over-eager early cycles, unused imports, debug statements (`console.log`, `print`, `dbg!`), commented-out blocks, comments that explain *what* the code does (rewrite the code instead). Bring net additions down where you can — TDD that only adds is half-done.
 - [ ] Deepen modules (move complexity behind simple interfaces)
 - [ ] Apply SOLID principles where natural
 - [ ] Consider what new code reveals about existing code
@@ -140,9 +142,20 @@ After all tests pass, look for [refactor candidates](refactoring.md):
 
 **Never refactor while RED.** Get to GREEN first.
 
-### 5. Ship it
+### 5. Review
 
-**Skip this entire step if `--no-ship` was passed.** Stop after the final refactor commit and report back: branch name, last commit sha, one-paragraph summary. The orchestrator (`/tdd-parallel`) will integrate the branch and ship a consolidated PR.
+After refactor lands and tests are still green, run `/code-review` against the slice diff to catch what the author (you) missed.
+
+- **Interactive** (default): runs with the approval gate. Apply the fixes you accept, re-run tests, commit fixes via `/commit` (same discipline as step 6).
+- **AFK** (`--no-ship`): runs as `/code-review --auto`. High-confidence (≥80) fixes auto-apply as a separate commit (subject `review: <summary>`) — `/code-review` commits directly here rather than going through `/commit`, so the AFK contract isn't broken by `/commit`'s interactive prompts. Mid-confidence (60–79) findings get captured for the return summary under a **Deferred review findings** section with `file:line` refs.
+
+If `/code-review` halts (lint or tests fail after auto-fix and the review commit was reverted), escalate per the AFK contract — return early with the failure cause.
+
+Emit a `reviewed` heartbeat after the review pass completes.
+
+### 6. Ship it
+
+**Skip this entire step if `--no-ship` was passed.** Stop after the review step's final commit and report back: branch name, last commit sha, one-paragraph summary, plus any deferred 60–79 review findings. The orchestrator (`/tdd-parallel`) will integrate the branch and ship a consolidated PR.
 
 Once tests are green and refactored, ship the slice. The repo's workflow is defined in `docs/agents/ship-style.md` (written by `/setup-zsl-superpowers`) — read it before doing anything.
 
@@ -163,9 +176,9 @@ Once tests are green and refactored, ship the slice. The repo's workflow is defi
     The tracker auto-closes the parent once its last child closes (the sub-issue link was set at `/to-issues` time).
   - **Local markdown** (issue is a file under `.scratch/<feature>/issues/`):
     - Update the `Status:` line near the top of the issue file to its final state — typically `shipped`. Use `wontfix` only if the maintainer is closing without delivery; since you just got the tests green, default to `shipped`.
-    - `git mv .scratch/<feature>/issues/<NN>-<slug>.md .scratch/<feature>/issues/done/<NN>-<slug>.md`. The filename stays the same — `NN` is permanent and unique across both folders.
+    - `git mv .scratch/<NNN>-<feature-slug>/issues/<NN>-<slug>.md .scratch/<NNN>-<feature-slug>/issues/done/<NN>-<slug>.md`. The filename stays the same — `NN` is permanent and unique across both folders.
     - Include both the `Status:` edit and the `git mv` in the same commit as the slice's code change so the close is atomic with the work that earned it. (The commit ref convention above already accommodates path-style sub-task/parent references.)
-    - **Feature-level close (optional, prompt first):** after the `git mv`, list `.scratch/<feature>/issues/` and check whether any `.md` files remain outside the `done/` subdirectory. If none, tell the maintainer every issue in the feature is now archived and ask whether to archive the feature itself: `git mv .scratch/<feature>/ .scratch/done/<feature>/`. Don't move it without confirmation — the maintainer may want to spin up a follow-up issue first.
+    - **Feature-level close (optional, prompt first):** after the `git mv`, list `.scratch/<NNN>-<feature-slug>/issues/` and check whether any `.md` files remain outside the `done/` subdirectory. If none, tell the maintainer every issue in the feature is now archived and ask whether to archive the feature itself: `git mv .scratch/<NNN>-<feature-slug>/ .scratch/done/$(date +%Y%m%d)-<NNN>-<feature-slug>/`. The date prefix orders archived features chronologically (`ls .scratch/done/` shows close order); the feature number stays embedded so number-based lookup keeps working. Don't move it without confirmation — the maintainer may want to spin up a follow-up issue first.
 - **Confirm with the user** before opening a PR or pushing to the default branch.
 - **Signal "in review" on the project board (PR-style only, if configured).** If `docs/agents/project-board.md` exists *and* the ship style is PR, update the issue's project item Status to the option mapped to "PR opened" (typically `In review`) once the PR is open. The project's existing `Auto-close issue` workflow will move Status to `Done` automatically when the PR merges and closes the issue. In direct-push mode, no skill-driven Status update is needed at ship time — the closing commit triggers the same Auto-close workflow directly.
 
