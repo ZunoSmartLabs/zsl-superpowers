@@ -69,3 +69,11 @@ Side effects happen inline as decisions crystallize:
 - **Sharpening a fuzzy term during the conversation?** Update `CONTEXT.md` right there.
 - **User rejects the candidate with a load-bearing reason?** Offer an ADR, framed as: _"Want me to record this as an ADR so future architecture reviews don't re-suggest it?"_ Only offer when the reason would actually be needed by a future explorer to avoid re-suggesting the same thing — skip ephemeral reasons ("not worth it right now") and self-evident ones. See [ADR-FORMAT.md](../grill-with-docs/ADR-FORMAT.md).
 - **Want to explore alternative interfaces for the deepened module?** See [INTERFACE-DESIGN.md](INTERFACE-DESIGN.md).
+
+### 4. Render the HTML report (optional)
+
+After the candidates are listed in step 2, the user may ask for a visual report (or you may offer one when the candidates would land better as diagrams than as a numbered list — multiple before/after architectures, leakage patterns, layered shallowness).
+
+Render the candidates as a single self-contained HTML file in the OS temp directory — see [HTML-REPORT.md](HTML-REPORT.md) for the scaffold, diagram patterns (Mermaid + hand-built SVG mixed), style guidance, and the strict glossary rules the prose must follow.
+
+The HTML report is an output format, not a replacement for the conversation. Present the candidates inline first; the report is for when the user wants something to refer back to, share with a teammate, or use as a thinking surface while deciding which deepening to actually do.
