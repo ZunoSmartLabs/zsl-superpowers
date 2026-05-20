@@ -61,6 +61,7 @@ flowchart TB
     health --> zoom["/zsl:zoom-out<br/><i>lost in code</i>"]:::cross
 
     other --> prototype["/zsl:prototype<br/><i>throwaway exploration</i>"]:::misc
+    other --> handoff["/zsl:handoff<br/><i>compact session → next agent</i>"]:::misc
     other --> timesheet["/zsl:timesheet<br/><i>standup notes</i>"]:::misc
     other --> caveman["/zsl:caveman<br/><i>token-compressed replies</i>"]:::misc
     other --> write_a_skill["/zsl:write-a-skill<br/><i>author a new skill</i>"]:::misc
@@ -133,6 +134,7 @@ matters for picking a skill.
 | Skill | What it does |
 |---|---|
 | [prototype](prototype.md) | Throwaway terminal app or radically-different UI variations. Flushes out a design before committing to a PRD. |
+| [handoff](handoff.md) | Compact the current conversation into a handoff doc in OS temp dir; redacts secrets, references existing artifacts instead of duplicating them, suggests skills for the next session. |
 | [timesheet](timesheet.md) | Recent Claude Code session histories → copy/paste standup bullets, grouped by project. |
 | [caveman](caveman.md) | Ultra-compressed reply mode (~75% token cut). |
 | [write-a-skill](write-a-skill.md) | Author a new skill with proper progressive disclosure. |
