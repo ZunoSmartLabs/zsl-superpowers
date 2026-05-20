@@ -4,6 +4,72 @@ For the full commit history, see
 [github.com/ZunoSmartLabs/zsl-superpowers/commits/main](https://github.com/ZunoSmartLabs/zsl-superpowers/commits/main).
 This page summarises the user-facing changes per plugin version.
 
+## 0.9.0
+
+A focused release that ports three high-leverage additions from
+upstream [`mattpocock/skills`](https://github.com/mattpocock/skills),
+adds a sixth lens to `/code-review`, and aligns one skill with the
+structured `<what-to-do>` / `<supporting-info>` SKILL.md pattern.
+No breaking changes.
+
+- **New skill: [`/zsl:handoff`](skills/handoff.md).** Compacts the
+  current conversation into a handoff document so a fresh agent (or
+  session) can continue cleanly without re-deriving context. Saves to
+  the OS temp directory (`$TMPDIR` on macOS/Linux, `%TEMP%` on
+  Windows) with a dated slug. Redacts API keys, tokens, JWTs, signed
+  URLs, internal hostnames, and `.env`-derived values before writing.
+  References existing artifacts (PRDs, ADRs, issue bodies, commits)
+  by path/line/URL rather than duplicating them. Includes a
+  *Suggested skills for next session* section that names specific
+  `/zsl:<skill>` calls in order. Accepts an argument-hint so the
+  doc can be tailored when the user knows what the next session will
+  focus on. Filling the long-standing gap around session end / `/clear`
+  / cross-agent handoff.
+- **`/zsl:code-review` grows a sixth lens: Spec alignment.** The
+  existing five lenses (clean-code, CLAUDE.md compliance, git
+  history, prior PR comments, inline comments) all read the diff and
+  the surrounding repo. None of them asked *"did this faithfully
+  implement what the spec asked for?"* — the new Spec lens does. It
+  looks up the originating PRD/issue (via commit-message references
+  → user argument → matching path under `docs/`, `specs/`, or
+  `.scratch/`) and reports missing requirements, scope creep, and
+  wrong-implementation findings with the relevant spec line quoted.
+  Returns "no spec available" and skips itself if nothing is found.
+  Inspired by upstream's two-axis `/review` skill; merged as one more
+  lens in our existing parallel scan rather than a separate skill.
+- **`/zsl:improve-codebase-architecture` gains an HTML report
+  output.** Architectural review's value is in the *seeing* —
+  markdown bullets undersell deepening opportunities. The new
+  [`HTML-REPORT.md`](skills/improve-codebase-architecture.md) scaffold
+  renders candidates as a single self-contained HTML file in the OS
+  temp dir, mixing Mermaid graphs (dependencies, call flow,
+  sequences) with hand-built SVG diagrams (mass diagrams,
+  cross-sections, call-graph collapse) for editorial weight Mermaid
+  alone can't carry. Tailwind + Mermaid both come from CDNs; no build
+  tooling. Strict glossary enforcement: prose must use the
+  `LANGUAGE.md` terms (module, interface, depth, seam, adapter,
+  leverage, locality) exactly — never "component", "API",
+  "boundary". An optional new step 4 in the SKILL.md; conversational
+  presentation in step 2 stays primary.
+- **`/zsl:grill-me` adopts the
+  `<what-to-do>` / `<supporting-info>` SKILL.md pattern** (matching
+  `/zsl:grill-with-docs`, which already uses it). No behavioural
+  change — same content, sectioned so the model can find "what to do
+  right now" vs "design-tree format reference" without re-skimming.
+  Not migrated: `/zsl:tdd`, `/zsl:tdd-parallel`, `/zsl:triage`,
+  `/zsl:code-review`, and other skills with explicit numbered phases.
+  The structured sections would clutter docs whose body IS the
+  workflow; the pattern is for skills with a "here's the action;
+  here's the reference" shape.
+
+**Upgrading from 0.8:** standard refresh —
+`/plugin marketplace update zsl-superpowers` then restart Claude
+Code. Nothing breaking; nothing to migrate. `/zsl:handoff` is
+available immediately; `/zsl:code-review` automatically picks up the
+Spec lens; `/zsl:improve-codebase-architecture` runs unchanged but
+will now offer an HTML report when it would land better than a
+numbered list.
+
 ## 0.8.0
 
 - **Code review becomes a first-class part of the loop.**
