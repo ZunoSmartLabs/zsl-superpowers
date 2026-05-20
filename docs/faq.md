@@ -8,7 +8,7 @@ The skills are mostly model-agnostic prose, but **harness-specific in places**.
 Single-skill prose ones (the TDD red-green-refactor loop, the triage state
 machine, the grilling skills) are largely portable — the content describes a
 practice, not a tool surface. Multi-agent ones — [`tdd-parallel`](skills/tdd-parallel.md)
-and now [`code-review`](skills/code-review.md), which runs five concurrent
+and now [`code-review`](skills/code-review.md), which runs six concurrent
 sub-agents for its multi-lens scan — reference Claude Code's tool surface
 directly (`Agent`, `Monitor`, `Bash` with `run_in_background`, `SendMessage`,
 `TaskStop`) because they orchestrate sub-agents and need real primitives, not
@@ -21,7 +21,7 @@ flowchart LR
     end
     subgraph harness["⚠️ Harness-bound"]
         h1["tdd-parallel<br/>(uses Agent, Monitor,<br/>SendMessage, TaskStop)"]
-        h3["code-review<br/>(uses parallel Agent calls<br/>for the five-lens scan)"]
+        h3["code-review<br/>(uses parallel Agent calls<br/>for the six-lens scan)"]
         h2["timesheet<br/>(reads ~/.claude/projects/)"]
     end
     portable -.->|"copy SKILL.md body<br/>to your agent's prompt"| other["any other harness"]

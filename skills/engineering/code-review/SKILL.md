@@ -58,15 +58,16 @@ A few patterns produce most false-positive review comments. Apply these before f
 
 ## Parallel multi-lens scan
 
-Before writing findings, launch five parallel sub-agents — each gets the diff and one job. Issue all five Agent calls in a single message so they run concurrently.
+Before writing findings, launch six parallel sub-agents — each gets the diff and one job. Issue all six Agent calls in a single message so they run concurrently.
 
 1. **CLAUDE.md compliance** — Read root `CLAUDE.md` and any `CLAUDE.md` in modified directories. Audit changes against codified rules. Skip rules that are about code generation but not review.
 2. **Shallow bug scan** — Read the diff only (no extra context). Surface obvious bugs in the changes themselves. Ignore nitpicks.
 3. **Git history** — Run `git blame` / `git log` on modified hunks. Flag bugs visible only in historical context ("this line was added in PR #X to handle Y; the new change breaks that").
 4. **Prior PR comments** — Use `gh pr list --search` to find previous PRs touching these files. Read review comments. Surface guidance that also applies here.
 5. **Inline code comments** — Read comments in modified files. Surface any guidance the changes contradict.
+6. **Spec alignment** — Find the originating spec for this branch, then check the diff against it. Lookup order: (a) issue references in commit messages (`#123`, `Closes #45`, `Closes <path-to-md>`, GitLab `!67`) — fetch via the workflow in `docs/agents/issue-tracker.md`; (b) a PRD/spec path the user passed as an argument; (c) a PRD or AGENT-BRIEF under `docs/`, `specs/`, or `.scratch/` matching the branch slug or feature name. If nothing is found, this lens returns "no spec available" and is skipped. Otherwise report: (i) requirements the spec asked for that are missing or partial, with the spec line quoted; (ii) behaviour in the diff that wasn't asked for (scope creep); (iii) requirements that look implemented but where the implementation looks wrong relative to the spec.
 
-Each agent returns a list of issues with `file:line` references and a one-line reason per issue.
+Each agent returns a list of issues with `file:line` references and a one-line reason per issue. The Spec lens additionally quotes the relevant spec line (file:line or section heading).
 
 ## Confidence scoring
 
@@ -95,7 +96,7 @@ Return a single message: auto-applied count, deferred (60–79) list with `file:
 
 1. Run `git diff main...HEAD` (or the project's base branch) to identify the diff.
 2. Read modified files in full before judging changes against them.
-3. Launch the five-agent parallel scan above. Collect and dedupe findings.
+3. Launch the six-agent parallel scan above. Collect and dedupe findings.
 4. Score each finding 0–100. Drop everything below 60.
 5. Branch on mode:
    - **Interactive (default)** — Group survivors by severity (Critical / Important / Minor) and present as a numbered list with `file:line` references and confidence scores. Search for similar patterns in the codebase before flagging style issues. Propose a fix plan: which findings you'll fix, which to skip and why, marking suspected false positives. Ask: "Shall I proceed with these fixes?" Wait for explicit approval before editing. After fixes, run `make lint` (or the project's equivalent).
