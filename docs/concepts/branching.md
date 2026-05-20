@@ -33,8 +33,8 @@ gitGraph
    merge feature/auth-oauth tag: "PR or direct-push"
 ```
 
-At step 5 (*Ship it*), `/zsl:tdd` reads `docs/agents/ship-style.md` and
-branches:
+At step 6 (*Ship it* — step 5 is Review), `/zsl:tdd` reads
+`docs/agents/ship-style.md` and branches:
 
 | Ship style | What `/zsl:tdd` does | How the sub-task closes |
 |---|---|---|
@@ -159,7 +159,7 @@ A natural question: *"Do I even need `/zsl:tdd-parallel`? Can't I just
 branch the PRD, then run `/zsl:tdd` twice in a row?"* Short answer:
 **`/zsl:tdd` was not designed for this** — it doesn't create per-slice
 branches, it commits on whatever branch you hand it, and it tries to ship
-at step 5. Three patterns are possible; only one and a half work cleanly.
+at step 6. Three patterns are possible; only one and a half work cleanly.
 
 ### Pattern A — separate branches per `/zsl:tdd` (the well-defined path)
 
@@ -209,9 +209,9 @@ What actually happens, step by step:
 | Step | Result |
 |---|---|
 | `/zsl:tdd 124` commits | 2–3 commits on `feature/123-prd` |
-| `/zsl:tdd 124` step 5 (PR-style) | pushes branch, opens PR `feature/123-prd → main` with `Closes #124` |
+| `/zsl:tdd 124` step 6 (PR-style) | pushes branch, opens PR `feature/123-prd → main` with `Closes #124` |
 | `/zsl:tdd 125` commits | 2–3 more commits on the same branch |
-| `/zsl:tdd 125` step 5 | push fast-forwards into the **existing** PR; `gh pr create` refuses ("already exists for branch"); the skill stalls or asks you what to do |
+| `/zsl:tdd 125` step 6 | push fast-forwards into the **existing** PR; `gh pr create` refuses ("already exists for branch"); the skill stalls or asks you what to do |
 
 !!! danger "Effect"
     Both slices end up in *one* PR that closes only `#124`. `#125` closes

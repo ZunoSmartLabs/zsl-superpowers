@@ -85,7 +85,7 @@ flowchart TB
 ## Build
 
 [`/zsl:tdd-parallel`](tdd-parallel.md) `<PRD>`
-:   Fan out the unblocked **`[AFK]`** `ready-for-agent` children into parallel `/tdd` sub-agents in worktrees. Sub-agents commit but do **not** push (`/tdd --no-ship`). The orchestrator merges every slice branch onto the PRD branch in wave order with `--no-ff`, then — gated on a valid `/zsl:verify-coverage` receipt for the integrated tip (see **Verify** below) — opens **one consolidated integration PR**. Halts with a structured RCA on agent failure, merge conflict, zero-progress cycles, or a declined coverage gate. PR-style repos only; `[HITL]`, container, and blocked items are skipped.
+:   Fan out the unblocked **`[AFK]`** `ready-for-agent` children into parallel `/tdd` sub-agents in worktrees. Sub-agents commit but do **not** push (`/tdd --no-ship`). The orchestrator merges every slice branch onto the PRD branch in wave order with `--no-ff`, runs an integration `/zsl:code-review --auto` against the merged tip (step 4a, catching cross-slice issues per-slice reviews can't see), then — gated on a valid `/zsl:verify-coverage` receipt for the integrated tip (step 4b; see **Verify** below) — opens **one consolidated integration PR** (step 4c). Halts with a structured RCA on agent failure, merge conflict, zero-progress cycles, an integration review failure, or a declined coverage gate. PR-style repos only; `[HITL]`, container, and blocked items are skipped.
 
 [`/zsl:human-itl`](skills/human-itl.md) `<PRD>`
 :   Clear the `[HITL]` slices `/tdd-parallel` skipped — the manual actions a coding agent can't perform (console clicks, credential rotation, sign-off). Records each as an audit-trail comment, marks them done so the dependent `[AFK]` slices unblock, then hands back; re-run `/zsl:tdd-parallel` after. Hard-refuses slices that are really decisions in disguise — those belong upstream in `/zsl:grill-with-docs` + an ADR.
@@ -96,15 +96,15 @@ flowchart TB
 ## Verify
 
 [`/zsl:verify-coverage`](skills/verify-coverage.md) `<PRD>`
-:   After the fanout integrates, check every PRD `## User Stories` entry against the *implemented code via tests*, not prose. Tier A maps each story to an existing passing behavioral test; Tier B generates one for the rest, proves it non-vacuous by mutation, and runs it; visual/UX/external stories go to a human-attestation lane (HITL). Quarantines failing tests, auto-files genuine gaps as `needs-triage` sub-issues of the PRD, and writes a coverage receipt against the verified sha. `/zsl:tdd-parallel` **enforces** this at step 4a: it refuses to open the integration PR until a valid receipt for the integrated tip exists. It's an *execution* gate (did the check run?), not an *outcome* gate — open gaps still pass; only skipping the check is blocked. The matrix outcome itself stays a review surface, never an auto-gate.
+:   After the fanout integrates, check every PRD `## User Stories` entry against the *implemented code via tests*, not prose. Tier A maps each story to an existing passing behavioral test; Tier B generates one for the rest, proves it non-vacuous by mutation, and runs it; visual/UX/external stories go to a human-attestation lane (HITL). Quarantines failing tests, auto-files genuine gaps as `needs-triage` sub-issues of the PRD, and writes a coverage receipt against the verified sha. `/zsl:tdd-parallel` **enforces** this at step 4b: it refuses to open the integration PR until a valid receipt for the integrated tip exists. It's an *execution* gate (did the check run?), not an *outcome* gate — open gaps still pass; only skipping the check is blocked. The matrix outcome itself stays a review surface, never an auto-gate.
 
 ## Ship
 
-Each `/zsl:tdd` reads `docs/agents/ship-style.md`. PR-style opens a PR per slice; direct-push pushes the feature branch and you merge by hand.
+Each `/zsl:tdd` reads `docs/agents/ship-style.md`. PR-style opens a PR per slice; direct-push pushes the feature branch and you merge by hand. Review happens automatically inside `/zsl:tdd` step 5, between Refactor (step 4) and Ship (step 6) — by the time you reach the PR-open step the slice has already been reviewed.
 
-[`/zsl:commit`](skills/commit.md) for clean, attribution-free commits.
+[`/zsl:commit`](skills/commit.md) for clean, attribution-free commits — fully autonomous for session changes (no per-commit approval prompt); confirms only "other-origin" dirty files before including.
 
-[`/zsl:code-review`](skills/code-review.md) before opening the PR.
+[`/zsl:code-review`](skills/code-review.md) runs automatically as `/zsl:tdd` step 5 (interactive mode with an approval gate) or in `--auto` mode under `/zsl:tdd --no-ship` and `/zsl:tdd-parallel` step 4a. You can also invoke it standalone before opening a PR — same scan, same scoring.
 
 ## Cleanup
 
@@ -152,10 +152,10 @@ Where state lives, and how closure works, depends on the backend you picked in [
 
 **GitHub project dashboard** — state lives as labels on each issue and is mirrored to the project board's `Status` field via the mapping in `docs/agents/project-board.md`. `/zsl:triage` updates both. When a child issue's PR merges, GitHub closes the child; when the last child of a `tracking` PRD closes, GitHub auto-closes the parent — no manual transition needed.
 
-**Local markdown files** — state lives as a `Status:` line near the top of each `.md` file under `.scratch/<feature-slug>/`. Closure is folder-based, and nothing is deleted:
+**Local markdown files** — state lives as a `Status:` line near the top of each `.md` file under `.scratch/<NNN>-<feature-slug>/`, where `<NNN>` is a 3-digit feature number assigned at creation (auto-incremented from the highest existing number across active + archived). Features can be addressed by number alone — `/zsl:triage 23` and `/zsl:to-issues 45` resolve to features `023-*` and `045-*` via glob. Closure is folder-based, and nothing is deleted:
 
-- Close an issue → on ship, [`/zsl:tdd`](skills/tdd.md) flips the `Status:` line to `shipped` and runs `git mv .scratch/<feature-slug>/issues/<NN>-<slug>.md .scratch/<feature-slug>/issues/done/<NN>-<slug>.md` in the same commit as the slice's code, so the close is atomic with the work that earned it. The filename and `Status:` line are preserved so the archive records why it closed (e.g. `shipped` vs `wontfix`).
-- Close a feature → move the whole `.scratch/<feature-slug>/` directory to `.scratch/done/<feature-slug>/`, preserving its internal layout. There's no auto-close: when an issue's close empties the feature's open `issues/`, [`/zsl:tdd`](skills/tdd.md) **prompts** you to run the feature-level `git mv` (never automatic — you might still want to add a follow-up issue). You can also do it by hand if you're abandoning the feature.
+- Close an issue → on ship, [`/zsl:tdd`](skills/tdd.md) flips the `Status:` line to `shipped` and runs `git mv .scratch/<NNN>-<feature-slug>/issues/<NN>-<slug>.md .scratch/<NNN>-<feature-slug>/issues/done/<NN>-<slug>.md` in the same commit as the slice's code, so the close is atomic with the work that earned it. The filename and `Status:` line are preserved so the archive records why it closed (e.g. `shipped` vs `wontfix`).
+- Close a feature → move the whole `.scratch/<NNN>-<feature-slug>/` directory to `.scratch/done/<YYYYMMDD>-<NNN>-<feature-slug>/`, preserving its internal layout. The date prefix orders archived features chronologically (`ls .scratch/done/` shows close order); the feature number stays embedded so number-based lookup keeps working across the active/archive split. There's no auto-close: when an issue's close empties the feature's open `issues/`, [`/zsl:tdd`](skills/tdd.md) **prompts** you to run the feature-level `git mv` (never automatic — you might still want to add a follow-up issue). You can also do it by hand if you're abandoning the feature.
 
 ## Cross-cutting
 
@@ -185,8 +185,8 @@ For the full per-skill descriptions and decision tree, see the
 | Build | [diagnose](skills/diagnose.md) | Reproduce → minimise → hypothesise → fix |
 | Verify | [verify-coverage](skills/verify-coverage.md) | PRD-story coverage via tests; gates the fanout's integration PR |
 | Ship | [git-branch](skills/git-branch.md) | Branch with the prefix convention |
-| Ship | [commit](skills/commit.md) | Explicit-file-list commits |
-| Ship | [code-review](skills/code-review.md) | Pre-PR review with approval gate |
+| Ship | [commit](skills/commit.md) | Explicit-file-list commits, autonomous for session changes |
+| Ship | [code-review](skills/code-review.md) | Multi-lens scan with confidence scoring; interactive approval gate or `--auto` |
 | Cross-cut | [improve-codebase-architecture](skills/improve-codebase-architecture.md) | Find deepening opportunities |
 | Cross-cut | [zoom-out](skills/zoom-out.md) | Broader context on unfamiliar code |
 | Off-loop | [prototype](skills/prototype.md) | Throwaway exploration |

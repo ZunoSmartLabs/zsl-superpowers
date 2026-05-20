@@ -111,15 +111,15 @@ matters for picking a skill.
 
 | Skill | What it does |
 |---|---|
-| [verify-coverage](verify-coverage.md) | After a fanout, prove every PRD user story is covered by a passing, non-vacuous behavioral test (Tier A maps to existing tests; Tier B generates + mutation-proves one); HITL lane for non-automatable stories; auto-files genuine gaps as `needs-triage` sub-issues; writes a receipt `/tdd-parallel` step 4a requires before opening the PR. Execution gate (did the check run?), not an outcome gate — the matrix itself stays advisory. |
+| [verify-coverage](verify-coverage.md) | After a fanout, prove every PRD user story is covered by a passing, non-vacuous behavioral test (Tier A maps to existing tests; Tier B generates + mutation-proves one); HITL lane for non-automatable stories; auto-files genuine gaps as `needs-triage` sub-issues; writes a receipt `/tdd-parallel` step 4b requires before opening the PR. Execution gate (did the check run?), not an outcome gate — the matrix itself stays advisory. |
 
 ### Ship
 
 | Skill | What it does |
 |---|---|
 | [git-branch](git-branch.md) | Create a branch with the `feature/` / `fix/` / `chore/` prefix convention. Run this before `/zsl:tdd` when you don't already have a branch. |
-| [commit](commit.md) | Explicit-file-list commits. No `git add -A`, no Claude attribution. |
-| [code-review](code-review.md) | Pre-PR review of the current branch. Issues-only tone with an approval gate before applying fixes. |
+| [commit](commit.md) | Explicit-file-list commits, fully autonomous for session changes (no per-commit approval prompt). Confirms only the "other-origin" bucket — files dirty before this session — before including. No `git add -A`, no Claude attribution. |
+| [code-review](code-review.md) | Pre-PR review of the current branch with a parallel five-lens scan (clean-code, CLAUDE.md compliance, git history, prior PR comments, inline comments) and 0–100 confidence scoring (drops <60). Interactive mode keeps an approval gate; `--auto` applies ≥80 findings as a single revertible commit and reports 60–79 in the return summary. Runs automatically inside `/zsl:tdd` step 5 and `/zsl:tdd-parallel` step 4a. |
 
 ### Cross-cutting
 

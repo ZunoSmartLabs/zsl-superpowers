@@ -271,7 +271,7 @@ asserts "coverage was checked against *this* tree." Write the receipt per
   mechanism `/human-itl` uses), led by the literal marker line
   `## Coverage receipt — verify-coverage` so the gate can find the
   latest one.
-- **Local markdown:** write/overwrite `.scratch/<feature>/verify-coverage-receipt.md`
+- **Local markdown:** write/overwrite `.scratch/<NNN>-<feature-slug>/verify-coverage-receipt.md`
   and include it in the same commit as the quarantined tests.
 
 Receipt body (stable fields the gate parses):

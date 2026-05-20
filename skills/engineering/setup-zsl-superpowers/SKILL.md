@@ -43,7 +43,7 @@ Default posture: these skills were designed for GitHub. If a `git remote` points
 
 - **GitHub** — issues live in the repo's GitHub Issues (uses the `gh` CLI)
 - **GitLab** — issues live in the repo's GitLab Issues (uses the [`glab`](https://gitlab.com/gitlab-org/cli) CLI)
-- **Local markdown** — issues live as files under `.scratch/<feature>/` in this repo (good for solo projects or repos without a remote)
+- **Local markdown** — issues live as files under `.scratch/<NNN>-<feature-slug>/` in this repo (`<NNN>` is an auto-assigned 3-digit feature number; good for solo projects or repos without a remote)
 - **Other** (Jira, Linear, etc.) — ask the user to describe the workflow in one paragraph; the skill will record it as freeform prose
 
 **Section B — Triage label vocabulary.**
@@ -216,6 +216,70 @@ Then write the docs files using the seed templates in this skill folder as a sta
 
 For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch using the user's description. For `docs/agents/project-board.md`, fill the template placeholders with the project node ID, Status field ID, and option IDs you discovered in Section E.
 
-### 5. Done
+### 5. Backfill feature numbers and archive date prefixes (local-markdown only)
+
+Only runs if Section A selected local-markdown. Check whether any existing features lack the new prefixes:
+
+```bash
+# Active features missing the <NNN>- number prefix:
+find .scratch -mindepth 1 -maxdepth 1 -type d \
+  -not -name 'done' \
+  -not -name '[0-9][0-9][0-9]-*' 2>/dev/null
+
+# Archived features missing either the date or the number (or both):
+find .scratch/done -mindepth 1 -maxdepth 1 -type d \
+  -not -name '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9]-*' 2>/dev/null
+```
+
+If both outputs are empty, skip this step.
+
+Otherwise, offer a single unified backfill that handles both the number prefix (active and archive) and the date prefix (archive only) in one pass.
+
+#### Algorithm
+
+1. **Catalog** every feature directory across `.scratch/` (exclude `done`) and `.scratch/done/`.
+
+2. **Classify** each by its current prefix state:
+
+   - **Active, numbered** (`^[0-9]{3}-`) — preserve as-is.
+   - **Active, unnumbered** — assign a number.
+   - **Archived, date+number** (`^[0-9]{8}-[0-9]{3}-`) — preserve as-is.
+   - **Archived, date-only** (`^[0-9]{8}-` but not the above) — insert a number after the date.
+   - **Archived, unprefixed** — assign both a date and a number.
+
+3. **Determine the canonical date** for every feature that needs one. Use the commit when the directory (or its current name) was added:
+
+   ```bash
+   git log -1 --diff-filter=A --format=%ad --date=format:%Y%m%d -- <path>
+   ```
+
+   Fall back to the most recent touching commit if `--diff-filter=A` returns nothing. If neither yields a date (no git history for the path), prompt the user — don't silently default to today.
+
+   For *active* features, the date is used only as a sort key for number assignment; it isn't written into the directory name.
+
+4. **Sort** all features needing a number by canonical date (oldest first, so the lowest numbers go to the earliest features).
+
+5. **Assign numbers**: existing numbers are preserved. New numbers start from `max(existing) + 1` (or `001` if no features are numbered yet) and are assigned sequentially in date order.
+
+6. **Compose** the full proposed rename list, with a one-line note explaining what changed:
+
+   ```
+   .scratch/auth/                   → .scratch/001-auth/                       (assigned number 001)
+   .scratch/billing/                → .scratch/002-billing/                    (assigned number 002)
+   .scratch/done/oauth/             → .scratch/done/20251020-003-oauth/        (assigned date 2025-10-20, number 003)
+   .scratch/done/20251114-payments/ → .scratch/done/20251114-004-payments/    (assigned number 004)
+   ```
+
+7. **Ask**: "Apply these renames in a single commit?" Wait for confirmation. The maintainer may want to override a date, override a number (e.g. to keep an external reference stable), or skip specific entries entirely — accept edits before applying.
+
+8. **Apply** each rename via `git mv`, then commit as a single migration commit:
+
+   ```
+   chore: backfill feature numbers and archive date prefixes
+   ```
+
+Don't run any `git mv` without explicit confirmation. Backfilled values are best-effort heuristics from git history; the maintainer is the authority on edge cases (e.g. a feature whose archive commit doesn't reflect the real ship date, or a number that should be preserved to match an external system).
+
+### 6. Done
 
 Tell the user the setup is complete and which engineering skills will now read from these files. Mention they can edit `docs/agents/*.md` directly later — re-running this skill is only necessary if they want to switch issue trackers or restart from scratch.
