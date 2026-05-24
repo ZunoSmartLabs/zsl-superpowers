@@ -48,43 +48,49 @@ nav:
   - Getting started:
       - Quickstart: quickstart.md
       - Per-repo setup: setup.md
-  - Concepts:
+  - How it fits together:
       - Overview: concepts/index.md
-      - The loop: concepts/the-loop.md
+      - Workflow walkthrough: workflow.md
+      - The five phases: concepts/the-loop.md
       - Triage state machine: concepts/state-machine.md
       - Git branching: concepts/branching.md
-  - The loop:
-      - Workflow: workflow.md
-      - Parallel TDD deep-dive: tdd-parallel.md
+  - Deep dives:
+      - Parallel TDD: tdd-parallel.md
+      - Code review: code-review.md
   - Skills:
       - Overview: skills/index.md
-      - Engineering:
-          - skills/setup-zsl-superpowers.md
+      - Plan:
           - skills/grill-with-docs.md
+          - skills/grill-me.md
           - skills/to-prd.md
+      - Break down:
           - skills/to-issues.md
           - skills/triage.md
+      - Build:
           - skills/tdd.md
           - skills/tdd-parallel.md
           - skills/human-itl.md
-          - skills/verify-coverage.md
           - skills/diagnose.md
+      - Verify:
+          - skills/verify-coverage.md
+      - Ship:
+          - skills/git-branch.md
+          - skills/commit.md
+          - skills/commit-push-pr.md
+          - skills/code-review.md
+      - Cross-cutting:
           - skills/improve-codebase-architecture.md
           - skills/zoom-out.md
+      - Off-loop and meta:
           - skills/prototype.md
-          - skills/code-review.md
-          - skills/commit.md
-          - skills/git-branch.md
-      - Productivity:
-          - skills/grill-me.md
-          - skills/timesheet.md
-          - skills/write-a-skill.md
-          - skills/caveman.md
           - skills/handoff.md
-      - Misc:
+          - skills/timesheet.md
+          - skills/caveman.md
+          - skills/write-a-skill.md
           - skills/edit-article.md
           - skills/setup-pre-commit.md
           - skills/steampipe.md
+          - skills/setup-zsl-superpowers.md
   - Reference:
       - FAQ: faq.md
       - Contributing: contributing.md
