@@ -65,6 +65,30 @@ Phases (in order; `red` / `green` repeat per cycle):
 
 Emit via `bash -c "printf '%s\n' '<json>' >> .tdd-progress.jsonl"` — one `printf` per line, no buffering, append-only. Without `--no-ship`, emission is optional and harmless.
 
+## Step graph
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> setup
+    setup: 1. Setup<br/>(branch, read sub-issue,<br/>scan tests)
+    red: 2. RED<br/>(write failing test)
+    green: 3. GREEN<br/>(minimal impl to pass)
+    refactor: 4. REFACTOR<br/>(extract + delete<br/>aggressively)
+    review: 5. REVIEW<br/>(/zsl:code-review,<br/>interactive or --auto)
+    ship: 6. SHIP<br/>(PR or push or local mv)
+    setup --> red
+    red --> green
+    green --> refactor
+    refactor --> red: next behavior
+    refactor --> review: all behaviors done
+    review --> ship: approved (interactive)<br/>or ≥80 auto-applied
+    review --> refactor: findings to address
+    ship --> [*]
+```
+
+Heartbeat phases (for `/zsl:tdd-parallel`'s orchestrator): `setup`, `red`, `green`, `refactor`, `reviewed`, `shipped`.
+
 ## Workflow
 
 ### 1. Planning

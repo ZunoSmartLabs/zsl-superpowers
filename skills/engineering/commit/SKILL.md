@@ -9,6 +9,23 @@ Fully autonomous for changes made in this session. The user invoked `/commit` �
 
 The only legitimate reason to stop and ask is **cross-session ambiguity**: dirty files in the tree that this conversation didn't produce.
 
+```mermaid
+flowchart TB
+    git["git status<br/>(every dirty + untracked file)"] --> q{"did this conversation<br/>touch the file?"}
+    q -->|"yes — Edit/Write/Bash<br/>in this session"| session["**Session bucket**<br/>auto-included"]:::good
+    q -->|"no — already dirty<br/>or external write"| other["**Other-origin bucket**<br/>confirm before including"]:::warn
+    q -->|"unsure"| other
+    session --> stage["explicit `git add &lt;path&gt;`<br/>(never `-A`)"]
+    other --> stage
+    stage --> rails{"safety rails"}
+    rails -->|".env* · *.pem ·<br/>credentials · >10MB"| skip["skipped<br/>(reported in summary)"]:::bad
+    rails -->|"clean"| commit["`git commit`<br/>no Claude attribution"]:::good
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef warn fill:#fef3c7,stroke:#d97706;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+```
+
 ## Process
 
 1. **Classify the dirty tree.**
