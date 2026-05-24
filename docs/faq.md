@@ -121,6 +121,39 @@ flowchart LR
 If you don't run `setup-zsl-superpowers`, the engineering skills bail
 with a setup hint instead of guessing.
 
+### What are the bundled engineering-book rules?
+
+Eight engineering skills bundle decision-pressure rules distilled from
+classic software-engineering books, sourced from
+[ciembor/agent-rules-books](https://github.com/ciembor/agent-rules-books)
+(MIT, pinned to v0.5). The rules are pasted inline into each
+`SKILL.md`, so the agent gets the bias every time the skill fires.
+
+| Skill | Bundled rule sets |
+|---|---|
+| [`/zsl:tdd`](skills/tdd.md) | Refactoring · Working Effectively with Legacy Code |
+| [`/zsl:improve-codebase-architecture`](skills/improve-codebase-architecture.md) | A Philosophy of Software Design · Clean Architecture |
+| [`/zsl:diagnose`](skills/diagnose.md) | Release It! |
+| [`/zsl:grill-with-docs`](skills/grill-with-docs.md) | Domain-Driven Design Distilled · Implementing DDD |
+| [`/zsl:to-prd`](skills/to-prd.md) | Domain-Driven Design Distilled |
+| [`/zsl:code-review`](skills/code-review.md) | Clean Code · Refactoring |
+| [`/zsl:verify-coverage`](skills/verify-coverage.md) | Working Effectively with Legacy Code |
+| [`/zsl:prototype`](skills/prototype.md) | The Pragmatic Programmer |
+
+The bundles are always-on — there's no per-repo opt-out. If a bundled
+rule set is wrong for your codebase, override it in your project's
+`CLAUDE.md` (e.g. *"ignore the Clean Architecture layering rules in
+`/zsl:improve-codebase-architecture` for this codebase; we use a
+feature-folder layout intentionally"*) and Claude will honour it.
+
+The supporting files inside each affected skill (e.g. `LANGUAGE.md`,
+`CONTEXT-FORMAT.md`, `tests.md`) have been aligned with the bundled
+vocabulary where it sharpens the skill's process — see the
+[0.11.0 changelog entry](changelog.md) for the per-skill detail.
+
+For the maintenance workflow (`make sync-books`, hand-picked upstream
+adoption), see [Contributing → Editing bundled book rules](contributing.md#editing-bundled-book-rules).
+
 ### When should I use `/zsl:handoff` vs Claude Code's `/clear`?
 
 Different problems. `/clear` wipes the conversation immediately and gives you a blank slate — useful when you want to drop context and start fresh. [`/zsl:handoff`](skills/handoff.md) does the opposite: it *preserves* the substantive context (state at handoff, open decisions, suggested next skills, pointers to artifacts) into a tmp-dir markdown file so the **next session** can pick up cleanly.

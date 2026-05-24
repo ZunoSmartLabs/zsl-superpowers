@@ -4,6 +4,95 @@ For the full commit history, see
 [github.com/ZunoSmartLabs/zsl-superpowers/commits/main](https://github.com/ZunoSmartLabs/zsl-superpowers/commits/main).
 This page summarises the user-facing changes per plugin version.
 
+## 0.11.0
+
+Eight engineering skills now bundle decision-pressure rules distilled
+from classic software-engineering books, sourced from
+[ciembor/agent-rules-books](https://github.com/ciembor/agent-rules-books)
+by Maciej Ciemborowicz (MIT, pinned to `v0.5`):
+
+- `/zsl:tdd` ← Refactoring + Working Effectively with Legacy Code (nano)
+- `/zsl:improve-codebase-architecture` ← A Philosophy of Software Design + Clean Architecture
+- `/zsl:diagnose` ← Release It!
+- `/zsl:grill-with-docs` ← Domain-Driven Design Distilled + Implementing DDD
+- `/zsl:to-prd` ← Domain-Driven Design Distilled
+- `/zsl:code-review` ← Clean Code + Refactoring
+- `/zsl:verify-coverage` ← Working Effectively with Legacy Code
+- `/zsl:prototype` ← The Pragmatic Programmer
+
+Rules are inline-appended to each `SKILL.md` between
+`<!-- BEGIN bundled-book-rules -->` / `<!-- END bundled-book-rules -->`
+markers and re-rendered by `scripts/sync_book_rules.py` from the
+vendored snapshot in [`vendor/agent-rules-books/`](https://github.com/ZunoSmartLabs/zsl-superpowers/tree/main/vendor/agent-rules-books).
+The behaviour is always-on (no opt-out); a repo can override via
+project-level `CLAUDE.md` if a specific rule set is wrong for that
+codebase.
+
+Two new Makefile targets support the maintenance loop:
+
+- `make check-upstream-books` — diff the vendored snapshot against
+  the latest upstream tag (hand-pick adoption; we do not auto-track).
+- `make sync-books` — re-render the `BEGIN`/`END` fences from
+  `vendor/agent-rules-books/` after a vendor bump.
+
+### Vocabulary alignment in `/zsl:improve-codebase-architecture`
+
+The skill's `LANGUAGE.md` was restructured to ground its vocabulary
+in the bundled APoSD and Clean Architecture rules. **boundary**,
+**layer**, **port**, **cognitive load**, **change amplification**,
+**hidden dependencies**, and **temporal coupling** are now canonical
+terms (citing their source book). Our own additions — **seam**,
+**depth-as-leverage**, **leverage**, **locality** — are kept with
+explicit explanations of how they relate to the books' framing
+(notably: a boundary is a particular kind of seam; depth-as-leverage
+is preferred over Ousterhout's depth-as-ratio because the ratio
+rewards padding the implementation). `HTML-REPORT.md`'s strict
+glossary rules and `SKILL.md`'s inline glossary updated to match.
+
+### Supporting-file alignment in `/zsl:grill-with-docs`
+
+`CONTEXT-FORMAT.md` now names `CONTEXT.md` as the Bounded Context's
+**Ubiquitous Language** (citing *DDD Distilled*) and lists DDD's nine
+context-relationship types — Partnership, Shared Kernel, Customer/
+Supplier, Conformist, Anticorruption Layer, Open Host Service,
+Published Language, Separate Ways, contained Big Ball of Mud — so
+`CONTEXT-MAP.md` relationships can be tagged with type names instead
+of described ad-hoc. The example map shows the tagging: `(Published
+Language)` for event integrations, `(Shared Kernel)` for shared types.
+
+`ADR-FORMAT.md`'s *What qualifies* list now includes **subdomain
+classification** (Core/Supporting/Generic), **Aggregate consistency
+boundaries**, and an enriched *Integration patterns* bullet that names
+the DDD relationship types as concrete ADR subjects.
+
+### Supporting-file alignment in `/zsl:tdd`
+
+`refactoring.md` was rewritten as a scannable trigger checklist aligned
+with Fowler's *Refactoring* nano vocabulary (three-strike duplication,
+decompose conditionals before reaching for polymorphism, separate
+cleanup from behavior, never rewrite when a smaller move would do).
+
+`mocking.md` gained a **Legacy code: internal seams are sometimes
+necessary** section naming Feathers' moves — Sprout, Wrap,
+Parameterize/Inject, Extract & override — and the two guardrails
+(narrowest useful seam; don't leave test-only seams permanent).
+
+`tests.md` gained two sections: **Greenfield vs legacy code in TDD**
+(defines both terms, citing Feathers' "code without trustworthy tests"
+criterion — *legacy is about test trust, not age*) and
+**Characterization tests for legacy code** (worked example: pin
+existing ugly behavior → write the bug-fix test → fix → delete the
+characterization test once it goes red).
+
+### Upgrading from 0.10
+
+No action needed. The bundled rules add bias to existing skills but do
+not change command surfaces or invocation contracts. If a bundled rule
+set conflicts with house style in your repo, add an override in your
+project's `CLAUDE.md` (e.g. *"ignore the Clean Architecture layering
+rules in `/zsl:improve-codebase-architecture` for this codebase; we
+use a feature-folder layout intentionally"*).
+
 ## 0.10.0
 
 The headline change is a **full-auto PRD pipeline**:

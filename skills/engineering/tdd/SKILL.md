@@ -217,3 +217,97 @@ If `docs/agents/ship-style.md` doesn't exist, run `/setup-zsl-superpowers` first
 [ ] Code is minimal for this test
 [ ] No speculative features added
 ```
+
+<!-- BEGIN bundled-book-rules -->
+
+## Bundled book rules
+
+Do not hand-edit content between the `BEGIN`/`END` markers — `scripts/sync_book_rules.py` overwrites it from `vendor/agent-rules-books/`.
+
+### Rules from "Refactoring" by Martin Fowler
+
+<!-- BEGIN refactoring.nano.md v0.5 -->
+
+# OBEY Refactoring by Martin Fowler
+
+## When to use
+
+Use as a compact always-on rule set for changing existing code under tight context.
+
+## Primary bias to correct
+
+Cleanup must preserve behavior and move in small verified steps, not become a rewrite.
+
+## Decision rules
+
+- Preserve observable behavior; isolate feature changes, migrations, redesign, and cleanup.
+- Work in small buildable, testable, reviewable steps; split changes that are too large to reason about locally.
+- Get a safety net or record the verification gap before risky structural edits.
+- Refactor the smell that blocks the current change, not every smell nearby.
+- Prefer simple named moves: rename, extract, inline, move, split phases, encapsulate mutation, decompose conditionals, and remove duplication.
+- Put behavior, state, and validation with the concept that owns them; avoid vague utilities, pass-through layers, and just-in-case abstractions.
+- Keep mutation and call contracts clear: avoid boolean flags, parameter reassignment, public mutable data, unnecessary setters, and hidden side effects.
+- Stop when the change is easy, the code is clearer, and further cleanup would be speculative.
+
+## Trigger rules
+
+- When behavior is unclear or tests are weak, characterize current behavior before broader refactoring.
+- When adding a feature is awkward, make the smallest preparatory refactor that makes it straightforward.
+- When the same edit appears for a third time, centralize ownership instead of copying again.
+- When conditionals or type codes grow, decompose intent before reaching for polymorphism, state, strategy, or lookup tables.
+- When a patch mixes cleanup with behavior or broad code motion, split it where practical.
+- When tempted to rewrite, choose the next small behavior-preserving transformation.
+
+## Final checklist
+
+- Same behavior?
+- Safety net or verification gap?
+- Small runnable step?
+- Clearer names, ownership, and control flow?
+- No speculative abstraction or mixed patch?
+
+<!-- END refactoring.nano.md -->
+
+### Rules from "Working Effectively with Legacy Code" by Michael Feathers
+
+<!-- BEGIN working-effectively-with-legacy-code.nano.md v0.5 -->
+
+# OBEY Working Effectively with Legacy Code by Michael Feathers
+
+## When to use
+
+Use when changing poorly tested or poorly understood code under a tight context budget.
+
+## Primary bias to correct
+
+Legacy work starts with control, not cleanup, rewrite, or elegance.
+
+## Decision rules
+
+- Treat code without trustworthy tests as legacy code: state what changes and what must remain.
+- Characterize uncertain current behavior before changing it, including ugly behavior consumers may rely on.
+- Use the legacy loop: find the change point, find an observation point, create or exploit a seam, break the blocking dependency, test, change, then refactor locally.
+- Prefer fast focused tests; use broader harnesses only as temporary first coverage when no narrow test point exists.
+- Create the narrowest useful seam for sensing or separation, and break only dependencies that block feedback.
+- Use sprout, wrap, parameterize, inject, extract, or override moves when direct edits would be unsafe.
+- Keep behavior changes, structural refactorings, and cleanup separate and small.
+- Do not leave test-only seams, hidden dependencies, wrappers, globals, subclass tricks, or link/preprocessor tricks without a cleanup plan.
+
+## Trigger rules
+
+- When behavior is unclear, characterize first.
+- When constructors, globals, statics, frameworks, I/O, clocks, randomness, environment, or deep object graphs block testing, break one dependency at the narrowest point.
+- When a large method or class defeats local reasoning, sketch effects and create a seam before semantic edits.
+- When rewrite or broad cleanup feels tempting, choose the next smaller verified move.
+
+## Final checklist
+
+- Behavior characterized?
+- Feedback fast enough?
+- Dependency isolated?
+- One kind of change?
+- Safer and clearer now?
+
+<!-- END working-effectively-with-legacy-code.nano.md -->
+
+<!-- END bundled-book-rules -->

@@ -81,6 +81,50 @@ while the installed plugin reports the new one.
   *integration PR*, *agent brief*, *out-of-scope knowledge base*. Don't invent
   parallel terms.
 
+## Editing bundled book rules
+
+Eight engineering skills bundle decision-pressure rules from
+[ciembor/agent-rules-books](https://github.com/ciembor/agent-rules-books)
+(MIT, pinned via `vendor/agent-rules-books/VERSION`). The rules are
+embedded between `<!-- BEGIN bundled-book-rules -->` / `<!-- END
+bundled-book-rules -->` markers near the bottom of each affected
+`SKILL.md`.
+
+**Do not hand-edit content between the `BEGIN`/`END` fences** —
+`scripts/sync_book_rules.py` overwrites it from
+`vendor/agent-rules-books/` on every sync.
+
+To edit a bundled rule set:
+
+1. Edit the file in `vendor/agent-rules-books/<book>/<file>.md`.
+2. Run `make sync-books` — this rewrites the fences in every affected `SKILL.md`.
+3. Commit both the vendor edit and the regenerated `SKILL.md` content.
+
+To check for upstream changes (we hand-pick; we don't auto-track):
+
+```bash
+make check-upstream-books
+```
+
+This diffs the vendored snapshot against `ciembor/agent-rules-books`'s
+latest tag. When a diff looks worth adopting, update
+`vendor/agent-rules-books/VERSION`, copy the new files in, run
+`make sync-books`, regression-test the affected skills, and ship a
+plugin version bump.
+
+To add or change a book→skill mapping, edit the `MAPPING` dict near
+the top of `scripts/sync_book_rules.py`, then run `make sync-books`.
+The script's `BEGIN`/`END`-fence machinery handles inserting a new
+region (or removing one) cleanly.
+
+The current skill→book mapping table lives in
+[`vendor/agent-rules-books/README.md`](https://github.com/ZunoSmartLabs/zsl-superpowers/blob/main/vendor/agent-rules-books/README.md).
+Per-skill supporting files (e.g. `LANGUAGE.md` in
+`improve-codebase-architecture/`, `CONTEXT-FORMAT.md` in
+`grill-with-docs/`, `tests.md`/`mocking.md`/`refactoring.md` in `tdd/`)
+sit *outside* the fences and **are** hand-editable — they exist to
+align skill-specific vocabulary and process with the bundled rules.
+
 ## Testing changes locally
 
 Clone the repo and register the path as a local marketplace:

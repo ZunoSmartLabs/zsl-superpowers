@@ -253,6 +253,12 @@ Tools we keep around but rarely use.
 - **[setup-pre-commit](./skills/misc/setup-pre-commit/SKILL.md)** — Set up Husky pre-commit hooks with lint-staged, Prettier, type checking, and tests.
 - **[steampipe](./skills/misc/steampipe/SKILL.md)** — AWS infrastructure query reference for `steampipe query`. Auto-triggered (not user-invocable); provides table names, column schemas, and JSONB query patterns.
 
+## Engineering-book rules
+
+Eight skills (`/tdd`, `/improve-codebase-architecture`, `/diagnose`, `/grill-with-docs`, `/to-prd`, `/code-review`, `/verify-coverage`, `/prototype`) bundle decision-pressure rules distilled from classic engineering books — Refactoring, Working Effectively with Legacy Code, A Philosophy of Software Design, Clean Architecture, Release It!, Domain-Driven Design Distilled, Implementing DDD, Clean Code, The Pragmatic Programmer. The rules are sourced from [ciembor/agent-rules-books](https://github.com/ciembor/agent-rules-books) by Maciej Ciemborowicz (MIT, pinned to v0.5). We embed `mini` rule sets (and `nano` for the high-frequency `/tdd`) inline-appended into each `SKILL.md` between `BEGIN`/`END` markers. Always-on, no opt-out; per-repo override via `CLAUDE.md` if needed.
+
+The vendored snapshot lives in [`vendor/agent-rules-books/`](./vendor/agent-rules-books/). Upstream tracking is hand-picked — run `make check-upstream-books` to diff the snapshot against the latest tag, then `make sync-books` to re-render the `BEGIN`/`END` fences after a vendor bump.
+
 ## Drift from upstream
 
 This started as a fork of [`mattpocock/skills`](https://github.com/mattpocock/skills) and has diverged substantially. The end-to-end workflow (PRD → vertical-slice issues → parallel TDD → consolidated PR), the triage state machine with project-board sync, the local-markdown issue-tracker option, and the per-repo `/setup-zsl-superpowers` config are all ZSL additions. Several upstream skills have been removed or rewritten, and the bucket-folder layout under `skills/` is our own.
