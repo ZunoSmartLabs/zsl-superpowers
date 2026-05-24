@@ -42,4 +42,20 @@ Design tree
 
 Reprint the tree whenever it changes: a node is resolved, a new branch is discovered, the focus moves to a new node, or scope shifts. Don't reprint between every question — only when the shape or status actually changes. Always reprint the full tree, not a diff, so progress is visible at a glance.
 
+Status lifecycle for a single node:
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> unresolved: node added
+    unresolved: [ ] unresolved
+    grilling: [→] currently grilling
+    resolved: [✓] resolved
+    unresolved --> grilling: focus moves here
+    grilling --> resolved: decision made
+    grilling --> unresolved: focus moves elsewhere<br/>before deciding
+    resolved --> grilling: reopened (new info)
+    resolved --> [*]: tree complete
+```
+
 </supporting-info>

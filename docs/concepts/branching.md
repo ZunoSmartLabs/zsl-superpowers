@@ -188,6 +188,9 @@ Two PRs, merged independently. The PRD parent (`#123`) closes
 automatically only when *all* its children close (GitHub) or when you run
 the feature-level `git mv` (local-markdown).
 
+!!! info "Local-markdown closure inside Pattern A"
+    On local-markdown trackers, each `/zsl:tdd` slice closes by flipping `Status:` to `shipped` and `git mv`-ing the issue file from `.scratch/<NNN>-<feature-slug>/issues/<NN>-<slug>.md` into `issues/done/` — atomic with the slice's code in the same commit. The folder move *is* the close. There's no separate "merge the PR" step; the slice branch merges to `main` and the issue file is already in `issues/done/`. When the feature's `issues/` is empty, `/zsl:tdd` prompts you to run the feature-level `git mv` to `.scratch/done/<YYYYMMDD>-<NNN>-<feature-slug>/`. See [Phase 5: Track & close](the-loop.md#phase-5-track-close) for the full closure flow.
+
 ### Pattern B — both `/zsl:tdd`s on the same `feature/123-prd` branch (broken)
 
 This is probably what you're picturing. It runs into a real edge case:

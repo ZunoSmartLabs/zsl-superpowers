@@ -74,6 +74,18 @@ Side effects happen inline as decisions crystallize:
 
 After the candidates are listed in step 2, the user may ask for a visual report (or you may offer one when the candidates would land better as diagrams than as a numbered list — multiple before/after architectures, leakage patterns, layered shallowness).
 
+```mermaid
+flowchart LR
+    cand["Step 2 candidates<br/>(numbered list)"] --> q{"would diagrams<br/>land better than<br/>a numbered list?"}
+    q -->|"yes — multiple<br/>before/after architectures,<br/>layered shallowness,<br/>leakage patterns"| html["Render HTML report<br/>(Mermaid + hand-built SVG)<br/>→ $TMPDIR/ica-report-…html"]:::good
+    q -->|"no — single candidate,<br/>flat structure"| stay["Stay conversational<br/>(prose + grilling loop)"]:::ok
+    html --> grill["Step 3 grilling loop<br/>(unchanged)"]
+    stay --> grill
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef ok fill:#e0e7ff,stroke:#3f51b5;
+```
+
 Render the candidates as a single self-contained HTML file in the OS temp directory — see [HTML-REPORT.md](HTML-REPORT.md) for the scaffold, diagram patterns (Mermaid + hand-built SVG mixed), style guidance, and the strict glossary rules the prose must follow.
 
 The HTML report is an output format, not a replacement for the conversation. Present the candidates inline first; the report is for when the user wants something to refer back to, share with a teammate, or use as a thinking surface while deciding which deepening to actually do.

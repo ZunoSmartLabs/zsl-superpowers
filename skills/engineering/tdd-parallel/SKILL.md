@@ -1,14 +1,16 @@
 ---
 name: tdd-parallel
-description: Fan out the unblocked [AFK] sub-tasks of a parent (PRD) issue into parallel /tdd sub-agents in worktrees. Sub-agents commit but do NOT push; the orchestrator merges every slice branch onto the PRD branch in wave order with --no-ff, then opens a single integration PR. AFK-only — [HITL] slices are skipped. PR-style repos only.
+description: Full-auto PRD pipeline. Fans out the unblocked [AFK] sub-tasks of a parent PRD into parallel /tdd sub-agents, integrates them onto the PRD branch, auto-chains /verify-coverage to prove every user story has a passing non-vacuous test, auto-fixes any gaps (loop), then opens a single integration PR. Refuses up front if any [HITL] slice is open or any user story isn't expressible as an automatable test. PR-style repos only.
 disable-model-invocation: true
 ---
 
 # Parallel TDD
 
-Fan out the unblocked **[AFK]** sub-tasks of a parent issue into parallel `/tdd` sub-agents. Each sub-agent runs `/tdd <num> --no-ship` in its own worktree, committing locally but never pushing. The orchestrator merges every slice branch onto the parent's PRD branch (which doubles as the integration branch) in wave order with `--no-ff`, then opens a single integration PR.
+Full-auto pipeline from a PRD to a pushed integration PR: fanout → integrate → review → verify → fix → push, with no mid-run human gates in the happy path. Each `/tdd` sub-agent runs `/tdd <num> --no-ship` in its own worktree, committing locally but never pushing. The orchestrator merges every slice branch onto the parent's PRD branch (which doubles as the integration branch) in wave order with `--no-ff`, runs an integration code review, then chains `/verify-coverage --auto` and loops on any gaps it files before opening one consolidated PR.
 
-`[HITL]` slices are filtered out — they require a manual human action and are cleared via `/human-itl` (not `/tdd` — a HITL slice is a manual action, not a unit of red-green-refactor). PR-style repos only — direct-push fanouts merge straight to `main` without consolidation.
+`[HITL]` slices are refused up front — they must be cleared via `/human-itl` in a separate session before this skill is invoked. The pre-flight also refuses any PRD whose user stories aren't 100% `acceptance: automatable` (per `/to-prd`'s tag format). Both rules exist to push every human-judgement gate *before* the auto-loop fires, so once `/tdd-parallel` starts, it runs through to PR-push or a circuit-breaker halt.
+
+PR-style repos only — direct-push fanouts merge straight to `main` without consolidation.
 
 ## Why one PR
 
@@ -17,11 +19,12 @@ Each push to a feature branch triggers CI workflows. With N sub-issues = N PRs y
 ## Usage
 
 ```
-/tdd-parallel <parent-issue> [--max N]
+/tdd-parallel <parent-issue> [--max N] [--max-coverage-rounds R]
 ```
 
 - `<parent-issue>` — the parent (PRD) issue whose unblocked AFK sub-tasks should be fanned out.
 - `--max N` — concurrency cap *within a wave*. Default 2.
+- `--max-coverage-rounds R` — circuit breaker on the coverage auto-fix loop (step 4b). Default 3. On exhaustion, halts with the residual matrix; the user takes over.
 
 ## AFK contract
 
@@ -43,7 +46,7 @@ Schema and phase list: see `engineering/tdd/SKILL.md` § Progress heartbeat. The
 
 ### 1. Pre-flight
 
-Three phases. 1a refuses on failure; 1b cleans up silently and continues; 1c either creates or adopts the PRD branch.
+Four phases. 1a refuses on failure; 1b cleans up silently and continues; 1c either creates or adopts the PRD branch; 1d validates the parent PRD is auto-loop-eligible.
 
 #### 1a. Environment validation
 
@@ -82,6 +85,16 @@ The PRD branch doubles as the integration branch — sub-task branches will be m
 - **If the orchestrator is on a non-`main` branch**: treat it as the PRD branch. Do not switch, do not auto-rebase against `main` — the user owns its relationship to `main`.
 
 After 1c the orchestrator is on the PRD branch with a clean working tree.
+
+#### 1d. Parent PRD readiness
+
+Fetch the parent issue and its sub-issues per `docs/agents/issue-tracker.md`. Refuse with a clear message if any of these fail:
+
+- **Parent has a `## User Stories` section** — otherwise it isn't a PRD and this skill doesn't apply.
+- **Every user story carries `acceptance: automatable` AND an `observable: <description>` sub-bullet** in the exact format `/to-prd` writes. Any story tagged anything other than `automatable` (e.g. `manual-attestation`, which has been removed from this pipeline) is invalid. Any story missing either sub-bullet is invalid. Refuse with the offending story numbers and a pointer to `/to-prd`'s tag format — typically this means the PRD pre-dates the tag requirement and needs editing, or someone added a non-automatable story by hand.
+- **No open `[HITL]` sub-issues.** A `[HITL]` slice in the parent's sub-tree blocks the auto-loop's "no human gates after invocation" invariant. Refuse with the list of open `[HITL]` issue numbers + titles and tell the user to clear them via `/human-itl <parent>` first, then re-invoke. Closed `[HITL]` slices are fine — they're already absorbed via `satisfied_oob` in step 3a.
+
+These checks fail fast and surface the exact thing to fix. Once 1d passes, the auto-loop is committed: it will run through to PR push or a circuit-breaker halt, with no further human prompts in the happy path.
 
 ### 2. Discover the dependency graph
 
@@ -124,7 +137,7 @@ Print buckets:
 
 - **Selected** (numbered): issue number + title + branch name + worktree path.
 - **Skipped — over cap (this wave)**: issue number + title.
-- **Skipped — HITL**: issue number + title; tell the user to clear them with `/human-itl <parent>` (the manual steps a coding agent can't perform), then re-run this fanout — not `/tdd`.
+- **Skipped — HITL**: should be empty after pre-flight 1d refuses on any open `[HITL]`. If a closed `[HITL]` (already cleared by `/human-itl`) appears, that's fine — it lives in `satisfied_oob`. A non-empty bucket of *open* `[HITL]`s here is an invariant violation (something opened a `[HITL]` between 1d and now) — halt with the issue numbers and tell the user to re-run after clearing them via `/human-itl <parent>`.
 - **Already merged**: list of issue numbers from prior waves.
 - **Satisfied out-of-band**: issue numbers in `satisfied_oob` (closed/done outside this fanout — e.g. a `[HITL]` slice cleared by `/human-itl`), each with the slice it unblocked. Empty on a clean first run; non-empty after a `/human-itl` round-trip.
 - **Pending future waves**: issue number + title + the `Blocked by` references it's still waiting on.
@@ -238,82 +251,107 @@ Auto-fixes commit onto the PRD branch (subject: `review: post-integration cleanu
 
 If `/code-review --auto` halts (lint or tests fail after applying review commits, and the review commit was reverted), surface in RCA per "Halt semantics" — **integration review failure**. The PRD branch is left at its pre-review state; the user inspects and decides whether to re-run the fanout (which re-enters 4a) or merge by hand.
 
-#### 4b. Coverage gate (mandatory)
+#### 4b. Coverage check + auto-fix loop
 
-An **execution gate, not an outcome gate**: it enforces that
-`/verify-coverage` *ran* against the integrated tip, never that its
-matrix came back clean. Open gaps are fine — they ride a later fanout;
-skipping the check is what's blocked.
+Auto-chain `/zsl:verify-coverage --auto <parent>` against the
+integrated tip. Verify-coverage runs Tier A then Tier B for every
+in-scope user story (the PRD's `acceptance: automatable` tags
+guaranteed at 1d mean there is no classification step), commits any
+quarantined Tier-B-RED tests via `/commit`, files any gaps as
+`ready-for-agent` sub-issues of the PRD, writes a coverage receipt,
+and emits a structured terminal block.
 
-1. Fetch the latest coverage receipt for this PRD per
-   `docs/agents/issue-tracker.md`: GitHub/GitLab → the most recent PRD
-   comment whose first line is `## Coverage receipt — verify-coverage`;
-   local-markdown → `.scratch/<NNN>-<feature-slug>/verify-coverage-receipt.md`.
-2. The receipt is **valid** iff *both*:
-   - `mode: full` (a `--no-generate` `partial` receipt does not count), and
-   - its `verified-sha` equals the PRD branch tip (`git rev-parse HEAD`) —
-     nothing was integrated after it ran.
-3. **Valid** → proceed to 4c.
-4. **Missing, partial, or stale** → block. Do not push, do not open the
-   PR. Tell the user verbatim:
+Parse the terminal block's `matrix:` line and the receipt's
+`verified-sha`. Then:
 
-   > Coverage gate: this fanout integrated <N> slices, but
-   > `/verify-coverage <parent>` has not been run against the current
-   > integrated tip (<no receipt | partial `--no-generate` run | receipt
-   > is for an older sha>). This run stays open — invoke
-   > `/verify-coverage <parent>` now (it's `disable-model-invocation`;
-   > the orchestrator never chains it), then reply to continue. Reply
-   > `skip` to abandon the PR and take the integrated branch over by hand.
+**Termination decision tree:**
 
-   This is a blocking checkpoint, like an escalating sub-agent — the
-   orchestrator session is required to stay open anyway (Constraints).
-   When the user says they're done, re-fetch and re-validate (step 2);
-   loop until valid. The user's `/verify-coverage` run commits its
-   quarantined tests onto the PRD branch, so they ride this same PR; any
-   gap sub-issues it files ride a *later* `/tdd-parallel <parent>`, not
-   this run. If the user replies `skip` → **coverage-gate halt** (see
-   Halt semantics): leave the integrated branch in place, unpushed, no PR.
+| Outcome | Action |
+|---|---|
+| `mode: full`, `gap=0`, `verified-sha` == current tip | Loop done. Proceed to 4c. |
+| `mode: full`, `gap>0`, `verified-sha` == current tip | Gaps were filed. Update circuit-breaker counters (below). If a breaker fires → halt. Otherwise loop back to step 2 — the new gap sub-issues become the next wave. |
+| `mode: partial` | Halt: `coverage-mode mismatch`. `--auto` should never return partial; indicates a verify-coverage bug. |
+| `verified-sha` ≠ current tip | Halt: `coverage-tree drift`. The tip moved between invocation and receipt write — should not happen inside the orchestrator. |
+| verify-coverage halted internally | Halt: `coverage-verification failure`. Surface its terminal output. |
 
-#### 4c. Push and open the PR
+**Circuit breakers (mandatory):**
 
-1. `git push -u origin <prd-branch>`.
-2. Open the PR:
+Track in orchestrator state across rounds:
 
-```
-gh pr create \
-  --title "<parent-title> (#<parent-num>)" \
-  --base main \
-  --body "<see template>"
-```
+- `coverage_round` — incremented each time 4b runs. Cap is `--max-coverage-rounds` (default 3). On exhaustion → halt: `coverage-rounds-exhausted`.
+- `gap_retry_count[<story-N>]` — incremented each time a gap is filed for story N (across rounds). If any story reaches 2 → halt: `coverage-per-story-exhausted`. Means Tier B keeps generating a test the remediation can't satisfy — usually a wrong-observable judgement or a misspecified story, needs a human eye.
+- `no_progress_check` — if round N+1's gap set (by story numbers) equals round N's gap set → halt: `coverage-no-progress`. The loop isn't converging.
 
-PR body template:
+**Loop iteration mechanics:**
 
-```markdown
-## Summary
+When looping back to step 2:
 
-<one-line, parsed from the parent issue's `## Solution` section if present; otherwise the parent's title>
+- Re-fetch the parent's sub-issues. The new gap sub-issues (just filed by verify-coverage) are now in the tree as `[automated-gap]` items labeled `ready-for-agent`. Treat them as discoverable AFK slices (they have no `[AFK]` prefix because verify-coverage doesn't assign one; recognise them by the `ready-for-agent` label and the absence of `[HITL]`).
+- `merged`, `attempted`, and `satisfied_oob` carry over from the prior round (don't reset). Slices already merged stay merged; the loop only adds new fanout work on top.
+- Step 3a picks the new gap-fix slices (their `## Blocked by` is "None" by template, so they're unblocked from round 2's pick).
+- Step 3c spawns `/tdd` agents in worktrees just like the original fanout. Each remediation slice's acceptance criterion is literally "un-skip the quarantined test `<path::name>` and make it green," fully specified.
+- After all gap-fix slices merge, step 3a sees `selected = empty, every discovered = merged` and falls through to step 4 again.
+- 4a re-runs `/code-review --auto` on the now-bigger PRD branch tip. The reviewer sees the full diff (original slices + gap fixes); it'll mostly no-op on rounds 2+ because the new code is small and already reviewed by per-slice `/tdd`.
+- 4b re-runs verify-coverage, this time hopefully with `gap=0`.
 
-## Slices integrated
+Halts in 4b leave the PRD branch with the latest verified state (gaps filed, quarantined tests committed, all original + remediation slices merged). The user takes over: read the matrix in the latest `## Coverage receipt — verify-coverage` comment, decide whether to fix by hand, edit the offending stories' `observable:` lines and re-invoke, or close specific gap issues as bogus and re-invoke.
 
-In wave order, oldest first:
+#### 4c. Ship the integration PR
 
-- `[AFK] 1 — Slice 1 title` — #N
-- `[AFK] 2a — Slice 2a title` — #N
-- `[AFK] 2b — Slice 2b title` — #N
-- `[AFK] 3 — Slice 3 title` — #N
+1. **Defensive commit pass.** Delegate to `/zsl:commit`. Skip if `git status --porcelain` is empty — the normal case, since every commit landed via per-wave merges (3e), 4a's review cleanup, or 4b's verify-coverage `/commit`-delegated quarantined-test commits across all loop rounds. If the tree is unexpectedly dirty (a hook wrote a generated file, etc.), `/commit` handles it under its session-vs-other-origin rules. Never open-code `git add`/`git commit` here — the no-`-A`, no-attribution, other-origin-confirmation rules live in one place.
 
-## Closes
+2. **Push with upstream:**
+   ```bash
+   git push -u origin <prd-branch>
+   ```
+   Surface errors verbatim and stop on failure. Never `--force`, never `--no-verify`. (Same safety rails `/commit-push-pr` enforces — same rules, inlined here because `/tdd-parallel` needs its own structured PR template that `/commit-push-pr` doesn't produce.)
 
-Closes #<parent>
-Closes #<sub-issue-1>
-Closes #<sub-issue-2>
-...
+3. **Open the PR** with the structured integration template:
 
----
-Integrated by `/tdd-parallel` across <N> waves.
-```
+   ```
+   gh pr create \
+     --title "<parent-title> (#<parent-num>)" \
+     --base main \
+     --body "<see template>"
+   ```
 
-3. **Project board update** (if `docs/agents/project-board.md` exists). Bulk-move the parent issue and every merged sub-issue's project card from "In progress" to the option mapped to "PR opened" (typically `In review`) via `updateProjectV2ItemFieldValue`. Use the same lookup-then-update procedure documented in `triage/SKILL.md` step 6. **This step is mandatory when the file exists — do not treat it as optional.** If an individual update fails, log the failure and continue with the rest of the items; only abort if every update fails (that would indicate a credential or project-id problem worth surfacing).
+   PR body template:
+
+   ```markdown
+   ## Summary
+
+   <one-line, parsed from the parent issue's `## Solution` section if present; otherwise the parent's title>
+
+   ## Slices integrated
+
+   In wave order, oldest first:
+
+   - `[AFK] 1 — Slice 1 title` — #N
+   - `[AFK] 2a — Slice 2a title` — #N
+   - `[AFK] 2b — Slice 2b title` — #N
+   - `[AFK] 3 — Slice 3 title` — #N
+
+   ## Auto-fixed coverage gaps
+
+   Filed and closed by `/verify-coverage --auto` across N coverage rounds. Omit this section if all gaps were resolved in round 1 (i.e. the coverage loop ran exactly once and returned `gap=0`).
+
+   - Story <M>: `Cover PRD story <M> — <description>` — #N
+   - ...
+
+   ## Closes
+
+   Closes #<parent>
+   Closes #<sub-issue-1>
+   Closes #<sub-issue-2>
+   ...
+
+   ---
+   Integrated by `/tdd-parallel` across <N> waves and <R> coverage rounds.
+   ```
+
+   If `gh pr create` fails because a PR for this branch already exists (e.g. a prior halted run pushed and opened it), fall back to `gh pr view --json url -q .url` and report the existing PR URL. If the repo has an auto-PR workflow (`.github/workflows/auto-pr.yml`) and the push already created the PR, skip `gh pr create` and resolve the URL the same way.
+
+4. **Project board update** (if `docs/agents/project-board.md` exists). Bulk-move the parent issue and every merged sub-issue's project card (including the auto-filed gap issues from 4b) from "In progress" to the option mapped to "PR opened" (typically `In review`) via `updateProjectV2ItemFieldValue`. Use the same lookup-then-update procedure documented in `triage/SKILL.md` step 6. **This step is mandatory when the file exists — do not treat it as optional.** If an individual update fails, log the failure and continue with the rest of the items; only abort if every update fails (that would indicate a credential or project-id problem worth surfacing).
 
 When the integration PR merges, GitHub's auto-close workflow closes every `Closes #N` issue and lands each card on `Done`.
 
@@ -323,20 +361,29 @@ Print a final summary:
 
 - Parent issue + integration PR URL.
 - Slices integrated, in merge order: number + title.
-- HITL slices skipped (with the hint to clear them with `/human-itl <parent>`, then re-run this fanout).
-- Total waves processed.
+- Auto-fixed coverage gaps, by round: which stories triggered a gap, which sub-issues were filed, which round finally cleared them.
+- Total waves processed (across all coverage rounds).
+- Total coverage rounds (final receipt's `verified-sha` matches the PR's tip).
 
 The orchestrator session can now be closed. Slice worktrees and branches remain on disk; pre-flight 1b will sweep them on the next `/tdd-parallel` run, or you can clean them sooner by hand.
 
 ## Halt semantics
 
-Five failure paths halt the run, all with the same shape: print a hybrid RCA, leave state inspectable, stop. The orchestrator does not attempt resume — the user takes over from the halted state.
+Seven failure paths halt the run, all with the same shape: print a hybrid RCA, leave state inspectable, stop. The orchestrator does not attempt resume — the user takes over from the halted state.
 
+- **Pre-flight refusal** (1d): the parent PRD has untagged or non-automatable stories, or has open `[HITL]` sub-issues. Refuses up front, before any branch work — no state to inspect.
 - **Agent failure** (3d): a sub-agent errored, refused, or returned without a mergeable branch.
 - **Unresolvable merge conflict** (3e): `git merge --no-ff` conflicted and the orchestrator's auto-resolve attempt couldn't produce a clean, lint+test-passing merge. The merge is left in its conflicted state on the PRD branch.
 - **Zero-progress** (3a): no slices unblock and the fanout isn't complete.
 - **Integration review failure** (4a): `/code-review --auto` applied ≥80 findings to the merged PRD tip but lint or tests failed afterward; the review commit was reverted. The PRD branch is at pre-review state with all slices merged.
-- **Coverage gate declined** (4b): the user replied `skip` to the mandatory coverage gate. All slices are merged onto the PRD branch but it is left unpushed with no PR — the user pushes and opens it by hand if they choose to.
+- **Coverage verification failure** (4b): `/verify-coverage --auto` itself halted internally (pre-flight refusal, mutation-check failure, tracker error). All slices for the round are merged but the receipt wasn't written.
+- **Coverage circuit-breaker halt** (4b): one of three breakers fired during the auto-fix loop:
+  - `coverage-rounds-exhausted` — hit `--max-coverage-rounds` without converging to `gap=0`.
+  - `coverage-per-story-exhausted` — a single story produced a gap in 2+ rounds; Tier B's test is wrong or the story's `observable:` is misspecified.
+  - `coverage-no-progress` — round N+1's gap set equals round N's; loop isn't converging.
+  - `coverage-mode mismatch` / `coverage-tree drift` — invariant-violation halts; should not happen in normal operation.
+
+  In every coverage circuit-breaker case, all originally-discovered and gap-fix slices remain merged onto the PRD branch; the latest coverage receipt records the residual matrix; the user takes over from there.
 
 When a halt fires while other agents are still in flight, the orchestrator waits for those agents to return (so it can capture their state in the RCA), then halts. It does *not* cancel them mid-flight — let them either complete or escalate, and surface their final state.
 
@@ -383,12 +430,25 @@ Every halt produces a structured RCA followed by an LLM-generated **Possible int
 - Reverted review commit sha (for inspection via `git show <sha>`).
 - Suggested next action: inspect the reverted commit to see what the review attempted. Either fix the underlying issue and re-run `/tdd-parallel <parent>` (which finds slices already merged and re-enters 4a), or apply the review findings selectively by hand and continue from 4b manually.
 
-**Coverage gate declined (4b):**
+**Coverage verification failure (4b):**
 
-- Integration tip sha (the PRD branch HEAD, fully merged, unpushed).
-- Slices merged into it (issue numbers) — the work is intact, only the PR step was skipped.
-- Receipt state at decline: `none` / `partial (--no-generate)` / `stale (verified-sha <sha> ≠ tip <sha>)`.
-- Suggested next action: run `/verify-coverage <parent>` against the PRD branch (it commits its quarantined tests onto this same branch), then `git push -u origin <prd-branch>` and open the PR by hand — or re-run `/tdd-parallel <parent>`, which finds every slice already merged and stops again at the now-satisfiable gate.
+- Integration tip sha (the PRD branch HEAD; original slices + any gap fixes from prior rounds are merged).
+- Coverage round in which verify-coverage halted (1-indexed).
+- Verify-coverage's terminal output verbatim (or summary if long): the halt reason, the matrix counts up to that point, and any partial receipt path.
+- Suggested next action: run `/verify-coverage <parent>` manually against the PRD branch to inspect the failure outside the orchestrator; fix the root cause (commonly: a story whose `observable:` line is too vague to generate a non-vacuous test against, a Tier B mutation that can't be reverted cleanly because the working tree was dirty, or a tracker-side failure to file the gap issue), then re-run `/tdd-parallel <parent>` — it picks up where it left off (slices already merged, gap issues already filed from prior rounds).
+
+**Coverage circuit-breaker halt (4b):**
+
+- Integration tip sha (PRD branch HEAD; everything merged).
+- Which breaker fired: `coverage-rounds-exhausted` / `coverage-per-story-exhausted` / `coverage-no-progress` / `coverage-mode mismatch` / `coverage-tree drift`.
+- Round counter and `--max-coverage-rounds` cap.
+- Per-round gap set (by story numbers): round 1 → {…}, round 2 → {…}, …
+- For `coverage-per-story-exhausted`: the offending story number, its `observable:` line verbatim, and the paths of both rounds' quarantined tests (so the user can compare what Tier B generated each time).
+- Filed gap issue numbers (still open, awaiting human disposition).
+- Suggested next action depends on the breaker:
+  - `coverage-rounds-exhausted` or `coverage-no-progress`: read the residual matrix in the latest `## Coverage receipt — verify-coverage` comment, fix by hand, then either push manually or re-invoke with a higher `--max-coverage-rounds`.
+  - `coverage-per-story-exhausted`: usually the story's `observable:` is misspecified — edit the PRD's story to pin a better observable, then re-invoke. Alternatively close the bogus gap issues and re-invoke.
+  - `coverage-mode mismatch` / `coverage-tree drift`: bug — open an issue with the receipt and orchestrator logs; do not just retry.
 
 ## Cleanup
 
@@ -401,6 +461,7 @@ Pre-flight 1b sweeps these on the next `/tdd-parallel` run, so manual cleanup is
 
 ## Constraints
 
-- **Orchestrator session must stay open** through the entire run. Closing it before step 4 abandons in-flight sub-agents and leaves the PRD branch with whatever was merged.
+- **Orchestrator session must stay open** through the entire run, including all coverage-loop rounds. Closing it mid-loop abandons in-flight sub-agents and leaves the PRD branch with whatever was merged plus any gaps that hadn't been re-fanouted yet.
 - **The user's checkout is the integration surface.** During the run, the orchestrator's main checkout sits on the PRD branch with merges accumulating on it. On halt, the user inspects/resolves in place.
 - **PR-style repos only.** Direct-push repos that want parallel fanout should run `/tdd-parallel` after switching their `ship-style.md` to PR-style for the duration, or run individual `/tdd` sessions in parallel by hand.
+- **Full-auto in the happy path.** Pre-flight 1d is the last human gate. From there to PR-push, the only human surface is a halt's RCA. Circuit breakers (4b) ensure the loop terminates even when verify-coverage makes wrong calls — pick the right `--max-coverage-rounds` for your appetite (default 3; lower for tight quality bars, higher for forgiving Tier B environments).

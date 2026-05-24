@@ -25,7 +25,7 @@ flowchart LR
     This page is the walkthrough with slash-command examples. For the
     conceptual map — what each phase produces, what flows between them,
     the cross-cutting band — read [The loop](concepts/the-loop.md) in
-    the Concepts section.
+    the "How it fits together" section.
 
 ## Loop skills vs cross-cutting helpers
 
@@ -54,9 +54,10 @@ flowchart TB
     subgraph offloop["✋ Off-loop"]
         direction LR
         o1["prototype<br/><i>throwaway exploration</i>"]
-        o2["timesheet<br/><i>standup notes</i>"]
-        o3["caveman<br/><i>compressed mode</i>"]
-        o4["write-a-skill<br/><i>meta</i>"]
+        o2["handoff<br/><i>session compaction</i>"]
+        o3["timesheet<br/><i>standup notes</i>"]
+        o4["caveman<br/><i>compressed mode</i>"]
+        o5["write-a-skill<br/><i>meta</i>"]
     end
     cross -.-> loop
 ```
@@ -85,10 +86,10 @@ flowchart TB
 ## Build
 
 [`/zsl:tdd-parallel`](tdd-parallel.md) `<PRD>`
-:   Fan out the unblocked **`[AFK]`** `ready-for-agent` children into parallel `/tdd` sub-agents in worktrees. Sub-agents commit but do **not** push (`/tdd --no-ship`). The orchestrator merges every slice branch onto the PRD branch in wave order with `--no-ff`, runs an integration `/zsl:code-review --auto` against the merged tip (step 4a, catching cross-slice issues per-slice reviews can't see), then — gated on a valid `/zsl:verify-coverage` receipt for the integrated tip (step 4b; see **Verify** below) — opens **one consolidated integration PR** (step 4c). Halts with a structured RCA on agent failure, merge conflict, zero-progress cycles, an integration review failure, or a declined coverage gate. PR-style repos only; `[HITL]`, container, and blocked items are skipped.
+:   Full-auto pipeline from a PRD to a pushed integration PR. Fans out the unblocked **`[AFK]`** `ready-for-agent` children into parallel `/tdd` sub-agents in worktrees; sub-agents commit but do **not** push (`/tdd --no-ship`). The orchestrator merges every slice branch onto the PRD branch in wave order with `--no-ff`, runs an integration `/zsl:code-review --auto` against the merged tip (step 4a), then auto-chains `/zsl:verify-coverage --auto` (step 4b). If verify-coverage finds gaps, they're filed as `ready-for-agent` sub-issues and re-fanouted in the next round — the loop iterates until `gap=0` or a circuit breaker fires (`--max-coverage-rounds`, default 3). On clean coverage, step 4c delegates the defensive commit pass to `/zsl:commit` then pushes and opens **one consolidated integration PR**. Pre-flight (1d) refuses up front if any `[HITL]` is open or any user story isn't `acceptance: automatable` — both gates exist to keep the post-invocation pipeline fully autonomous. PR-style repos only.
 
 [`/zsl:human-itl`](skills/human-itl.md) `<PRD>`
-:   Clear the `[HITL]` slices `/tdd-parallel` skipped — the manual actions a coding agent can't perform (console clicks, credential rotation, sign-off). Records each as an audit-trail comment, marks them done so the dependent `[AFK]` slices unblock, then hands back; re-run `/zsl:tdd-parallel` after. Hard-refuses slices that are really decisions in disguise — those belong upstream in `/zsl:grill-with-docs` + an ADR.
+:   Clear the `[HITL]` slices a PRD carries — the manual actions a coding agent can't perform (console clicks, credential rotation, sign-off). Records each as an audit-trail comment, marks them done so `/zsl:tdd-parallel`'s pre-flight stops refusing. Hard-refuses slices that are really decisions in disguise — those belong upstream in `/zsl:grill-with-docs` + an ADR. Run **before** `/zsl:tdd-parallel`, not interleaved with it.
 
 [`/zsl:tdd`](skills/tdd.md) `<child>`
 :   Single-issue red-green-refactor. Refuses if you point it at a container. **On local-markdown trackers, you can also run `/zsl:tdd` with no argument** — it scans `.scratch/`, resolves each open issue's `## Blocked by` against the `issues/done/` archive, and lets you pick from the unblocked ones. The picker also surfaces "features fully archived but not closed" so you can run the feature-level close before grabbing more work.
@@ -96,7 +97,22 @@ flowchart TB
 ## Verify
 
 [`/zsl:verify-coverage`](skills/verify-coverage.md) `<PRD>`
-:   After the fanout integrates, check every PRD `## User Stories` entry against the *implemented code via tests*, not prose. Tier A maps each story to an existing passing behavioral test; Tier B generates one for the rest, proves it non-vacuous by mutation, and runs it; visual/UX/external stories go to a human-attestation lane (HITL). Quarantines failing tests, auto-files genuine gaps as `needs-triage` sub-issues of the PRD, and writes a coverage receipt against the verified sha. `/zsl:tdd-parallel` **enforces** this at step 4b: it refuses to open the integration PR until a valid receipt for the integrated tip exists. It's an *execution* gate (did the check run?), not an *outcome* gate — open gaps still pass; only skipping the check is blocked. The matrix outcome itself stays a review surface, never an auto-gate.
+:   Check every PRD `## User Stories` entry against the *implemented code via tests*, not prose. Tier A maps each story to an existing passing behavioral test; Tier B generates one for the rest, proves it non-vacuous by mutation, and runs it. Quarantines failing tests, auto-files genuine gaps as sub-issues of the PRD, and writes a coverage receipt against the verified sha. Almost always chained automatically by `/zsl:tdd-parallel` step 4b in `--auto` mode (where gaps are filed as `ready-for-agent` directly and the orchestrator loops on them); direct user invocation is for auditing PRDs whose slices shipped via a different path. There is no longer a human-attestation HITL lane — non-automatable stories are refused at `/zsl:to-prd` time (every story must carry `acceptance: automatable` + `observable: <description>` tags) so visual/UX/external work is split into a separate PRD that doesn't go through `/zsl:tdd-parallel`.
+
+Per-story routing:
+
+```mermaid
+flowchart TB
+    story["one PRD user story<br/>(carries acceptance: automatable<br/>+ observable: tags)"] --> q{"covered by a passing<br/>behavioral test today?"}
+    q -->|"yes"| ta["**Tier A**<br/>map story → existing test"]:::good
+    q -->|"no"| tb["**Tier B**<br/>generate test from observable:<br/>· mutation-prove it goes RED<br/>· run it"]:::ok
+    tb -->|"passes"| tba["covered<br/>(test added to suite)"]:::good
+    tb -->|"fails"| gap["**Gap**<br/>auto-filed as ready-for-agent<br/>sub-issue · tdd-parallel loops"]:::bad
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef ok fill:#fef3c7,stroke:#d97706;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+```
 
 ## Ship
 
@@ -104,7 +120,7 @@ Each `/zsl:tdd` reads `docs/agents/ship-style.md`. PR-style opens a PR per slice
 
 [`/zsl:commit`](skills/commit.md) for clean, attribution-free commits — fully autonomous for session changes (no per-commit approval prompt); confirms only "other-origin" dirty files before including.
 
-[`/zsl:code-review`](skills/code-review.md) runs automatically as `/zsl:tdd` step 5 (interactive mode with an approval gate) or in `--auto` mode under `/zsl:tdd --no-ship` and `/zsl:tdd-parallel` step 4a. You can also invoke it standalone before opening a PR — same scan, same scoring.
+[`/zsl:code-review`](skills/code-review.md) fires a six-lens parallel scan (clean-code, CLAUDE.md compliance, git history, prior PR comments, inline comments, and spec alignment against the originating PRD), confidence-scores 0–100, and drops findings below 60. It runs automatically as `/zsl:tdd` step 5 (interactive mode with an approval gate) or in `--auto` mode under `/zsl:tdd --no-ship` and `/zsl:tdd-parallel` step 4a. You can also invoke it standalone before opening a PR — same scan, same scoring. See [the code-review deep-dive](code-review.md) for the lens layout and confidence model.
 
 ## Cleanup
 
@@ -186,8 +202,9 @@ For the full per-skill descriptions and decision tree, see the
 | Verify | [verify-coverage](skills/verify-coverage.md) | PRD-story coverage via tests; gates the fanout's integration PR |
 | Ship | [git-branch](skills/git-branch.md) | Branch with the prefix convention |
 | Ship | [commit](skills/commit.md) | Explicit-file-list commits, autonomous for session changes |
-| Ship | [code-review](skills/code-review.md) | Multi-lens scan with confidence scoring; interactive approval gate or `--auto` |
+| Ship | [code-review](skills/code-review.md) | Six-lens parallel scan (clean-code / CLAUDE.md compliance / git history / prior PR comments / inline comments / spec alignment), 0–100 confidence scoring (drops <60); interactive approval gate or `--auto` |
 | Cross-cut | [improve-codebase-architecture](skills/improve-codebase-architecture.md) | Find deepening opportunities |
 | Cross-cut | [zoom-out](skills/zoom-out.md) | Broader context on unfamiliar code |
 | Off-loop | [prototype](skills/prototype.md) | Throwaway exploration |
+| Off-loop | [handoff](skills/handoff.md) | Compact the current session into a tmp-dir handoff doc for the next agent |
 | Off-loop | [timesheet](skills/timesheet.md), [caveman](skills/caveman.md), [write-a-skill](skills/write-a-skill.md) | Productivity helpers |

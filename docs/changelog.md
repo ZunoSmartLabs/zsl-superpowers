@@ -4,6 +4,173 @@ For the full commit history, see
 [github.com/ZunoSmartLabs/zsl-superpowers/commits/main](https://github.com/ZunoSmartLabs/zsl-superpowers/commits/main).
 This page summarises the user-facing changes per plugin version.
 
+## 0.10.0
+
+The headline change is a **full-auto PRD pipeline**:
+[`/zsl:tdd-parallel`](skills/tdd-parallel.md) now runs from invocation
+to a pushed integration PR with no human gates in the happy path —
+including auto-chaining `/zsl:verify-coverage` and auto-fixing any
+gaps it finds. The supporting design moves all human-judgement gates
+*upstream* of `/zsl:tdd-parallel` so the auto-loop has a well-formed
+input contract to operate against. Also: a new
+[`/zsl:commit-push-pr`](skills/commit-push-pr.md) one-shot ship skill,
+a new [code-review deep-dive](code-review.md), Mermaid diagrams across
+several existing skills, and a docs nav reorg around the lifecycle
+phases.
+
+### Full-auto pipeline (the big change)
+
+- **[`/zsl:tdd-parallel`](skills/tdd-parallel.md) auto-chains
+  `/zsl:verify-coverage --auto`** at step 4b (instead of halting and
+  asking you to run it). If verify-coverage files any gap issues, they
+  land as `ready-for-agent` directly and the orchestrator re-enters
+  fanout to fix them — the loop iterates until `gap=0` or a circuit
+  breaker fires. Three circuit breakers cap the loop:
+  `--max-coverage-rounds` (default 3) caps total iterations;
+  per-story retry limit (2) catches the same story bouncing back as a
+  gap; a no-progress check catches round-to-round stagnation. On all
+  three breakers the orchestrator halts with a structured RCA — read
+  the residual matrix in the latest coverage receipt and decide
+  whether to fix by hand.
+- **New pre-flight 1d in `/zsl:tdd-parallel`.** Refuses to start if
+  the parent PRD has any user story missing tags (or tagged anything
+  other than `automatable`), or any open `[HITL]` sub-issue. Both
+  gates ensure the auto-loop has no human-judgement work to bump into
+  mid-run — clear `[HITL]` via [`/zsl:human-itl`](skills/human-itl.md)
+  first; fix tag issues via `/zsl:to-prd` or a hand-edit.
+- **Step 4c delegates the defensive commit to
+  [`/zsl:commit`](skills/commit.md)** then inlines push + structured
+  PR (preserving the wave-ordered `## Slices integrated` and `Closes
+  #N` template) + project-board bulk-move. The PR body grows an
+  `## Auto-fixed coverage gaps` section when the loop ran multiple
+  rounds.
+- **`/zsl:to-prd` now refuses non-automatable user stories.** Every
+  story must carry `acceptance: automatable` and `observable:
+  <description>` sub-bullets — the `observable:` line is the contract
+  Tier B generates a test against. Visual/UX/external-system stories
+  cannot be expressed as a public-interface assertion and so are
+  refused: reframe (e.g. "feels welcoming" → "first-render Lighthouse
+  score ≥ 90"), split into a separate PRD that goes through a manual
+  path, or drop.
+- **`/zsl:to-issues` propagates parent PRD tags into each slice
+  body verbatim.** Each slice's `## User stories covered` section
+  carries the parent story's `acceptance:` / `observable:` lines, so
+  agents and `/zsl:verify-coverage` Tier B see the testable contract
+  without re-fetching the PRD.
+- **`/zsl:triage` validates PRD tags before advancing to
+  `ready-for-agent`.** Triaging a PRD or any of its children checks
+  every story for `acceptance: automatable` + `observable:` and
+  refuses on missing/invalid tags with the offending story numbers.
+- **`/zsl:verify-coverage` simplified and orchestrator-friendly:**
+    - **HITL human-attestation lane removed.** With `/zsl:to-prd`
+      refusing non-automatable stories upstream, there are no manual
+      stories to route. The whole `manual-attestation` value has been
+      eliminated from the design.
+    - **`--auto` flag added.** Skips the matrix-confirmation user
+      prompt and files gap issues as `ready-for-agent` (instead of
+      `needs-triage`) so the orchestrator can fanout the remediation
+      directly. The human review surface moves to `/zsl:triage` (for
+      false-positive gaps, no different from any other triage-able
+      item).
+    - **Classification step removed at runtime.** Reads
+      `acceptance:` tags written by `/zsl:to-prd` instead of
+      LLM-judging AFK-testable vs HITL-verifiable per run.
+    - **`disable-model-invocation: true` removed.** The skill is now
+      chainable by orchestrators (specifically `/zsl:tdd-parallel`
+      step 4b). Direct user invocation is still supported for
+      auditing PRDs that shipped via a different path.
+    - **Receipt format** adds an `invocation: auto | manual` field
+      for audit clarity ("when did this story start failing?").
+
+### New skill
+
+- **[`/zsl:commit-push-pr`](skills/commit-push-pr.md).** One-shot
+  ship for a feature branch: pre-flight refuses on the default
+  branch, delegates the commit to [`/zsl:commit`](skills/commit.md),
+  then `git push -u origin`, then `gh pr create`. Same safety rails
+  as the underlying skills — explicit file lists, no Claude
+  attribution, no `--force`, no `--no-verify`. Handles the
+  existing-PR / auto-PR-workflow fallback. Use when you want to wrap
+  up an interactive session in one keystroke; `/zsl:tdd-parallel`
+  inlines its own push + PR step rather than calling this (it needs
+  the structured integration-PR template that the general-purpose
+  skill doesn't produce).
+
+### New documentation
+
+- **[Code review deep-dive](code-review.md).** Design rationale for
+  `/zsl:code-review`'s six-lens parallel scan (clean-code, CLAUDE.md
+  compliance, git history, prior PR comments, inline comments, spec
+  alignment) and 0–100 confidence model. Joins
+  [tdd-parallel.md](tdd-parallel.md) as the second top-level deep-dive.
+- **mkdocs nav reorganized around lifecycle phases.** "How it fits
+  together" (overview / workflow / phases / state machine / branching)
+  → "Deep dives" (tdd-parallel, code-review) → "Skills" grouped by
+  Plan / Break down / Build / Verify / Ship / Cross-cutting / Off-loop
+  rather than the old engineering/productivity/misc buckets. Easier to
+  find a skill by *when* you use it.
+
+### Visual polish
+
+Mermaid diagrams added to five existing SKILL.md files for
+behavioural flows that read better as pictures than prose:
+
+- **[`/zsl:commit`](skills/commit.md)** — session-vs-other-origin
+  classification flow with the safety-rail kill list.
+- **[`/zsl:improve-codebase-architecture`](skills/improve-codebase-architecture.md)** —
+  decision flow for when to render the HTML report vs stay
+  conversational.
+- **[`/zsl:tdd`](skills/tdd.md)** — step graph for the red-green-refactor
+  cycle with the review/ship branches.
+- **[`/zsl:grill-me`](skills/grill-me.md)** — node status lifecycle
+  (`unresolved → grilling → resolved`) within the design tree.
+- **[`/zsl:handoff`](skills/handoff.md)** — end-to-end flow from
+  current session through redaction to next session.
+
+Plus a **setup config-fanout diagram** in `setup.md` showing which
+config files each skill consumes, and small docs touch-ups: an
+`/zsl:handoff` vs `/clear` FAQ entry, a `/zsl:handoff` row in the
+quick-lookup table on the docs home, and a local-markdown closure
+note in the branching pattern docs.
+
+### Upgrading from 0.9
+
+A few breaking-ish points worth checking before you re-invoke
+`/zsl:tdd-parallel`:
+
+- **PRDs need `acceptance:` + `observable:` tags on every user
+  story.** PRDs written under 0.9 don't carry these. Re-run
+  `/zsl:to-prd` on the originating conversation, or hand-edit the
+  PRD body to add the sub-bullets per `/zsl:to-prd`'s template.
+  `/zsl:triage` refuses to advance children of an untagged PRD to
+  `ready-for-agent`, and `/zsl:tdd-parallel` refuses to start
+  against one.
+- **Non-automatable stories must be split out.** The HITL
+  human-attestation lane in `/zsl:verify-coverage` is gone, and
+  `/zsl:to-prd` refuses to write a story it can't reduce to a
+  public-interface assertion. Visual/UX/external-system work needs
+  its own PRD that goes through a manual path (not this pipeline).
+  Reframing is usually possible — e.g. "looks welcoming" → "Lighthouse
+  first-render score ≥ 90" — and what's left over is a smaller, more
+  focused manual scope.
+- **Clear all `[HITL]` slices *before* `/zsl:tdd-parallel`.** Prior
+  versions silently skipped them and you re-ran the fanout after
+  `/zsl:human-itl`. 0.10 hard-refuses on any open `[HITL]` at
+  pre-flight — the rule simplifies the auto-loop's invariants ("no
+  human-judgement work mid-run") but means you can no longer
+  interleave the two skills mid-flight.
+- **`/zsl:verify-coverage`'s `disable-model-invocation` is gone.**
+  This was a guard against orchestrator self-rubber-stamping; the
+  new design moves that concern to the circuit breakers in
+  `/zsl:tdd-parallel` 4b instead. If you had any local automation
+  that depended on the skill being un-chainable, that assumption no
+  longer holds.
+- **Direct `/zsl:verify-coverage` invocation still works** for
+  auditing PRDs whose slices shipped via another path. It defaults to
+  the interactive mode (matrix confirmation, files gaps as
+  `needs-triage`). Use `--auto` only when chaining from an
+  orchestrator.
+
 ## 0.9.0
 
 A focused release that ports three high-leverage additions from
@@ -40,7 +207,7 @@ No breaking changes.
 - **`/zsl:improve-codebase-architecture` gains an HTML report
   output.** Architectural review's value is in the *seeing* —
   markdown bullets undersell deepening opportunities. The new
-  [`HTML-REPORT.md`](skills/improve-codebase-architecture.md) scaffold
+  [`HTML-REPORT.md`](https://github.com/ZunoSmartLabs/zsl-superpowers/blob/main/skills/engineering/improve-codebase-architecture/HTML-REPORT.md) scaffold
   renders candidates as a single self-contained HTML file in the OS
   temp dir, mixing Mermaid graphs (dependencies, call flow,
   sequences) with hand-built SVG diagrams (mass diagrams,

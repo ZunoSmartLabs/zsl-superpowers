@@ -63,6 +63,14 @@ Show counts and a one-line summary per issue. Let the maintainer pick.
 
 1. **Gather context.** Read the full issue (body, comments, labels, reporter, dates). Parse any prior triage notes so you don't re-ask resolved questions. Explore the codebase using the project's domain glossary, respecting ADRs in the area. Read `.out-of-scope/*.md` and surface any prior rejection that resembles this issue.
 
+   **PRD tag check.** If the issue is a PRD (has a `## User Stories` section) OR is a child of one (resolve the parent via `## Parent` link or sub-issue relationship), validate the parent PRD's user-story tags before moving the issue to `ready-for-agent`:
+
+   - Every story must have an `acceptance: automatable` sub-bullet AND an `observable: <description>` sub-bullet.
+   - Any story tagged `acceptance: manual-attestation` (or any value other than `automatable`) is invalid — that lane has been removed from this pipeline.
+   - Any story missing either sub-bullet is invalid.
+
+   On failure, refuse to advance to `ready-for-agent` and tell the maintainer which stories are missing or mis-tagged. Recommended fix: edit the PRD directly to add the sub-bullets per `/to-prd`'s format. For legacy PRDs (written before tags were required), the maintainer can re-run `/to-prd` on the existing conversation or hand-edit. `needs-info`, `ready-for-human`, `wontfix`, and `tracking` transitions are still allowed on untagged PRDs — only the agent-handoff path requires tags, because `/tdd-parallel` will refuse on them.
+
 2. **Recommend.** Tell the maintainer your category and state recommendation with reasoning, plus a brief codebase summary relevant to the issue. Wait for direction.
 
 3. **Reproduce (bugs only).** Before any grilling, attempt reproduction: read the reporter's steps, trace the relevant code, run tests or commands. Report what happened — successful repro with code path, failed repro, or insufficient detail (a strong `needs-info` signal). A confirmed repro makes a much stronger agent brief.

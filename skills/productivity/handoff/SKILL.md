@@ -8,6 +8,23 @@ argument-hint: "What will the next session focus on?"
 
 Write a handoff document summarising the current conversation so a fresh agent can continue the work without re-deriving context from scratch.
 
+```mermaid
+flowchart LR
+    cur["Current session<br/>(conversation context)"] --> scan["Scan for secrets<br/>· API keys / JWTs<br/>· hostnames / .env vars"]
+    scan --> compact["Write handoff.md<br/>· state at handoff<br/>· open decisions<br/>· don't redo<br/>· pointers (path:line)"]
+    compact --> tmp[("$TMPDIR / %TEMP%<br/>zsl-handoff-YYYYMMDD-slug.md")]
+    tmp --> next["Next session<br/>cat &lt;path&gt; or paste"]
+    next --> sug["Suggested skills<br/>/zsl:tdd · /zsl:triage · …"]
+    sug -.->|"resume in the loop"| loop["the engineering loop"]
+
+    classDef step fill:#e0e7ff,stroke:#3f51b5;
+    classDef artifact fill:#dcfce7,stroke:#16a34a;
+    classDef external fill:#fef3c7,stroke:#d97706;
+    class cur,scan,compact,next,sug step
+    class tmp artifact
+    class loop external
+```
+
 ## Where to save
 
 The OS temp directory — **not** the current workspace. The handoff is ephemeral session metadata, not a project artifact.

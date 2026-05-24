@@ -17,7 +17,14 @@ A deep module (as opposed to a shallow module) is one which encapsulates a lot o
 
 Check with the user that these modules match their expectations. Check with the user which modules they want tests written for.
 
-3. Write the PRD using the template below, then publish it to the project issue tracker. Apply both the `ready-for-agent` triage label (no additional triage needed — you just wrote it) and the `backlog` label (so it shows up on the project board).
+3. **Draft user stories as automatable specs.** Each story must be expressible as a public-interface assertion — an API result, a state transition, a rendered value, an emitted event. For each story, write:
+   - The `As an <actor>, I want <feature>, so that <benefit>` line.
+   - An `acceptance: automatable` sub-bullet asserting it can be pinned by a test.
+   - An `observable: <one-line description>` sub-bullet stating *what public-interface behaviour* a test would assert (e.g. "POST /login with valid creds returns 200 + sets `session` cookie; with invalid creds returns 401"). This line feeds `/verify-coverage`'s Tier B test generation later, so be concrete: name the endpoint/state/event, not the implementation.
+
+   **Refuse to draft a non-automatable story.** Visual/UX stories ("feels welcoming", "looks polished"), pure human-judgement stories ("legal signs off", "design reviews"), and real-external-system stories ("DNS propagates globally") cannot be pinned by an assertion. If the user wants one, push back: either reframe it as an automatable observable (e.g. "feels welcoming" → "first-render Lighthouse score ≥ 90"), split it into a separate PRD that goes through a manual path (not `/tdd-parallel`), or drop it. Do not write `acceptance: manual-attestation` — that lane has been removed from this pipeline. A PRD that mixes automatable and non-automatable stories will be refused by `/tdd-parallel`'s pre-flight.
+
+4. Write the PRD using the template below, then publish it to the project issue tracker. Apply both the `ready-for-agent` triage label (no additional triage needed — you just wrote it) and the `backlog` label (so it shows up on the project board).
 
 <prd-template>
 
@@ -31,15 +38,22 @@ The solution to the problem, from the user's perspective.
 
 ## User Stories
 
-A LONG, numbered list of user stories. Each user story should be in the format of:
+A LONG, numbered list of user stories. Each user story carries two tags
+that `/tdd-parallel` and `/verify-coverage` consume:
 
-1. As an <actor>, I want a <feature>, so that <benefit>
+```
+1. As an <actor>, I want a <feature>, so that <benefit>.
+   - acceptance: automatable
+   - observable: <what public-interface behaviour a test would assert>
+```
 
 <user-story-example>
-1. As a mobile bank customer, I want to see balance on my accounts, so that I can make better informed decisions about my spending
+1. As a mobile bank customer, I want to see balances on my accounts, so that I can make better informed decisions about my spending.
+   - acceptance: automatable
+   - observable: GET /accounts returns 200 with a JSON list whose every element has a numeric `balance` field; the home-screen account card renders that value formatted as currency.
 </user-story-example>
 
-This list of user stories should be extremely extensive and cover all aspects of the feature.
+This list of user stories should be extremely extensive and cover all aspects of the feature. **Every** story must have both sub-bullets; a story without them blocks `/tdd-parallel`. The `observable:` line is the contract Tier B will generate a test against — be specific.
 
 ## Implementation Decisions
 

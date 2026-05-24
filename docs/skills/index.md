@@ -90,13 +90,13 @@ matters for picking a skill.
 |---|---|
 | [grill-with-docs](grill-with-docs.md) | Interview-driven planning. Sharpens terminology against `CONTEXT.md` and ADRs inline — the highest-leverage skill in the plugin. |
 | [grill-me](grill-me.md) | Interview-only variant (no doc updates). Use for non-code planning. |
-| [to-prd](to-prd.md) | Synthesise the current conversation into a PRD on the tracker. No interview — just packaging. |
+| [to-prd](to-prd.md) | Synthesise the current conversation into a PRD on the tracker. No interview — just packaging. Refuses non-automatable user stories; every story carries `acceptance: automatable` + `observable: <description>` sub-bullets. |
 
 ### Break down
 
 | Skill | What it does |
 |---|---|
-| [to-issues](to-issues.md) | Break the PRD into vertical-slice sub-issues with `[AFK\|HITL] <wave><letter>` titles and `Blocked by` graphs. Auto-relabels the parent to `tracking`. |
+| [to-issues](to-issues.md) | Break the PRD into vertical-slice sub-issues with `[AFK\|HITL] <wave><letter>` titles and `Blocked by` graphs. Propagates parent PRD `acceptance:` / `observable:` tags into each slice body. Auto-relabels the parent to `tracking`. |
 | [triage](triage.md) | Walk each child through the [state machine](../concepts/state-machine.md). Entry point for inbound issues too. |
 
 ### Build
@@ -104,15 +104,15 @@ matters for picking a skill.
 | Skill | What it does |
 |---|---|
 | [tdd](tdd.md) | Single-issue red-green-refactor on whatever branch you hand it. |
-| [tdd-parallel](tdd-parallel.md) | Fan unblocked `[AFK]` slices into worktrees, merge in wave order, open *one* integration PR. See the [deep-dive](../tdd-parallel.md). |
-| [human-itl](human-itl.md) | Clear the `[HITL]` slices `/tdd-parallel` skipped — manual actions an agent can't perform — then hand back to the fanout. Hard-refuses disguised-decision slices. |
+| [tdd-parallel](tdd-parallel.md) | Full-auto PRD pipeline: fanout `[AFK]` slices, integrate, auto-chain `/verify-coverage --auto`, auto-fix gaps via re-fanout loop (capped by `--max-coverage-rounds`), open one integration PR. Refuses up front on open `[HITL]` or non-automatable stories. See the [deep-dive](../tdd-parallel.md). |
+| [human-itl](human-itl.md) | Clear the `[HITL]` slices of a PRD — manual actions an agent can't perform — **before** running `/tdd-parallel` (which refuses with any `[HITL]` open). Hard-refuses disguised-decision slices. |
 | [diagnose](diagnose.md) | Reproduce → minimise → hypothesise → instrument → fix → regression-test. The bug-hunting loop. |
 
 ### Verify
 
 | Skill | What it does |
 |---|---|
-| [verify-coverage](verify-coverage.md) | After a fanout, prove every PRD user story is covered by a passing, non-vacuous behavioral test (Tier A maps to existing tests; Tier B generates + mutation-proves one); HITL lane for non-automatable stories; auto-files genuine gaps as `needs-triage` sub-issues; writes a receipt `/tdd-parallel` step 4b requires before opening the PR. Execution gate (did the check run?), not an outcome gate — the matrix itself stays advisory. |
+| [verify-coverage](verify-coverage.md) | Prove every PRD user story is covered by a passing, non-vacuous behavioral test (Tier A maps to existing tests; Tier B generates one from the story's `observable:` tag and mutation-proves it). Auto-files gaps as sub-issues (`ready-for-agent` in `--auto` mode, `needs-triage` otherwise) and writes a receipt. Almost always chained by `/tdd-parallel` step 4b in `--auto` mode (where the orchestrator's auto-fix loop iterates on filed gaps); direct invocation is for auditing PRDs whose slices shipped elsewhere. |
 
 ### Ship
 
@@ -120,13 +120,14 @@ matters for picking a skill.
 |---|---|
 | [git-branch](git-branch.md) | Create a branch with the `feature/` / `fix/` / `chore/` prefix convention. Run this before `/zsl:tdd` when you don't already have a branch. |
 | [commit](commit.md) | Explicit-file-list commits, fully autonomous for session changes (no per-commit approval prompt). Confirms only the "other-origin" bucket — files dirty before this session — before including. No `git add -A`, no Claude attribution. |
-| [code-review](code-review.md) | Pre-PR review of the current branch with a parallel six-lens scan (clean-code, CLAUDE.md compliance, git history, prior PR comments, inline comments, spec alignment) and 0–100 confidence scoring (drops <60). The Spec lens fetches the originating PRD/issue and checks the diff against it. Interactive mode keeps an approval gate; `--auto` applies ≥80 findings as a single revertible commit and reports 60–79 in the return summary. Runs automatically inside `/zsl:tdd` step 5 and `/zsl:tdd-parallel` step 4a. |
+| [commit-push-pr](commit-push-pr.md) | One-shot ship for a feature branch: pre-flight refuses on the default branch, delegates the commit to [`/zsl:commit`](commit.md), then `git push -u`, then `gh pr create`. No force-push, no `--no-verify`, no Claude attribution. |
+| [code-review](code-review.md) | Pre-PR review of the current branch with a parallel six-lens scan (clean-code, CLAUDE.md compliance, git history, prior PR comments, inline comments, spec alignment) and 0–100 confidence scoring (drops <60). The Spec lens fetches the originating PRD/issue and checks the diff against it. Interactive mode keeps an approval gate; `--auto` applies ≥80 findings as a single revertible commit and reports 60–79 in the return summary. Runs automatically inside `/zsl:tdd` step 5 and `/zsl:tdd-parallel` step 4a. See the [deep-dive](../code-review.md) for the lens layout and confidence model. |
 
 ### Cross-cutting
 
 | Skill | When to reach for it |
 |---|---|
-| [improve-codebase-architecture](improve-codebase-architecture.md) | Every few days, to find deepening opportunities and fight entropy. |
+| [improve-codebase-architecture](improve-codebase-architecture.md) | Every few days, to find deepening opportunities and fight entropy. Step 4 optionally renders an HTML report mixing Mermaid graphs with hand-built SVG when candidates would land better visually than as a numbered list. |
 | [zoom-out](zoom-out.md) | When you're lost in unfamiliar code and need higher-level framing. |
 
 ### Off-loop and meta

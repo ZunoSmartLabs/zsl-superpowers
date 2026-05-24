@@ -121,6 +121,16 @@ flowchart LR
 If you don't run `setup-zsl-superpowers`, the engineering skills bail
 with a setup hint instead of guessing.
 
+### When should I use `/zsl:handoff` vs Claude Code's `/clear`?
+
+Different problems. `/clear` wipes the conversation immediately and gives you a blank slate — useful when you want to drop context and start fresh. [`/zsl:handoff`](skills/handoff.md) does the opposite: it *preserves* the substantive context (state at handoff, open decisions, suggested next skills, pointers to artifacts) into a tmp-dir markdown file so the **next session** can pick up cleanly.
+
+Rule of thumb:
+
+- **Run `/zsl:handoff` first**, then `/clear` (or close the session) — you keep the handoff file as a bridge.
+- If the next agent is a different person, `cat <handoff-path>` is faster than catching them up by hand.
+- The handoff file lives in `$TMPDIR` / `%TEMP%` and is treated as ephemeral; secrets are redacted before writing.
+
 ### How do I update?
 
 ```
@@ -240,7 +250,7 @@ flowchart LR
     class o1,oci,review good
 ```
 
-See [Concepts → Branching → Why `--no-ff` and why one PR](concepts/branching.md#why-no-ff-and-why-one-pr)
+See [Git branching → "Why `--no-ff` and why one PR"](concepts/branching.md#why-no-ff-and-why-one-pr)
 for the full rationale.
 
 ### Why TDD specifically?

@@ -65,5 +65,6 @@ flowchart TB
   skill names attached to each phase.
 - [Parallel TDD deep-dive](../tdd-parallel.md) — design rationale for
   the most distinctive skill in the plugin.
+- [Code review deep-dive](../code-review.md) — design rationale for `/zsl:code-review`'s six-lens parallel scan
 - [Skills overview](../skills/index.md) — every skill, with a "which one
   do I want?" decision tree.

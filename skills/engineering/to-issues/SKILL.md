@@ -56,7 +56,7 @@ Present the proposed breakdown as a numbered list. For each slice, show:
 - **Title**: as drafted in step 3 (with the `[TYPE] wave[letter] — description` format)
 - **Type**: HITL / AFK
 - **Blocked by**: which other slices (if any) must complete first
-- **User stories covered**: which user stories this addresses (if the source material has them). Whatever the user approves here is persisted verbatim into the issue body's `## User stories covered` section in step 5 — it is not just a quiz aid; `/verify-coverage` reads it back as its Tier A oracle.
+- **User stories covered**: which user stories this addresses (if the source material has them). Whatever the user approves here is persisted verbatim into the issue body's `## User stories covered` section in step 5 — it is not just a quiz aid; `/verify-coverage` reads it back as its Tier A oracle. **Each covered story carries its parent PRD's `acceptance:` and `observable:` sub-bullets verbatim** so the slice body is self-contained: the agent picking up the slice sees the story's testable contract without needing to re-fetch the PRD, and `/verify-coverage` Tier B has the `observable:` line as its test-generation hint at slice-resolution time.
 
 Ask the user:
 
@@ -90,14 +90,27 @@ A concise description of this vertical slice. Describe the end-to-end behavior, 
 
 ## User stories covered
 
-The PRD user story numbers this slice addresses, each with its short text
-(e.g. `7 — User can reset password via email`). This is the persisted
-form of the quiz mapping from step 4 — `/verify-coverage` consumes it as
-its Tier A story→slice map, so it must be in the body, not only spoken in
-the quiz. Write `None — enabling/infrastructure slice` for a slice that
-delivers no user-facing story on its own. Omit this whole section only
-when the source had no user stories (a freeform plan), the same way
-`## Parent` is omitted when there's no parent.
+The PRD user story numbers this slice addresses, each with its short
+text **and the parent's `acceptance:` / `observable:` sub-bullets
+carried over verbatim**. The persisted form of the quiz mapping from
+step 4 — `/verify-coverage` consumes it as its Tier A story→slice map,
+and Tier B reads the `observable:` line as the test-generation hint, so
+both must be in the body, not only spoken in the quiz.
+
+Example:
+
+```
+- 7 — User can reset password via email
+  - acceptance: automatable
+  - observable: POST /password-reset with a valid email enqueues a job
+    that sends a single email containing a one-time link; the link
+    redeems exactly once and sets a new password.
+```
+
+Write `None — enabling/infrastructure slice` for a slice that delivers
+no user-facing story on its own. Omit this whole section only when the
+source had no user stories (a freeform plan), the same way `## Parent`
+is omitted when there's no parent.
 
 ## Blocked by
 

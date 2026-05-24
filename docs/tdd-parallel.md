@@ -12,7 +12,7 @@ well.
 !!! tip "Looking for the git topology?"
     The full branching picture (PRD branch ↔ slice branches, worktree
     layout, halt semantics, and *"what if I just run `/zsl:tdd` twice?"*)
-    lives in [Concepts → Branching](concepts/branching.md). This page
+    lives in [Git branching](concepts/branching.md). This page
     focuses on the design rationale; the branching page is the
     operational reference.
 
@@ -38,9 +38,11 @@ flowchart TB
     s3 -->|"merge --no-ff"| prd
     prd --> review{{"`**4a integration review**
     /code-review --auto`"}}
-    review -->|"≥80 fixes auto-applied;<br/>60–79 deferred to PR body"| gate{{"`**4b coverage gate**
-    valid verify-coverage receipt?`"}}
-    gate -->|"valid receipt for the tip"| done["`**4c · Push & open integration PR**
+    review -->|"≥80 fixes auto-applied;<br/>60–79 deferred to PR body"| gate{{"`**4b verify-coverage --auto**
+    Tier A/B for every story`"}}
+    gate -->|"gap > 0"| refanout["`**Re-fanout gap slices**<br/>(filed as ready-for-agent)`"]
+    refanout -->|"new wave"| w1
+    gate -->|"gap = 0<br/>(within --max-coverage-rounds)"| done["`**4c · /commit + push + open integration PR**
     Closes #123, #124, #125, #126`"]
 
     classDef branch stroke:#1976d2,stroke-width:1.5px,rx:6,ry:6;
@@ -185,17 +187,19 @@ on `Done` automatically.
 
 ## What halts a run
 
-Five failure paths halt the orchestrator. All five halt the same way: print a
+Seven failure paths halt the orchestrator. All halt the same way: print a
 structured RCA, leave the state inspectable, stop. The orchestrator does **not**
 attempt resume — the user takes over from the halted state.
 
 | Halt | Trigger | Most likely cause | Where it leaves you |
 |---|---|---|---|
+| **Pre-flight refusal** | Step 1d found untagged stories, non-automatable stories, or open `[HITL]` sub-issues | PRD pre-dates the tag requirement, or `/zsl:human-itl` hasn't been run yet | No branch state to inspect — refused before any work. Fix the PRD or run `/zsl:human-itl <parent>` and re-invoke. |
 | **Agent failure** | A sub-agent errored, refused, or returned without a mergeable branch | Bad agent brief, missing access, ambiguous architectural decision | On the PRD branch; failing slice's worktree intact at `.worktrees/<num>-<slug>/` with partial commits on its branch |
 | **Unresolvable merge conflict** | Auto-resolve attempt couldn't produce a clean lint+test-passing merge | Mis-sliced wave (slices in the same wave touched the same area), or genuine cross-wave drift | **On the PRD branch, mid-merge** — no `git merge --abort`. Conflict markers in place; resolve in your main checkout. |
 | **Zero-progress** | No slices unblock and the fanout isn't complete | Circular `Blocked by`, reference outside the parent's sub-tree, or non-existent issue number | On the PRD branch with whatever has merged so far; un-attempted slices' `Blocked by` sections reveal the cycle |
 | **Integration review failure** | `/zsl:code-review --auto` (step 4a) applied ≥80 findings on the merged tip but lint or tests then failed; the review commit was reverted | Slice-level reviews missed a cross-cutting issue that the integration scan tried to fix, and the fix broke something | On the PRD branch at its pre-review state, all slices merged. RCA names the reverted commit sha so you can inspect what the review attempted with `git show <sha>`. |
-| **Coverage gate declined** | User replied `skip` to the mandatory step-4b coverage gate | Chose not to run `/zsl:verify-coverage` against the integrated tip | All slices merged onto the PRD branch but **unpushed, no PR** — push and open it by hand, or re-run the fanout and satisfy the gate |
+| **Coverage verification failure** | `/zsl:verify-coverage --auto` (step 4b) halted internally | Mutation check failed (typically dirty tree), tracker error filing a gap, or pre-flight refusal inside verify-coverage | On the PRD branch with all originally-discovered slices merged (and any gap fixes from prior rounds), but no coverage receipt for the current tip |
+| **Coverage circuit-breaker halt** | One of three breakers fired in the auto-fix loop: `coverage-rounds-exhausted` (hit `--max-coverage-rounds`), `coverage-per-story-exhausted` (same story failed twice), `coverage-no-progress` (round N+1's gap set equals round N's) | Tier B generating wrong-observable tests, or a story whose `observable:` line is too vague | All slices (original + gap fixes from all rounds) merged onto the PRD branch; latest receipt records the residual matrix; gap issues filed and quarantined tests committed. Read the receipt and decide: fix by hand, edit story observables, close bogus gaps, or re-invoke with higher cap. |
 
 The RCA includes the merge tip's last commit sha, every slice's final branch
 state, the conflict files (if any) with line ranges, and a possible
@@ -207,7 +211,7 @@ as authoritative and the interpretation as a hint.
     them (logged as *skipped — unmerged branch*). `git worktree remove`
     runs without `--force` so uncommitted changes block removal. Resume
     is the user's job. See
-    [Concepts → Branching → Halt and inspect](concepts/branching.md#halt-and-inspect-where-things-end-up-if-it-stops-mid-flight)
+    [Git branching → "Halt and inspect"](concepts/branching.md#halt-and-inspect-where-things-end-up-if-it-stops-mid-flight)
     for what each scenario looks like at the filesystem level.
 
 ## Constraints
@@ -224,7 +228,7 @@ as authoritative and the interpretation as a hint.
 
 ## See also
 
-- [Concepts → Branching](concepts/branching.md) — the operational reference for `/zsl:tdd` vs `/zsl:tdd-parallel` branching, naming, and halt semantics.
+- [Git branching](concepts/branching.md) — the operational reference for `/zsl:tdd` vs `/zsl:tdd-parallel` branching, naming, and halt semantics.
 - [`/zsl:tdd-parallel` spec](skills/tdd-parallel.md) — the full skill body.
 - [`/zsl:to-issues`](skills/to-issues.md) — the slicer that produces the wave model `tdd-parallel` consumes.
 - [`/zsl:tdd`](skills/tdd.md) — what each sub-agent actually runs.

@@ -35,7 +35,7 @@ flowchart LR
 | **Plan** | A PRD issue on the tracker (or a `.scratch/<NNN>-<feature-slug>/PRD.md`) describing what you're building and why | Break down |
 | **Break down** | A set of vertical-slice sub-issues with `[AFK\|HITL] <wave><letter>` titles and `Blocked by` graphs, each triaged to a state | Build |
 | **Build** | Slice branches with red-green-refactor commits, each closing one sub-issue | Ship |
-| **Ship** | A merged PR (or pushed commit) per slice, *or* one consolidated integration PR for an AFK fanout (gated on a `/zsl:verify-coverage` receipt for the integrated tip) | Track |
+| **Ship** | A merged PR (or pushed commit) per slice, *or* one consolidated integration PR for an AFK fanout (auto-verified by `/zsl:verify-coverage --auto` with any gaps auto-fixed via the orchestrator's re-fanout loop) | Track |
 | **Track & close** | Closed issues. The PRD parent auto-closes when its last child closes. | Next loop |
 
 ## Phase 1: Plan
@@ -120,17 +120,22 @@ red-green-refactor loop on whatever branch you're on — and now runs
 [`/zsl:code-review`](../skills/code-review.md) automatically between
 Refactor and Ship (step 5), so the author's blind spots get a second
 pass before the slice leaves the agent's hands.
-[`/zsl:tdd-parallel`](../skills/tdd-parallel.md) fans out the unblocked
-`[AFK]` slices into worktrees and consolidates everything into one
-integration PR. Before that PR opens it enforces **two gates**:
-**step 4a** runs `/zsl:code-review --auto` against the merged tip to
-catch cross-slice issues per-slice reviews can't see (duplicate helpers,
-drift, debug leftovers); **step 4b** is the **coverage gate** —
-[`/zsl:verify-coverage`](../skills/verify-coverage.md) must have run
-against the integrated tip, proving every PRD user story is covered by a
-passing test (or routed to the HITL lane). The coverage gate is an
-*execution* gate, not an *outcome* gate — open gaps still pass and ride a
-later fanout; only skipping the check is blocked.
+[`/zsl:tdd-parallel`](../skills/tdd-parallel.md) is the full-auto PRD
+pipeline. It fans out the unblocked `[AFK]` slices into worktrees,
+consolidates them onto the PRD branch, then runs two automated steps
+before opening the integration PR: **step 4a** runs `/zsl:code-review
+--auto` against the merged tip to catch cross-slice issues per-slice
+reviews can't see (duplicate helpers, drift, debug leftovers); **step
+4b** auto-chains [`/zsl:verify-coverage --auto`](../skills/verify-coverage.md),
+which proves every PRD user story has a passing non-vacuous test
+(Tier A maps to existing; Tier B generates from the story's `observable:`
+tag and mutation-proves). If verify-coverage files any gap issues, they
+land as `ready-for-agent` and the orchestrator re-enters fanout for them
+— the loop iterates until `gap=0` or a circuit breaker fires (max
+rounds, per-story retry, no-progress). Pre-flight (1d) refuses up front
+on any open `[HITL]` or non-automatable story, so once the pipeline
+starts it runs through to PR-push with no human gates in the happy
+path.
 
 [`/zsl:diagnose`](../skills/diagnose.md) sits beside both — the
 disciplined bug/perf-regression loop you use when something specific is
@@ -193,12 +198,15 @@ flowchart LR
 ```
 
 [`/zsl:code-review`](../skills/code-review.md) runs an issues-only
-pre-PR scan with a confidence-scored, multi-lens parallel agent search
-under the hood. Interactive mode keeps the approval gate (you decide
-which findings to fix); `--auto` mode (used by `/zsl:tdd --no-ship` and
-by `/zsl:tdd-parallel` at step 4a) drops the gate, auto-applies
-≥80-confidence findings as a single revertible commit, and reports
-60–79 findings in the return summary for the orchestrator to surface.
+pre-PR scan as a six-lens parallel agent search — clean-code, CLAUDE.md
+compliance, git history, prior PR comments, inline comments, and spec
+alignment against the originating PRD — with 0–100 confidence scoring
+that drops findings below 60. Interactive mode keeps the approval gate
+(you decide which findings to fix); `--auto` mode (used by
+`/zsl:tdd --no-ship` and by `/zsl:tdd-parallel` at step 4a) drops the
+gate, auto-applies ≥80-confidence findings as a single revertible
+commit, and reports 60–79 findings in the return summary for the
+orchestrator to surface.
 
 [`/zsl:commit`](../skills/commit.md) is now fully autonomous for
 session changes — invoking `/commit` *is* the approval, so it doesn't
@@ -253,9 +261,11 @@ loop:
 | [`/zsl:improve-codebase-architecture`](../skills/improve-codebase-architecture.md) | Every few days, to fight entropy. Surfaces deepening opportunities informed by `CONTEXT.md` + ADRs |
 | [`/zsl:zoom-out`](../skills/zoom-out.md) | Whenever you're lost in a section of code and need higher-level framing |
 | [`/zsl:prototype`](../skills/prototype.md) | Off-loop: throwaway exploration of a state machine or UI direction before you commit to a PRD |
+| [`/zsl:handoff`](../skills/handoff.md) | Off-loop: compact the current session into a tmp-dir handoff doc so a fresh agent can pick up cleanly. Redacts secrets, references existing artifacts by path, suggests the next session's skills |
 
 ## See also
 
 - [Workflow](../workflow.md) — the same loop with slash-command examples and the canonical phase descriptions
 - [The triage state machine](state-machine.md) — how issues move between states
 - [Git branching in the build phase](branching.md) — what the Build phase actually does to your git tree
+- [Parallel code review](../code-review.md) — the design rationale and lens layout for the multi-agent /zsl:code-review scan

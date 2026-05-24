@@ -80,6 +80,7 @@ Codex, and other coding agents:
 | I'm lost in this code | [`/zsl:zoom-out`](skills/zoom-out.md) |
 | Need to break a PRD into work | [`/zsl:to-prd`](skills/to-prd.md) → [`/zsl:to-issues`](skills/to-issues.md) → [`/zsl:triage`](skills/triage.md) |
 | Multiple slices ready to ship at once | [`/zsl:tdd-parallel`](tdd-parallel.md) — one integration PR, not N |
+| Session about to end / running out of context | [`/zsl:handoff`](skills/handoff.md) — compact the conversation into a tmp-dir doc for the next agent |
 
 ---
 
