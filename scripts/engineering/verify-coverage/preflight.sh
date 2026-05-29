@@ -90,8 +90,16 @@ if [[ "$VALIDATE_PRD" == true ]]; then
     if [[ -n "$PRD_FILE" ]]; then
       TAG_RESULT=$(python3 "$VALIDATE_PRD_SCRIPT" --file "$PRD_FILE" 2>&1)
       TAG_EXIT=$?
+    elif [[ -t 0 ]]; then
+      # stdin is a terminal — cannot read PRD body interactively
+      ERRORS+=(
+        "--validate-prd requires PRD content on stdin (pipe it) or --prd-file PATH"
+        "  Example: gh issue view <N> --json body -q .body | $0 --validate-prd"
+      )
+      TAG_EXIT=0  # already appended to ERRORS; don't double-report below
+      TAG_RESULT=""
     else
-      # Read from stdin
+      # Read from piped stdin
       PRD_TEXT=$(cat)
       TAG_RESULT=$(echo "$PRD_TEXT" | python3 "$VALIDATE_PRD_SCRIPT" 2>&1)
       TAG_EXIT=$?

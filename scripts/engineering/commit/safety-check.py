@@ -86,8 +86,13 @@ def current_branch():
 def ship_style_is_pr(ship_style_file="docs/agents/ship-style.md"):
     try:
         content = Path(ship_style_file).read_text().lower()
+        # Match the generated template ("pull request") and natural hand-written phrasings
         return bool(
-            re.search(r"pull.request|pr.style|ship.*via.*pr", content)
+            re.search(
+                r"pull.request|pr.style|ship.*via.*pr|use.*pr|requires?.*pr"
+                r"|merge.*via.*pr|\bpr.required\b|\bprs?\s+required\b",
+                content,
+            )
         )
     except FileNotFoundError:
         return False
@@ -121,9 +126,9 @@ def main():
 
     # File-level checks
     for xy, path in get_dirty_files():
-        # Skip pure deletions — nothing to inspect
+        # Skip any deletion (staged "D ", worktree " D", or both "DD") — nothing to inspect
         index_status, worktree_status = xy[0], xy[1]
-        if index_status in ("D",) and worktree_status == " ":
+        if index_status == "D" or worktree_status == "D":
             continue
 
         reason = matches_secret_pattern(path)

@@ -25,13 +25,13 @@ REPO="${2:?Error: REPO required. Usage: $0 OWNER REPO PARENT_NUM CHILD_NUM}"
 PARENT_NUM="${3:?Error: PARENT_NUM required. Usage: $0 OWNER REPO PARENT_NUM CHILD_NUM}"
 CHILD_NUM="${4:?Error: CHILD_NUM required. Usage: $0 OWNER REPO PARENT_NUM CHILD_NUM}"
 
-# Validate numeric args
-if ! [[ "$PARENT_NUM" =~ ^[0-9]+$ ]]; then
-  echo "error: PARENT_NUM must be a positive integer, got: '$PARENT_NUM'" >&2
+# Validate numeric args (must be positive integers, not zero)
+if ! [[ "$PARENT_NUM" =~ ^[1-9][0-9]*$ ]]; then
+  echo "error: PARENT_NUM must be a positive integer (> 0), got: '$PARENT_NUM'" >&2
   exit 1
 fi
-if ! [[ "$CHILD_NUM" =~ ^[0-9]+$ ]]; then
-  echo "error: CHILD_NUM must be a positive integer, got: '$CHILD_NUM'" >&2
+if ! [[ "$CHILD_NUM" =~ ^[1-9][0-9]*$ ]]; then
+  echo "error: CHILD_NUM must be a positive integer (> 0), got: '$CHILD_NUM'" >&2
   exit 1
 fi
 

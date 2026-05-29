@@ -73,7 +73,7 @@ def _parse_story_entries(section: str) -> list[tuple[int, str, list[str]]]:
     story_num = 0
 
     top_level_re = re.compile(r"^[-*]\s+\S|^\d+\.\s+\S")
-    sub_bullet_re = re.compile(r"^[ \t]{2,}[-*]\s*(.+)|^\t[-*]\s*(.+)")
+    sub_bullet_re = re.compile(r"^[ \t]{1,}[-*]\s*(.+)|^\t[-*]\s*(.+)")
 
     for line in section.splitlines():
         if top_level_re.match(line):

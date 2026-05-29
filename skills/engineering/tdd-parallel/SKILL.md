@@ -80,8 +80,9 @@ The PRD branch doubles as the integration branch — sub-task branches will be m
 - Run `git fetch origin`.
 - Refuse if the working tree is dirty (`git status --porcelain` non-empty) or HEAD is detached.
 - **If the orchestrator is on `main`**: create the PRD branch and switch to it.
-  - Branch name: `feature/<parent-num>-<slug>`. Slug is kebab-case of the parent issue title, max 40 chars.
-  - `git checkout -b feature/<parent-num>-<slug>` from `main`'s tip.
+  - Branch name: `feature/<parent-num>-<slug>`. Slug is kebab-case of the parent issue title, max 40 chars total.
+  - > **Deterministic slug:** `python scripts/engineering/git-branch/build-slug.py --prefix feature --issue-id <parent-num> '<issue title>'` — enforces ≤40-char total, consistent hyphenation and truncation. If the script is unavailable, apply the slug rules in `git-branch/SKILL.md` manually.
+  - `git checkout -b <name-from-script>` from `main`'s tip.
 - **If the orchestrator is on a non-`main` branch**: treat it as the PRD branch. Do not switch, do not auto-rebase against `main` — the user owns its relationship to `main`.
 
 After 1c the orchestrator is on the PRD branch with a clean working tree.
