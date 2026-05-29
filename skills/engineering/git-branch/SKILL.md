@@ -35,6 +35,11 @@ Branch names without one of these prefixes will NOT trigger the auto-PR workflow
      For the URL form, fetch the issue title with `gh issue view <N> --repo <org>/<repo> --json title -q .title` and use it (slugified) as the description if the user didn't also provide their own wording. For shorthand without a repo, assume the current working directory's repo.
 
 2. **Build a slug** from the description:
+
+   > **Deterministic slug builder:** Run `python scripts/engineering/git-branch/build-slug.py --prefix <prefix> [--issue-id <N>] '<description>'` and use its output as the branch name verbatim. The script enforces all slug rules (lowercase, hyphenate, collapse, trim, ≤ 40 total chars) and truncates correctly so `prefix/N-slug` fits. If the script is unavailable, apply the rules below manually.
+   >
+   > Validate an existing name with: `python scripts/engineering/git-branch/build-slug.py --validate '<name>'`
+
    - Lowercase
    - Replace spaces and non-alphanumerics with hyphens
    - Collapse repeat hyphens

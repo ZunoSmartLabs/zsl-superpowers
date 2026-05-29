@@ -65,6 +65,12 @@ Show counts and a one-line summary per issue. Let the maintainer pick.
 
    **PRD tag check.** If the issue is a PRD (has a `## User Stories` section) OR is a child of one (resolve the parent via `## Parent` link or sub-issue relationship), validate the parent PRD's user-story tags before moving the issue to `ready-for-agent`:
 
+   > **Deterministic validator:** Fetch the PRD issue body and pipe it into:
+   > ```bash
+   > gh issue view <N> --json body -q .body | python scripts/engineering/validate-prd-tags.py
+   > ```
+   > The script exits 0 (valid) or 1 (invalid), with JSON listing each invalid story and what is missing. Act on the JSON output. If the script is unavailable, apply the rules below manually.
+
    - Every story must have an `acceptance: automatable` sub-bullet AND an `observable: <description>` sub-bullet.
    - Any story tagged `acceptance: manual-attestation` (or any value other than `automatable`) is invalid — that lane has been removed from this pipeline.
    - Any story missing either sub-bullet is invalid.

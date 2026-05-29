@@ -124,7 +124,13 @@ Or "None - can start immediately" if no blockers.
 
 If a parent issue exists and the tracker supports sub-issues, link each child to the parent so the parent auto-closes when all children close.
 
-- **GitHub**: use the `addSubIssue` GraphQL mutation. Fetch parent and child node IDs first, then link (replace `OWNER`, `REPO`, `PARENT`, `CHILD`):
+- **GitHub**: run the sub-issue linker script (replace `OWNER`, `REPO`, `PARENT`, `CHILD` with the
+  actual values):
+  ```bash
+  scripts/engineering/to-issues/link-sub-issues.sh OWNER REPO PARENT CHILD
+  ```
+  The script fetches both node IDs and runs `addSubIssue`, failing loudly if either ID
+  is empty or the mutation errors. If the script is unavailable, use these raw calls:
   ```bash
   PARENT_ID=$(gh api graphql -f query='query{repository(owner:"OWNER",name:"REPO"){issue(number:PARENT){id}}}' -q .data.repository.issue.id)
   CHILD_ID=$(gh api graphql -f query='query{repository(owner:"OWNER",name:"REPO"){issue(number:CHILD){id}}}' -q .data.repository.issue.id)

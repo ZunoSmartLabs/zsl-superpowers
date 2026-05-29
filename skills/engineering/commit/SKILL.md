@@ -56,6 +56,8 @@ flowchart TB
 
 These checks fire automatically and **do not** count as "confirmation prompts" — they protect the commit, they don't ask permission:
 
+> **Deterministic gate:** Run `python scripts/engineering/commit/safety-check.py` before staging any files. If it exits 1, halt and surface its JSON `blocked` array as the "skipped for safety" list — each entry has `file` and `reason`. If the script is unavailable, apply the rules below manually.
+
 - **Refuse to stage** `.env*`, `*credentials*`, `*secret*`, `*.pem`, `*.key`, files matching any pattern in `.gitignore` that somehow got dirty, and large binaries (>10 MB). Surface them in the final report as "skipped for safety" with a one-line reason each.
 - **Pre-commit hook failure** — fix the underlying issue and create a **new** commit. Never use `--no-verify`; never `git commit --amend` after a failed hook (the previous commit may not have been created at all, so amend would modify the wrong target).
 - **Pre-existing commit on main/master** — if the current branch is `main` and the repo's ship style is PR (per `docs/agents/ship-style.md`), refuse to commit directly and surface the mistake. The user should be on a feature branch.

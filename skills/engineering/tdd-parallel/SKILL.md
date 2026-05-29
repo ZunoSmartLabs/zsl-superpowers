@@ -91,7 +91,14 @@ After 1c the orchestrator is on the PRD branch with a clean working tree.
 Fetch the parent issue and its sub-issues per `docs/agents/issue-tracker.md`. Refuse with a clear message if any of these fail:
 
 - **Parent has a `## User Stories` section** — otherwise it isn't a PRD and this skill doesn't apply.
-- **Every user story carries `acceptance: automatable` AND an `observable: <description>` sub-bullet** in the exact format `/to-prd` writes. Any story tagged anything other than `automatable` (e.g. `manual-attestation`, which has been removed from this pipeline) is invalid. Any story missing either sub-bullet is invalid. Refuse with the offending story numbers and a pointer to `/to-prd`'s tag format — typically this means the PRD pre-dates the tag requirement and needs editing, or someone added a non-automatable story by hand.
+- **Every user story carries `acceptance: automatable` AND an `observable: <description>` sub-bullet** in the exact format `/to-prd` writes. Any story tagged anything other than `automatable` (e.g. `manual-attestation`, which has been removed from this pipeline) is invalid. Any story missing either sub-bullet is invalid.
+
+  > **Deterministic validator:** Pipe the PRD issue body into the shared tag validator:
+  > ```bash
+  > gh issue view <N> --json body -q .body | python scripts/engineering/validate-prd-tags.py
+  > ```
+  > Exit 0 = all stories valid. Exit 1 = validation failed; JSON on stdout names each invalid story and what is missing. Refuse with that output. If the script is unavailable, apply the rules above manually.
+
 - **No open `[HITL]` sub-issues.** A `[HITL]` slice in the parent's sub-tree blocks the auto-loop's "no human gates after invocation" invariant. Refuse with the list of open `[HITL]` issue numbers + titles and tell the user to clear them via `/human-itl <parent>` first, then re-invoke. Closed `[HITL]` slices are fine — they're already absorbed via `satisfied_oob` in step 3a.
 
 These checks fail fast and surface the exact thing to fix. Once 1d passes, the auto-loop is committed: it will run through to PR push or a circuit-breaker halt, with no further human prompts in the happy path.

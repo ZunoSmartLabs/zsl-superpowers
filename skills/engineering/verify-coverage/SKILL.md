@@ -83,6 +83,20 @@ Flags:
 
 ## Pre-flight
 
+> **Deterministic gate:** Run the pre-flight script before proceeding. For the
+> filesystem + clean-tree checks:
+> ```bash
+> scripts/engineering/verify-coverage/preflight.sh
+> ```
+> To also validate PRD tags in one pass, pipe the PRD issue body:
+> ```bash
+> gh issue view <N> --json body -q .body \
+>   | scripts/engineering/verify-coverage/preflight.sh --validate-prd
+> ```
+> Exit 0 = all checks pass. Exit 1 = failure details on stderr. Halt and
+> surface the error message. If the script is unavailable, apply the rules
+> below manually.
+
 Refuse with a clear message if any fails:
 
 - `docs/agents/issue-tracker.md` exists (run `/setup-zsl-superpowers`
@@ -254,6 +268,14 @@ per `docs/agents/issue-tracker.md`:
 - **Link as a sub-issue of the PRD** using the same mechanism
   `/to-issues` uses, so the PRD stays the tracking container and does
   not spuriously auto-close while gaps are open:
+
+  ```bash
+  scripts/engineering/to-issues/link-sub-issues.sh OWNER REPO PARENT_NUM CHILD_NUM
+  ```
+
+  The script fetches node IDs and runs the `addSubIssue` mutation, failing loudly if
+  either ID is empty or the mutation returns errors. If the script is unavailable,
+  use these raw GraphQL calls:
 
   ```bash
   PARENT_ID=$(gh api graphql -f query='query{repository(owner:"OWNER",name:"REPO"){issue(number:PARENT){id}}}' -q .data.repository.issue.id)
