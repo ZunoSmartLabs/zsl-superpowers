@@ -1,6 +1,11 @@
-# The end-to-end loop
+# The loop
 
-The skills compose into one engineering loop. Most days you only touch a few of them. Run [`/zsl:setup-zsl-superpowers`](setup.md) once per repo before any of this; from then on it's the loop:
+The skills compose into one end-to-end engineering loop: **plan → break
+down → build → ship → track**. Most days you only touch a few of them.
+This is the canonical walkthrough — concept *and* command for every phase.
+
+Run [`/zsl:setup-zsl-superpowers`](setup.md) once per repo before any of
+this; from then on it's the loop:
 
 ```mermaid
 flowchart LR
@@ -21,18 +26,20 @@ flowchart LR
     class plan,breakdown,build,ship,track phase;
 ```
 
-!!! tip "Looking for the conceptual map?"
-    This page is the walkthrough with slash-command examples. For the
-    conceptual map — what each phase produces, what flows between them,
-    the cross-cutting band — read [The loop](concepts/the-loop.md) in
-    the "How it fits together" section.
+Each phase produces an artifact the next one consumes:
 
-## Loop skills vs cross-cutting helpers
+| Phase | Produces | Consumed by |
+|---|---|---|
+| **Plan** | A PRD issue on the tracker (or a `.scratch/<NNN>-<feature-slug>/PRD.md`) describing what you're building and why | Break down |
+| **Break down** | Vertical-slice sub-issues with `[AFK\|HITL] <wave><letter>` titles and `Blocked by` graphs, each triaged to a state | Build |
+| **Build** | Slice branches with red-green-refactor commits, each closing one sub-issue | Ship |
+| **Ship** | A merged PR (or pushed commit) per slice, *or* one consolidated integration PR for an AFK fanout | Track |
+| **Track & close** | Closed issues. The PRD parent auto-closes when its last child closes. | Next loop |
 
-Some skills sit *on* the loop arrow; others run *across* it. The lane
-diagram below shows which is which — the second lane is the band of
-skills you can reach for at any time, regardless of which phase you're
-in.
+## Loop skills vs the bands around it
+
+Some skills sit *on* the loop arrow; others run *across* it, automate it
+overnight, or sit off it entirely.
 
 ```mermaid
 flowchart TB
@@ -51,6 +58,11 @@ flowchart TB
         x3["zoom-out<br/><i>find your footing</i>"]
         x4["triage<br/><i>inbound issues</i>"]
     end
+    subgraph overnight["🌙 Overnight (remote agents)"]
+        direction LR
+        n1["afk-fanout<br/><i>evening: schedule</i>"] --> n2["afk-worker<br/><i>overnight: run per-PRD</i>"]
+        n2 --> n3["morning-review<br/><i>morning: reconcile + merge</i>"]
+    end
     subgraph offloop["✋ Off-loop"]
         direction LR
         o1["prototype<br/><i>throwaway exploration</i>"]
@@ -60,6 +72,7 @@ flowchart TB
         o5["write-a-skill<br/><i>meta</i>"]
     end
     cross -.-> loop
+    overnight -.->|"runs the Build→Ship→Track<br/>stretch unattended"| loop
 ```
 
 ## One-time setup
@@ -69,37 +82,117 @@ flowchart TB
 
 ## Plan
 
+```mermaid
+flowchart LR
+    chat(["conversation<br/>with Claude"]) --> grill{{"/zsl:grill-me<br/>or<br/>/zsl:grill-with-docs"}}
+    grill -->|"shared language updated<br/>in CONTEXT.md + ADRs"| docs[("CONTEXT.md<br/>docs/adr/")]
+    grill --> prd{{"/zsl:to-prd"}}
+    prd -->|"synthesises chat → PRD"| tracker[("issue tracker<br/>or .scratch/")]
+
+    classDef skill fill:#e0e7ff,stroke:#3f51b5;
+    classDef artifact fill:#dcfce7,stroke:#16a34a;
+    class grill,prd skill
+    class docs,tracker artifact
+```
+
 [`/zsl:grill-me`](skills/grill-me.md) or [`/zsl:grill-with-docs`](skills/grill-with-docs.md)
-:   Interview yourself to surface what you're actually building. `grill-with-docs` also updates `CONTEXT.md` and ADRs inline.
+:   Interview yourself to surface what you're actually building, until every branch of the decision tree is resolved. `grill-with-docs` also updates `CONTEXT.md` (the shared language) and ADRs (the decisions) inline — the lever that cuts agent verbosity over time.
 
 [`/zsl:to-prd`](skills/to-prd.md)
-:   Synthesise that conversation into a PRD on the issue tracker.
+:   Synthesise that conversation into a PRD on the tracker. No interview — just packaging what you've already discussed.
+
+!!! tip "The grilling step is the highest-leverage one"
+    The most common failure mode in agent-coded software is misalignment —
+    you think the agent knows what you want, then you see what it built.
+    Five minutes here costs orders of magnitude less than re-doing work
+    later. See [Why these skills exist](why.md#1-the-agent-didnt-do-what-i-want).
 
 ## Break down
 
+```mermaid
+flowchart LR
+    prd[("PRD on tracker")] --> to_issues{{"/zsl:to-issues"}}
+    to_issues -->|"vertical-slice children<br/>with [AFK|HITL] &lt;wave&gt;&lt;letter&gt; titles"| children[("N sub-issues<br/>labeled needs-triage")]
+    to_issues -.->|"relabels parent"| prd_tracking[("PRD → tracking")]
+    children --> triage{{"/zsl:triage<br/>(one per child)"}}
+    triage -->|"per child"| states[("ready-for-agent<br/>ready-for-human<br/>needs-info")]
+
+    classDef skill fill:#e0e7ff,stroke:#3f51b5;
+    classDef artifact fill:#dcfce7,stroke:#16a34a;
+    class to_issues,triage skill
+    class prd,children,prd_tracking,states artifact
+```
+
 [`/zsl:to-issues`](skills/to-issues.md)
-:   Break the PRD into vertical-slice sub-issues. Children are labeled `needs-triage`; the PRD parent is auto-relabeled to `tracking`. Slice titles use the `[AFK|HITL] <wave>[<letter>] — <description>` format so the dependency graph reads at a glance (same wave = runnable in parallel).
+:   Break the PRD into vertical-slice sub-issues. Children are labeled `needs-triage`; the PRD parent is auto-relabeled to `tracking`.
+
+The `[AFK|HITL] <wave><letter>` title format is the **dependency
+contract** the rest of the loop consumes:
+
+- `[AFK]` — the agent can run it unattended.
+- `[HITL]` — needs a manual action an agent can't perform (cleared by [`/zsl:human-itl`](skills/human-itl.md), not a disguised decision).
+- `<wave>` — serialisation level (wave 1 before wave 2).
+- `<letter>` — parallelism within a wave (same wave = disjoint = runnable in parallel).
 
 [`/zsl:triage`](skills/triage.md)
-:   Triage **each child** to `ready-for-agent` (with an agent brief), `ready-for-human`, or `needs-info`. Skip triaging the PRD itself; you just wrote it.
+:   Walk **each child** through the [state machine](concepts/state-machine.md) to `ready-for-agent` (with an agent brief), `ready-for-human`, or `needs-info`. Skip triaging the PRD itself; you just wrote it.
 
 ## Build
 
-[`/zsl:tdd-parallel`](tdd-parallel.md) `<PRD>`
-:   Full-auto pipeline from a PRD to a pushed integration PR. Fans out the unblocked **`[AFK]`** `ready-for-agent` children into parallel `/tdd` sub-agents in worktrees; sub-agents commit but do **not** push (`/tdd --no-ship`). The orchestrator merges every slice branch onto the PRD branch in wave order with `--no-ff`, runs an integration `/zsl:code-review --auto` against the merged tip (step 4a), then auto-chains `/zsl:verify-coverage --auto` (step 4b). If verify-coverage finds gaps, they're filed as `ready-for-agent` sub-issues and re-fanouted in the next round — the loop iterates until `gap=0` or a circuit breaker fires (`--max-coverage-rounds`, default 3). On clean coverage, step 4c delegates the defensive commit pass to `/zsl:commit` then pushes and opens **one consolidated integration PR**. Pre-flight (1d) refuses up front if any `[HITL]` is open or any user story isn't `acceptance: automatable` — both gates exist to keep the post-invocation pipeline fully autonomous. PR-style repos only.
+This is where the two TDD skills diverge — see
+[Git branching](concepts/branching.md) for the full topology.
 
-[`/zsl:human-itl`](skills/human-itl.md) `<PRD>`
-:   Clear the `[HITL]` slices a PRD carries — the manual actions a coding agent can't perform (console clicks, credential rotation, sign-off). Records each as an audit-trail comment, marks them done so `/zsl:tdd-parallel`'s pre-flight stops refusing. Hard-refuses slices that are really decisions in disguise — those belong upstream in `/zsl:grill-with-docs` + an ADR. Run **before** `/zsl:tdd-parallel`, not interleaved with it.
+```mermaid
+flowchart TB
+    sub["one ready-for-agent<br/>sub-issue"] --> choice{{"single slice or<br/>parallel fanout?"}}
+    choice -->|"single"| tdd["/zsl:tdd &lt;num&gt;<br/>red→green→refactor<br/>one branch"]
+    choice -->|"multiple unblocked AFK"| parallel["/zsl:tdd-parallel &lt;PRD&gt;<br/>worktree per slice<br/>wave-by-wave merges"]
+    bug["bug or perf regression"] --> diagnose["/zsl:diagnose<br/>repro → minimise →<br/>hypothesise → fix"]
+
+    classDef skill fill:#e0e7ff,stroke:#3f51b5;
+    class tdd,parallel,diagnose skill
+```
+
+[`/zsl:tdd-parallel`](tdd-parallel.md) `<PRD>`
+:   The full-auto pipeline from a PRD to a pushed integration PR. It fans out the unblocked **`[AFK]`** `ready-for-agent` children into parallel `/zsl:tdd --no-ship` sub-agents in worktrees, merges every slice branch onto the PRD branch in wave order with `--no-ff`, then runs two automated integration steps: **4a** `/zsl:code-review --auto` against the merged tip, **4b** `/zsl:verify-coverage --auto` to prove every user story has a test. Gaps found at 4b are filed as `ready-for-agent` and re-fanouted — the loop iterates until `gap=0` or a circuit breaker fires (`--max-coverage-rounds`, default 3). On clean coverage, **4c** delegates the commit to `/zsl:commit`, pushes, and opens **one** consolidated PR. Pre-flight (1d) refuses up front only if *no* slice is runnable or an in-scope story isn't `acceptance: automatable`. PR-style repos only. See the [deep-dive](tdd-parallel.md).
 
 [`/zsl:tdd`](skills/tdd.md) `<child>`
-:   Single-issue red-green-refactor. Refuses if you point it at a container. **On local-markdown trackers, you can also run `/zsl:tdd` with no argument** — it scans `.scratch/`, resolves each open issue's `## Blocked by` against the `issues/done/` archive, and lets you pick from the unblocked ones. The picker also surfaces "features fully archived but not closed" so you can run the feature-level close before grabbing more work.
+:   Single-issue red-green-refactor. Refuses if you point it at a container. Runs [`/zsl:code-review`](skills/code-review.md) automatically between Refactor and Ship (step 5). **On local-markdown trackers you can run it with no argument** — it scans `.scratch/`, resolves each open issue's `## Blocked by` against the `issues/done/` archive, and lets you pick from the unblocked ones.
+
+### How a slice routes by type
+
+The `[AFK|HITL]` prefix isn't decoration — it decides *which* skill picks
+the slice up. A slice is one of three things, and only two of them are
+work:
+
+```mermaid
+flowchart TB
+    s["a slice from /zsl:to-issues"] --> q{"what does it need?"}
+    q -->|"agent can do it"| afk["[AFK]"]
+    q -->|"a manual action<br/>a human must perform"| man["[HITL]"]
+    q -->|"a decision / review<br/>(no manual action, no code)"| dec["mislabelled —<br/>a decision in disguise"]
+
+    afk --> tddp["/zsl:tdd-parallel<br/>fan out in worktrees"]
+    man --> hitl["/zsl:human-itl<br/>walk the human through it,<br/>record it, mark done"]
+    hitl --> unblock["dependent [AFK] slices unblock<br/>→ re-run /zsl:tdd-parallel"]
+    dec --> leak["process leak"]
+    leak --> grill["/zsl:grill-with-docs + ADR<br/>resolve upstream,<br/>then relabel the slice [AFK]"]
+
+    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef ok fill:#fef3c7,stroke:#d97706;
+    classDef bad fill:#fee2e2,stroke:#dc2626;
+    class afk,tddp,unblock,grill good
+    class man,hitl ok
+    class dec,leak bad
+```
+
+[`/zsl:human-itl`](skills/human-itl.md) `<PRD>`
+:   The serial, human-present counterpart to the fanout. It walks you through the `[HITL]` slices — the manual actions a coding agent can't perform (console clicks, credential rotation, sign-off) — records each as an audit-trail comment, and marks them done so the `[AFK]` slices `Blocked by` them unblock. `/zsl:tdd-parallel` *defers* open `[HITL]` slices into a [`[partial]` PR](tdd-parallel.md#partial-runs-hitl-defers-it-doesnt-block) rather than blocking; clear them with `/zsl:human-itl`, then re-run the fanout. It hard-refuses a slice that's really a decision in disguise — that belongs upstream in `/zsl:grill-with-docs` + an ADR.
 
 ## Verify
 
 [`/zsl:verify-coverage`](skills/verify-coverage.md) `<PRD>`
-:   Check every PRD `## User Stories` entry against the *implemented code via tests*, not prose. Tier A maps each story to an existing passing behavioral test; Tier B generates one for the rest, proves it non-vacuous by mutation, and runs it. Quarantines failing tests, auto-files genuine gaps as sub-issues of the PRD, and writes a coverage receipt against the verified sha. Almost always chained automatically by `/zsl:tdd-parallel` step 4b in `--auto` mode (where gaps are filed as `ready-for-agent` directly and the orchestrator loops on them); direct user invocation is for auditing PRDs whose slices shipped via a different path. There is no longer a human-attestation HITL lane — non-automatable stories are refused at `/zsl:to-prd` time (every story must carry `acceptance: automatable` + `observable: <description>` tags) so visual/UX/external work is split into a separate PRD that doesn't go through `/zsl:tdd-parallel`.
-
-Per-story routing:
+:   Check every PRD `## User Stories` entry against the *implemented code via tests*, not prose. Tier A maps each story to an existing passing behavioral test; Tier B generates one for the rest from the story's `observable:` tag, proves it non-vacuous by mutation, and runs it. Quarantines failing tests, auto-files genuine gaps as sub-issues, and writes a coverage receipt against the verified sha. Almost always chained automatically by `/zsl:tdd-parallel` step 4b (gaps filed as `ready-for-agent`, orchestrator loops on them); direct invocation is for auditing PRDs whose slices shipped elsewhere. There's no human-attestation lane — non-automatable stories are refused at `/zsl:to-prd` time, so visual/UX/external work splits into a separate PRD that doesn't go through `/zsl:tdd-parallel`.
 
 ```mermaid
 flowchart TB
@@ -116,19 +209,43 @@ flowchart TB
 
 ## Ship
 
-Each `/zsl:tdd` reads `docs/agents/ship-style.md`. PR-style opens a PR per slice; direct-push pushes the feature branch and you merge by hand. Review happens automatically inside `/zsl:tdd` step 5, between Refactor (step 4) and Ship (step 6) — by the time you reach the PR-open step the slice has already been reviewed.
+Most of what looks like "ship" happens *inside* `/zsl:tdd` — by the time
+you reach the ship step, the slice has already been red-green-refactored
+and reviewed (step 5, between Refactor and Ship).
 
-[`/zsl:commit`](skills/commit.md) for clean, attribution-free commits — fully autonomous for session changes (no per-commit approval prompt); confirms only "other-origin" dirty files before including.
+```mermaid
+flowchart LR
+    branch["slice branch with<br/>red→green→refactor commits"] --> review{{"/zsl:code-review<br/>(inside /zsl:tdd step 5)"}}
+    review -->|"interactive: approval gate<br/>--auto: ≥80 auto-apply"| fixes_commit["review fixes<br/>committed via /zsl:commit"]
+    fixes_commit --> ship["/zsl:tdd step 6: ship it"]
+    ship -->|"PR-style"| pr[("PR opened<br/>Closes #&lt;sub-task&gt;")]
+    ship -->|"direct-push"| push[("commits pushed<br/>Closes in commit body")]
+    ship -->|"local-markdown"| mv[("Status: shipped<br/>git mv to done/")]
 
-[`/zsl:code-review`](skills/code-review.md) fires a six-lens parallel scan (clean-code, CLAUDE.md compliance, git history, prior PR comments, inline comments, and spec alignment against the originating PRD), confidence-scores 0–100, and drops findings below 60. It runs automatically as `/zsl:tdd` step 5 (interactive mode with an approval gate) or in `--auto` mode under `/zsl:tdd --no-ship` and `/zsl:tdd-parallel` step 4a. You can also invoke it standalone before opening a PR — same scan, same scoring. See [the code-review deep-dive](code-review.md) for the lens layout and confidence model.
+    classDef skill fill:#e0e7ff,stroke:#3f51b5;
+    class review,fixes_commit skill
+```
 
-## Cleanup
+[`/zsl:code-review`](skills/code-review.md)
+:   A six-lens parallel scan (clean-code, CLAUDE.md compliance, git history, prior PR comments, inline comments, spec alignment against the originating PRD), 0–100 confidence-scored, dropping findings below 60. Runs automatically as `/zsl:tdd` step 5 (interactive, with an approval gate) or in `--auto` mode under `/zsl:tdd --no-ship` and `/zsl:tdd-parallel` step 4a. Also standalone before opening a PR by hand. See the [code-review deep-dive](code-review.md).
 
-After children merge, manually run `git worktree remove` and `git branch -d` to clean up the parallel-tdd worktrees and branches (the next `/zsl:tdd-parallel` run also sweeps these in its pre-flight).
+[`/zsl:commit`](skills/commit.md)
+:   Clean, attribution-free commits — fully autonomous for session changes (no per-commit approval prompt). Explicit file lists, never `git add -A`; confirms only "other-origin" dirty files (modified outside this conversation) before including.
 
-## Track and close
+[`/zsl:commit-push-pr`](skills/commit-push-pr.md)
+:   One-shot ship for a whole feature branch: pre-flight refuses on the default branch, delegates the commit to `/zsl:commit`, then `git push -u`, then opens the PR via `gh`. No force-push, no `--no-verify`, no Claude attribution.
 
-Every issue carries one **category role** (`bug` or `enhancement`) and one **state role**:
+[`/zsl:git-branch`](skills/git-branch.md)
+:   Create a correctly-prefixed branch (`feature/`, `fix/`, `chore/`…) before `/zsl:tdd` when you don't already have one.
+
+Ship behaviour depends on `docs/agents/ship-style.md` (written by
+[`/zsl:setup-zsl-superpowers`](setup.md)). See
+[Git branching](concepts/branching.md) for the matrix.
+
+## Track & close
+
+Every issue carries one **category role** (`bug` or `enhancement`) and one
+**state role**:
 
 ```mermaid
 stateDiagram-v2
@@ -162,26 +279,68 @@ stateDiagram-v2
     end note
 ```
 
-See [`/zsl:triage`](skills/triage.md) for transition policy and brief templates.
+See [`/zsl:triage`](skills/triage.md) for transition policy and brief
+templates. Where state lives, and how closure works, depends on the
+backend you picked in [`/zsl:setup-zsl-superpowers`](setup.md):
 
-Where state lives, and how closure works, depends on the backend you picked in [`/zsl:setup-zsl-superpowers`](setup.md):
+**GitHub project dashboard** — state lives as labels on each issue and is
+mirrored to the project board's `Status` field via the mapping in
+`docs/agents/project-board.md`. `/zsl:triage` updates both. PR merge →
+GitHub closes the child; last child closes → GitHub auto-closes the
+`tracking` parent.
 
-**GitHub project dashboard** — state lives as labels on each issue and is mirrored to the project board's `Status` field via the mapping in `docs/agents/project-board.md`. `/zsl:triage` updates both. When a child issue's PR merges, GitHub closes the child; when the last child of a `tracking` PRD closes, GitHub auto-closes the parent — no manual transition needed.
+**Local markdown files** — state lives as a `Status:` line near the top of
+each `.md` file under `.scratch/<NNN>-<feature-slug>/`, where `<NNN>` is a
+3-digit feature number assigned at creation. Features can be addressed by
+number alone — `/zsl:triage 23` resolves to feature `023-*` via glob.
+Closure is folder-based, atomic with the slice commit, and nothing is
+deleted:
 
-**Local markdown files** — state lives as a `Status:` line near the top of each `.md` file under `.scratch/<NNN>-<feature-slug>/`, where `<NNN>` is a 3-digit feature number assigned at creation (auto-incremented from the highest existing number across active + archived). Features can be addressed by number alone — `/zsl:triage 23` and `/zsl:to-issues 45` resolve to features `023-*` and `045-*` via glob. Closure is folder-based, and nothing is deleted:
+- Close an issue → on ship, [`/zsl:tdd`](skills/tdd.md) flips the `Status:` line to `shipped` and `git mv`s the issue file into `issues/done/` in the same commit as the code.
+- Close a feature → move the whole `.scratch/<NNN>-<feature-slug>/` directory to `.scratch/done/<YYYYMMDD>-<NNN>-<feature-slug>/`. There's no auto-close: when an issue's close empties the feature's open `issues/`, `/zsl:tdd` **prompts** you to run the feature-level `git mv` (never automatic — you might still want to add a follow-up issue).
 
-- Close an issue → on ship, [`/zsl:tdd`](skills/tdd.md) flips the `Status:` line to `shipped` and runs `git mv .scratch/<NNN>-<feature-slug>/issues/<NN>-<slug>.md .scratch/<NNN>-<feature-slug>/issues/done/<NN>-<slug>.md` in the same commit as the slice's code, so the close is atomic with the work that earned it. The filename and `Status:` line are preserved so the archive records why it closed (e.g. `shipped` vs `wontfix`).
-- Close a feature → move the whole `.scratch/<NNN>-<feature-slug>/` directory to `.scratch/done/<YYYYMMDD>-<NNN>-<feature-slug>/`, preserving its internal layout. The date prefix orders archived features chronologically (`ls .scratch/done/` shows close order); the feature number stays embedded so number-based lookup keeps working across the active/archive split. There's no auto-close: when an issue's close empties the feature's open `issues/`, [`/zsl:tdd`](skills/tdd.md) **prompts** you to run the feature-level `git mv` (never automatic — you might still want to add a follow-up issue). You can also do it by hand if you're abandoning the feature.
+See [the state machine page](concepts/state-machine.md) for the full
+transition policy.
+
+## Overnight (remote agents)
+
+Everything above is the **interactive** loop. Once a PRD is sliced and
+triaged, the Build → Ship → Track stretch can also run **unattended
+overnight** — one dedicated remote claude.ai session per PRD, so several
+`/zsl:tdd-parallel` runs happen in parallel without contending on a shared
+checkout. Three skills, evening to morning:
+
+[`/zsl:afk-fanout`](skills/afk-fanout.md)
+:   Evening, interactive. Shows the queue of `tracking` PRDs with `ready-for-agent` children; you pick which to run and in what order; it schedules one one-shot remote routine per PRD a fixed 2h apart.
+
+[`/zsl:afk-worker`](skills/afk-worker.md)
+:   What each routine fires (not invoked by hand). Runs unattended in its own clone, drives `/zsl:tdd-parallel <num> --on-review-failure=continue --max 2`, opens one integration PR, records its outcome on the `afk-runs` ledger.
+
+[`/zsl:morning-review`](skills/morning-review.md)
+:   Morning, interactive. Reconciles the ledger into the canonical `.scratch/` tracker, then walks you through the PRs to verify and merge, halted slices, and no-result PRDs. Never auto-merges; never deploys.
+
+The enabler is `/zsl:tdd-parallel`'s **partial runs**: a worker never
+stalls on a human gate because open `[HITL]` slices are deferred into a
+`[partial]` PR. **See the [Remote agents deep-dive](remote-agents.md)**
+for the full design — one-session-per-PRD isolation, the 2h throttle, the
+ledger, and the morning sweep.
 
 ## Cross-cutting
 
-[`/zsl:triage`](skills/triage.md) is also the entry point for **inbound issues** (bugs, feature requests from others) and re-evaluating stale ones — not just for the children you just sliced.
+These don't belong to a single phase — they run *across* the loop:
 
-[`/zsl:diagnose`](skills/diagnose.md) for hard bugs and performance regressions.
+| Skill | When to reach for it |
+|---|---|
+| [`/zsl:triage`](skills/triage.md) | Inbound bug reports / feature requests, or re-evaluating stale issues — not just the children you sliced. |
+| [`/zsl:diagnose`](skills/diagnose.md) | Hard bugs and performance regressions, whatever phase you're in. |
+| [`/zsl:improve-codebase-architecture`](skills/improve-codebase-architecture.md) | Every few days, to fight entropy. Surfaces deepening opportunities informed by `CONTEXT.md` + ADRs. |
+| [`/zsl:zoom-out`](skills/zoom-out.md) | When you're lost in a section of code and need higher-level framing. |
 
-[`/zsl:improve-codebase-architecture`](skills/improve-codebase-architecture.md) every few days to fight entropy.
+## Cleanup
 
-[`/zsl:zoom-out`](skills/zoom-out.md) when you need a higher-level view of unfamiliar code.
+After children merge, manually run `git worktree remove` and `git branch
+-d` to clean up the parallel-tdd worktrees and branches (the next
+`/zsl:tdd-parallel` run also sweeps these in its pre-flight).
 
 ## Catalogue at a glance
 
@@ -197,14 +356,26 @@ For the full per-skill descriptions and decision tree, see the
 | Break down | [to-issues](skills/to-issues.md) | PRD → vertical-slice children with wave/letter dependency graph |
 | Break down | [triage](skills/triage.md) | Walk each child through the [state machine](concepts/state-machine.md) |
 | Build | [tdd](skills/tdd.md) | Single-issue red-green-refactor |
-| Build | [tdd-parallel](skills/tdd-parallel.md) | Worktree fanout + wave-ordered merges + one PR |
+| Build | [tdd-parallel](tdd-parallel.md) | Worktree fanout + wave-ordered merges + one PR |
+| Build | [human-itl](skills/human-itl.md) | Clear the `[HITL]` manual-action slices a PRD carries |
 | Build | [diagnose](skills/diagnose.md) | Reproduce → minimise → hypothesise → fix |
 | Verify | [verify-coverage](skills/verify-coverage.md) | PRD-story coverage via tests; gates the fanout's integration PR |
 | Ship | [git-branch](skills/git-branch.md) | Branch with the prefix convention |
 | Ship | [commit](skills/commit.md) | Explicit-file-list commits, autonomous for session changes |
-| Ship | [code-review](skills/code-review.md) | Six-lens parallel scan (clean-code / CLAUDE.md compliance / git history / prior PR comments / inline comments / spec alignment), 0–100 confidence scoring (drops <60); interactive approval gate or `--auto` |
+| Ship | [commit-push-pr](skills/commit-push-pr.md) | One-shot: commit → `git push -u` → `gh pr create`; refuses on the default branch |
+| Ship | [code-review](skills/code-review.md) | Six-lens parallel scan, 0–100 confidence (drops <60); interactive gate or `--auto` |
+| Overnight | [afk-fanout](skills/afk-fanout.md) | Evening scheduler: queue `tracking` PRDs, one remote routine per PRD 2h apart |
+| Overnight | [afk-worker](skills/afk-worker.md) | Per-PRD remote executor: own clone, `/tdd-parallel`, one PR, ledger + Telegram |
+| Overnight | [morning-review](skills/morning-review.md) | Reconcile the `afk-runs` ledger; surface PRs, halted slices, no-result PRDs |
 | Cross-cut | [improve-codebase-architecture](skills/improve-codebase-architecture.md) | Find deepening opportunities |
 | Cross-cut | [zoom-out](skills/zoom-out.md) | Broader context on unfamiliar code |
 | Off-loop | [prototype](skills/prototype.md) | Throwaway exploration |
-| Off-loop | [handoff](skills/handoff.md) | Compact the current session into a tmp-dir handoff doc for the next agent |
+| Off-loop | [handoff](skills/handoff.md) | Compact the current session into a tmp-dir handoff doc |
 | Off-loop | [timesheet](skills/timesheet.md), [caveman](skills/caveman.md), [write-a-skill](skills/write-a-skill.md) | Productivity helpers |
+
+## See also
+
+- [Why these skills exist](why.md) — the failure modes the loop is built to fix.
+- [The triage state machine](concepts/state-machine.md) — how issues move between states.
+- [Git branching](concepts/branching.md) — what the Build phase does to your git tree.
+- [Parallel TDD deep-dive](tdd-parallel.md) · [Code review deep-dive](code-review.md) · [Remote agents deep-dive](remote-agents.md).

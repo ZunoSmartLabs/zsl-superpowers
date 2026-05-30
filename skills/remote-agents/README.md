@@ -1,0 +1,9 @@
+# Remote Agents
+
+Skills for the overnight loop — fan work out to dedicated remote claude.ai sessions, then review the results. These don't fit the daily-interactive engineering buckets: one schedules unattended remote runs, one *is* the unattended run, one walks the human through the morning aftermath.
+
+The loop: evening **`/afk-fanout`** (you pick which PRDs to run) → overnight **`/afk-worker`** routines (one remote session per PRD, 2h apart) → morning **`/morning-review`** (you verify and merge).
+
+- **[afk-fanout](./afk-fanout/SKILL.md)** — Interactive local-session scheduler. Reviews the queue of `tracking` PRDs with `ready-for-agent` children, lets you pick which to run overnight and in what order, then schedules one one-shot remote routine per PRD a fixed 2h apart (a throttle to stay under the per-5h-window token cap), each running `/afk-worker`. Places a light `scheduled` claim so a re-run won't double-book.
+- **[afk-worker](./afk-worker/SKILL.md)** — Remote per-PRD executor fired by an `/afk-fanout`-scheduled routine. Runs unattended in its own clone: flips the claim to `in-progress`, runs `/tdd-parallel <num> --on-review-failure=continue --max 2`, opens one integration PR, and on halt records the offending slice + RCA. Reports its outcome on the shared `afk-runs` ledger branch (which `/morning-review` reconciles into the tracker) and fires a best-effort Telegram heads-up. Invoked by the routine, not by hand.
+- **[morning-review](./morning-review/SKILL.md)** — Walk a human through the overnight artifacts. First reconciles the `afk-runs` ledger branch into the canonical `.scratch/` tracker (across every un-reconciled run), then surfaces integration PRs to verify and merge, halted slices to re-triage, and any scheduled PRD that produced no result. Sorts PRs by their brief's `verify-after:` tag so `local-run` and `staging` slices surface first; `ci` slices are batch-mergeable after a diff skim. Does not auto-merge; does not deploy.

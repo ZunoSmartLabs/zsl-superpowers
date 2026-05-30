@@ -39,7 +39,9 @@ If a decision is easy to reverse, skip it — you'll just reverse it. If it's no
 ### What qualifies
 
 - **Architectural shape.** "We're using a monorepo." "The write model is event-sourced, the read model is projected into Postgres."
-- **Integration patterns between contexts.** "Ordering and Billing communicate via domain events, not synchronous HTTP."
+- **Subdomain classification.** "Pricing is Core — invest heavily in modeling." "Notifications is Generic — use the off-the-shelf service." Classification drives where teams spend modeling effort, so getting it wrong is expensive to recover from. (See [CONTEXT-FORMAT.md](./CONTEXT-FORMAT.md) and the bundled *Domain-Driven Design Distilled* rules in [SKILL.md](./SKILL.md).)
+- **Integration patterns between contexts.** "Ordering and Billing communicate via Published Language (domain events), not synchronous HTTP." Naming the DDD relationship type — Anticorruption Layer, Conformist, Customer/Supplier, Shared Kernel, Open Host Service, Published Language, Separate Ways — sets implementation expectations that are otherwise invisible. (See [CONTEXT-FORMAT.md](./CONTEXT-FORMAT.md) for the full list.)
+- **Aggregate consistency boundaries.** "An Order and its OrderLines are one Aggregate; an Order and its Customer are separate Aggregates referenced by ID." These boundaries determine transactional shape and are non-obvious to re-derive from code.
 - **Technology choices that carry lock-in.** Database, message bus, auth provider, deployment target. Not every library — just the ones that would take a quarter to swap out.
 - **Boundary and scope decisions.** "Customer data is owned by the Customer context; other contexts reference it by ID only." The explicit no-s are as valuable as the yes-s.
 - **Deliberate deviations from the obvious path.** "We're using manual SQL instead of an ORM because X." Anything where a reasonable reader would assume the opposite. These stop the next engineer from "fixing" something that was deliberate.

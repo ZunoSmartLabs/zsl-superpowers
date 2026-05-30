@@ -1,6 +1,6 @@
 {
   "name": "zsl",
-  "version": "0.10.0",
+  "version": "1.0.0",
   "description": "Agent skills for real engineering, not vibe coding. End-to-end loop: PRD → vertical-slice issues → parallel TDD → one consolidated PR. Plus standalone helpers for triage, diagnose, and code-review.",
   "author": {
     "name": "ZunoSmartLabs",
@@ -31,6 +31,9 @@
     "./skills/productivity/write-a-skill",
     "./skills/misc/edit-article",
     "./skills/misc/setup-pre-commit",
-    "./skills/misc/steampipe"
+    "./skills/misc/steampipe",
+    "./skills/remote-agents/afk-fanout",
+    "./skills/remote-agents/afk-worker",
+    "./skills/remote-agents/morning-review"
   ]
 }

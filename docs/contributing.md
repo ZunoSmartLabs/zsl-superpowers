@@ -1,27 +1,24 @@
 # Contributing
 
 Pull requests welcome. The repo is small and the conventions are explicit — this
-page is the short version.
+page is the short version. For the bigger picture — the three-layer model and
+the five places a skill must be cited — see
+[Plugin architecture](architecture.md).
 
 ## Repo layout
 
-Skills live under `skills/<bucket>/<name>/SKILL.md`:
+Skills live under `skills/<bucket>/<name>/SKILL.md`, in one of four buckets
+(`engineering/`, `productivity/`, `misc/`, `remote-agents/`). Each skill must be
+cited in **five** places kept in lockstep — `.claude-plugin/plugin.json`, the
+top-level `README.md`, its bucket `README.md`, `docs/skills/index.md`, and the
+`mkdocs.yml` nav.
+[Plugin architecture → Keeping the catalogue in sync](architecture.md#keeping-the-catalogue-in-sync)
+is the single source of truth for the bucket layout and the full citation list.
 
-- `engineering/` — daily code work
-- `productivity/` — daily non-code workflow tools
-- `misc/` — kept around but rarely used
-
-Every skill in `engineering/`, `productivity/`, or `misc/` must be:
-
-1. Listed in the top-level [`README.md`](https://github.com/ZunoSmartLabs/zsl-superpowers/blob/main/README.md) (with a name-link to its `SKILL.md`).
-2. Listed in [`.claude-plugin/plugin.json`](https://github.com/ZunoSmartLabs/zsl-superpowers/blob/main/.claude-plugin/plugin.json) under `skills`.
-3. Listed in its bucket's `README.md` with a one-line description.
-
-The docs site picks up new skills automatically — the
+The per-skill docs page is the one thing you *don't* hand-write — the
 [`scripts/mkdocs_hooks/skill_pages.py`](https://github.com/ZunoSmartLabs/zsl-superpowers/blob/main/scripts/mkdocs_hooks/skill_pages.py)
-hook scans every `SKILL.md` at build time. **You do still need to add the new
-skill to the `nav:` block in `mkdocs.yml`** — mkdocs runs in `--strict` mode and
-won't auto-include unlisted pages in the navigation.
+hook generates it from each `SKILL.md` at build time. But the `mkdocs.yml` `nav:`
+entry is still manual, and `mkdocs build --strict` fails on an unlisted page.
 
 ## Adding a new skill
 
@@ -80,6 +77,50 @@ while the installed plugin reports the new one.
 - Stick to the project's vocabulary: *vertical slice*, *AFK / HITL*, *wave*,
   *integration PR*, *agent brief*, *out-of-scope knowledge base*. Don't invent
   parallel terms.
+
+## Editing bundled book rules
+
+Eight engineering skills bundle decision-pressure rules from
+[ciembor/agent-rules-books](https://github.com/ciembor/agent-rules-books)
+(MIT, pinned via `vendor/agent-rules-books/VERSION`). The rules are
+embedded between `<!-- BEGIN bundled-book-rules -->` / `<!-- END
+bundled-book-rules -->` markers near the bottom of each affected
+`SKILL.md`.
+
+**Do not hand-edit content between the `BEGIN`/`END` fences** —
+`scripts/sync_book_rules.py` overwrites it from
+`vendor/agent-rules-books/` on every sync.
+
+To edit a bundled rule set:
+
+1. Edit the file in `vendor/agent-rules-books/<book>/<file>.md`.
+2. Run `make sync-books` — this rewrites the fences in every affected `SKILL.md`.
+3. Commit both the vendor edit and the regenerated `SKILL.md` content.
+
+To check for upstream changes (we hand-pick; we don't auto-track):
+
+```bash
+make check-upstream-books
+```
+
+This diffs the vendored snapshot against `ciembor/agent-rules-books`'s
+latest tag. When a diff looks worth adopting, update
+`vendor/agent-rules-books/VERSION`, copy the new files in, run
+`make sync-books`, regression-test the affected skills, and ship a
+plugin version bump.
+
+To add or change a book→skill mapping, edit the `MAPPING` dict near
+the top of `scripts/sync_book_rules.py`, then run `make sync-books`.
+The script's `BEGIN`/`END`-fence machinery handles inserting a new
+region (or removing one) cleanly.
+
+The current skill→book mapping table lives in
+[`vendor/agent-rules-books/README.md`](https://github.com/ZunoSmartLabs/zsl-superpowers/blob/main/vendor/agent-rules-books/README.md).
+Per-skill supporting files (e.g. `LANGUAGE.md` in
+`improve-codebase-architecture/`, `CONTEXT-FORMAT.md` in
+`grill-with-docs/`, `tests.md`/`mocking.md`/`refactoring.md` in `tdd/`)
+sit *outside* the fences and **are** hand-editable — they exist to
+align skill-specific vocabulary and process with the bundled rules.
 
 ## Testing changes locally
 

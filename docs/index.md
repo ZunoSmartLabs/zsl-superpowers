@@ -14,7 +14,7 @@ instead of letting a process framework take over.
     Skills depend on Claude Code's slash commands, `/plugin` install path, and tool surface (`Agent`, `Monitor`, `Bash`, `SendMessage`, `TaskStop`). They aren't drop-in for Cursor, Codex, Cline, or general LLM chat. ("Model-agnostic" above means any Claude model — Opus, Sonnet, Haiku — not any harness.) See [Compatibility](faq.md#compatibility) for what porting would look like.
 
 [Get started in 60 seconds :material-arrow-right:](quickstart.md){ .md-button .md-button--primary }
-[How the loop fits together](workflow.md){ .md-button }
+[See the loop](workflow.md){ .md-button }
 
 ---
 
@@ -66,10 +66,11 @@ skills your issue tracker, label vocabulary, doc layout, and ship style.
 
 ---
 
-## Why these skills exist
+## Which skill for which problem?
 
 We built these to fix specific failure modes we kept hitting with Claude Code,
-Codex, and other coding agents:
+Codex, and other coding agents. This table routes a symptom to a skill; for the
+reasoning behind each, see [Why these skills exist](why.md).
 
 | You hit this | Reach for |
 |---|---|
@@ -80,23 +81,27 @@ Codex, and other coding agents:
 | I'm lost in this code | [`/zsl:zoom-out`](skills/zoom-out.md) |
 | Need to break a PRD into work | [`/zsl:to-prd`](skills/to-prd.md) → [`/zsl:to-issues`](skills/to-issues.md) → [`/zsl:triage`](skills/triage.md) |
 | Multiple slices ready to ship at once | [`/zsl:tdd-parallel`](tdd-parallel.md) — one integration PR, not N |
+| Want PRDs built while you sleep | [`/zsl:afk-fanout`](skills/afk-fanout.md) → overnight remote runs → [`/zsl:morning-review`](skills/morning-review.md) |
 | Session about to end / running out of context | [`/zsl:handoff`](skills/handoff.md) — compact the conversation into a tmp-dir doc for the next agent |
 
 ---
 
 ## Where to next
 
+[Why these skills exist](why.md)
+:   The four failure modes the plugin is built to fix — the argument for the whole thing, in five minutes.
+
 [Quickstart](quickstart.md)
 :   Install, run one skill, see what changed. Five minutes.
 
-[Concepts](concepts/index.md)
-:   Mental models for the plugin — the three-layer architecture, the loop, the triage state machine, and the git branching topology used by `/zsl:tdd` and `/zsl:tdd-parallel`.
-
-[The workflow](workflow.md)
-:   The canonical walkthrough of the engineering loop with slash-command examples.
+[The loop](workflow.md)
+:   The canonical walkthrough of the engineering loop — concept and slash-command for every phase, plus the triage state machine and git-branching links.
 
 [Parallel TDD deep-dive](tdd-parallel.md)
 :   Why we built it, how the wave model works, what an integration PR looks like.
+
+[Remote agents deep-dive](remote-agents.md)
+:   The overnight loop — schedule PRDs to build unattended, then reconcile and merge in the morning.
 
 [Skills](skills/index.md)
 :   Every skill, what it does, when it activates — plus a "which skill do I want?" decision tree.

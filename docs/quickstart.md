@@ -75,7 +75,9 @@ flailing, you're handed a slicing plan you can edit before any code gets written
 
 ## What to read next
 
-- [The end-to-end loop](workflow.md) — how the skills compose, with state-machine diagrams.
+- [Why these skills exist](why.md) — the failure modes behind the loop, with the book quotes.
+- [The loop](workflow.md) — how the skills compose, concept and command per phase.
 - [Parallel TDD deep-dive](tdd-parallel.md) — why one PR, what an integration PR looks like.
+- [Remote agents deep-dive](remote-agents.md) — schedule PRDs to build unattended overnight, then reconcile and merge in the morning.
 - [Skills](skills/index.md) — every skill, with its trigger phrases.
 - [FAQ](faq.md) — Codex/Cursor compatibility, telemetry, opt-in subset, updates.

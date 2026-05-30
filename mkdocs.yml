@@ -45,18 +45,18 @@ hooks:
 
 nav:
   - Home: index.md
+  - Why these skills exist: why.md
   - Getting started:
       - Quickstart: quickstart.md
       - Per-repo setup: setup.md
-  - How it fits together:
-      - Overview: concepts/index.md
-      - Workflow walkthrough: workflow.md
-      - The five phases: concepts/the-loop.md
+  - Using ZSL:
+      - The loop: workflow.md
       - Triage state machine: concepts/state-machine.md
       - Git branching: concepts/branching.md
   - Deep dives:
       - Parallel TDD: tdd-parallel.md
       - Code review: code-review.md
+      - Remote agents (overnight): remote-agents.md
   - Skills:
       - Overview: skills/index.md
       - Plan:
@@ -78,6 +78,10 @@ nav:
           - skills/commit.md
           - skills/commit-push-pr.md
           - skills/code-review.md
+      - Overnight (remote agents):
+          - skills/afk-fanout.md
+          - skills/afk-worker.md
+          - skills/morning-review.md
       - Cross-cutting:
           - skills/improve-codebase-architecture.md
           - skills/zoom-out.md
@@ -93,9 +97,11 @@ nav:
           - skills/setup-zsl-superpowers.md
   - Reference:
       - FAQ: faq.md
-      - Contributing: contributing.md
       - Changelog: changelog.md
       - Privacy: privacy.md
+  - Contributing:
+      - How to contribute: contributing.md
+      - Plugin architecture: architecture.md
 
 markdown_extensions:
   - admonition

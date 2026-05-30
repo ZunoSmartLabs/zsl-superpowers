@@ -28,6 +28,7 @@ BUCKET_LABELS = {
     "engineering": "Engineering",
     "productivity": "Productivity",
     "misc": "Misc",
+    "remote-agents": "Remote Agents",
 }
 
 
@@ -75,9 +76,7 @@ def _rewrite_relative_links(body: str, bucket: str, name: str) -> str:
     skill_base = f"{REPO_BLOB_BASE}/skills/{bucket}/{name}"
 
     def _is_relative(target: str) -> bool:
-        if target.startswith(("http://", "https://", "mailto:", "#", "/")):
-            return False
-        return True
+        return not target.startswith(("http://", "https://", "mailto:", "#", "/"))
 
     def _rewrite_target(target: str) -> str:
         # Drop ./ prefix so we don't double up.

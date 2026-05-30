@@ -1,5 +1,7 @@
 # CONTEXT.md Format
 
+`CONTEXT.md` is the Bounded Context's **Ubiquitous Language** — the canonical glossary of terms that carry specific meaning inside this part of the system. The format follows the Bounded Context / Ubiquitous Language discipline from *Domain-Driven Design Distilled* (bundled into this skill's rules in [SKILL.md](SKILL.md)).
+
 ## Structure
 
 ```md
@@ -63,9 +65,9 @@ _Avoid_: Client, buyer, account
 
 ## Relationships
 
-- **Ordering → Fulfillment**: Ordering emits `OrderPlaced` events; Fulfillment consumes them to start picking
-- **Fulfillment → Billing**: Fulfillment emits `ShipmentDispatched` events; Billing consumes them to generate invoices
-- **Ordering ↔ Billing**: Shared types for `CustomerId` and `Money`
+- **Ordering → Fulfillment** *(Published Language)*: Ordering emits `OrderPlaced` events; Fulfillment consumes them to start picking
+- **Fulfillment → Billing** *(Published Language)*: Fulfillment emits `ShipmentDispatched` events; Billing consumes them to generate invoices
+- **Ordering ↔ Billing** *(Shared Kernel)*: Shared types for `CustomerId` and `Money`
 ```
 
 The skill infers which structure applies:
@@ -75,3 +77,19 @@ The skill infers which structure applies:
 - If neither exists, create a root `CONTEXT.md` lazily when the first term is resolved
 
 When multiple contexts exist, infer which one the current topic relates to. If unclear, ask.
+
+## Context relationship types
+
+When `CONTEXT-MAP.md` describes how contexts relate, tag each relationship with its type — each carries different ownership and translation duties. Types come from *Domain-Driven Design Distilled* (bundled in [SKILL.md](SKILL.md)):
+
+- **Partnership** — two contexts succeed or fail together; teams coordinate closely on schedules and changes.
+- **Shared Kernel** — a small, jointly-owned overlap of code (often value objects or events). Costly to maintain; only justified when the overlap is small and stable.
+- **Customer / Supplier** — upstream context (Supplier) provides; downstream (Customer) consumes. Downstream has negotiating leverage.
+- **Conformist** — downstream accepts whatever shape upstream gives, with no translation. Cheap, but every upstream change ripples.
+- **Anticorruption Layer (ACL)** — downstream translates the upstream's model into its own language. Insulates the local model from foreign concepts; expensive but protective.
+- **Open Host Service (OHS)** — upstream exposes a stable, documented protocol designed for many consumers (vs. one-off integration).
+- **Published Language** — upstream publishes a shared schema or event format (often paired with OHS).
+- **Separate Ways** — contexts deliberately don't integrate; users bridge them by hand or data is duplicated.
+- **Big Ball of Mud (contained)** — the legacy mess is its own context; nothing else inherits from it. Containment is the goal.
+
+Naming the type makes implementation expectations obvious: an *Anticorruption Layer* implies real translation code at the boundary; *Conformist* implies you'll feel every upstream change; *Shared Kernel* implies joint governance.

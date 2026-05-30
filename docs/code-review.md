@@ -234,7 +234,7 @@ good reviewer actually look at?"
 ## See also
 
 - [`/zsl:code-review` spec](skills/code-review.md) — the SKILL.md body, the source of truth for behaviour.
-- [The loop — Phase 4 Ship](concepts/the-loop.md#phase-4-ship) — where `/zsl:code-review` sits in the end-to-end loop.
+- [The loop — Ship](workflow.md#ship) — where `/zsl:code-review` sits in the end-to-end loop.
 - [Parallel TDD deep-dive](tdd-parallel.md) — the other multi-agent skill in the plugin, and the one that invokes `--auto` at step 4a.
 - [`/zsl:tdd` spec](skills/tdd.md) — the per-slice flow that fires `/zsl:code-review` as step 5.
 - [Workflow](workflow.md) — the loop walkthrough with slash-command examples.

@@ -114,9 +114,11 @@ One larger card. Candidate name, one sentence on why, anchor link to its card. T
 
 Plain English, concise — but the architectural nouns and verbs come straight from [LANGUAGE.md](LANGUAGE.md). Concision is not an excuse to drift.
 
-**Use exactly:** module, interface, implementation, depth, deep, shallow, seam, adapter, leverage, locality.
+**Use exactly:** module, interface, implementation, depth, deep, shallow, seam, boundary, layer, port, adapter, leverage, locality, cognitive load, change amplification, temporal coupling.
 
-**Never substitute:** component, service, unit (for module) · API, signature (for interface) · boundary (for seam) · layer, wrapper (for module, when you mean module).
+**Never substitute:** component, service, unit (for module) · API, signature (for interface) · wrapper (for module, when you mean module).
+
+**Boundary and seam are not synonyms** — boundary is a seam that *also* enforces a dependency direction (Clean Architecture's sense). Reach for seam when the topic is testability and substitution; boundary when the topic is policy/detail separation. See [LANGUAGE.md](LANGUAGE.md).
 
 **Phrasings that fit the style:**
 
