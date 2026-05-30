@@ -4,6 +4,331 @@ For the full commit history, see
 [github.com/ZunoSmartLabs/zsl-superpowers/commits/main](https://github.com/ZunoSmartLabs/zsl-superpowers/commits/main).
 This page summarises the user-facing changes per plugin version.
 
+## 1.0.0
+
+The 1.0 release adds an **overnight remote-agent path** alongside the
+existing interactive loop, built on the change that makes it possible:
+[`/zsl:tdd-parallel`](skills/tdd-parallel.md) **partial runs**. The new
+path is a three-skill loop —
+[`/zsl:afk-fanout`](skills/afk-fanout.md) (evening scheduler),
+[`/zsl:afk-worker`](skills/afk-worker.md) (per-PRD remote executor), and
+[`/zsl:morning-review`](skills/morning-review.md) (morning walk-through)
+— that fans work out to one dedicated remote claude.ai session per PRD so
+several `/zsl:tdd-parallel` runs can happen overnight without contending
+on a shared checkout.
+
+This release also reverses 0.10's hard refusal on open `[HITL]` slices,
+teaches `/zsl:verify-coverage` to tell a *deferred* story from a real
+*gap*, and makes `/zsl:to-issues`' `## User stories covered` section
+mandatory — all three serve the partial-run model. **Not purely
+additive:** the partial-run carve and the `deferred` state change how
+interactive `/zsl:tdd-parallel` and `/zsl:verify-coverage` behave even
+if you never touch the remote path (see *Upgrading from 0.11*).
+
+### `/zsl:tdd-parallel`: partial runs replace the open-`[HITL]` refusal (the big change)
+
+0.10 made `/zsl:tdd-parallel` hard-refuse at pre-flight if **any** open
+`[HITL]` slice existed anywhere in the parent's sub-tree. That blanket
+rule was stronger than the invariant it protected. The real invariant is
+*no human gate fires **after** invocation* — and that's preserved by a
+weaker, graph-aware rule:
+
+> Run only slices whose transitive `Blocked by` closure contains no open
+> `[HITL]` slice. Defer every open `[HITL]` slice and everything
+> transitively downstream of it.
+
+Because every selected slice's *entire* blocker closure is HITL-free, no
+selected slice can become human-gated mid-run — the invariant holds just
+as firmly, without throwing away the work that doesn't depend on the
+gate. When anything is deferred, the run is **partial**: it ships the
+runnable slices in a **`[partial]` PR** whose body omits `Closes
+#<parent>` (so the PRD stays *open*) and carries a `## Deferred` section
+naming the gating `[HITL]` issue(s), the deferred slices, and the
+deferred user stories, plus a re-entry recipe. Clear the gate via
+`/zsl:human-itl <parent>`, re-run `/zsl:tdd-parallel <parent>`, and the
+now-closed `[HITL]` slice satisfies its downstream via the existing
+`satisfied_oob` path — the second run (now a full run) closes the parent.
+No partial-specific state is persisted between runs.
+
+This carve is **always on — there is no flag.** A PRD with zero open
+`[HITL]` slices is byte-for-byte the old behaviour: full fanout, closes
+the parent, no `[partial]` marker. Pre-flight 1d now refuses only when
+**no slice is runnable** (everything is deferred behind an open `[HITL]`
+or still in triage), and scopes the automatable-story gate to the
+stories the *runnable* slices cover — stories covered only by deferred
+slices are checked on the later run that makes them in-scope. The
+zero-progress halt (3a) is correspondingly narrowed: an open `[HITL]`
+blocker now causes a partial-complete, never a halt.
+
+### `/zsl:tdd-parallel`: `--on-review-failure halt|continue` flag
+
+A new flag controls what happens when step 4a's
+`/zsl:code-review --auto` applies findings but lint/tests then fail and
+the review commit is reverted. Default `halt` preserves today's
+interactive contract (surface in RCA, leave the user to inspect). New
+`continue` mode proceeds to step 4b — the PRD branch is already at its
+pre-review state, all slices are individually green via their per-slice
+`/zsl:tdd` cycles, so the integration is shippable; the attempted
+findings (count, severity, `file:line` refs, the reverted commit sha)
+ride into the PR body as a `## ⚠️ Integration review failed` section for
+the morning reviewer to re-run `/zsl:code-review` against by hand.
+`/zsl:afk-worker` always passes `continue`.
+
+### `/zsl:tdd-parallel`: feature-prefixed worktree names in `.scratch/` mode
+
+Slice worktrees and branches in local-markdown trackers now include the
+parent feature number: `.worktrees/<feat>-<slice>-<slug>/` and
+`tdd/<feat>-<slice>-<slug>` instead of the `<slice>-<slug>` forms. This
+keeps slice worktrees unambiguous if `/zsl:tdd-parallel` is ever run
+against more than one PRD in the same checkout, since `.scratch/` slice
+numbers are per-feature scoped (every feature has its own `01`, `02`, …).
+Pre-flight 1b's stale-worktree sweep parses the same conditional pattern.
+Overnight this can't arise — `/zsl:afk-worker` gives each PRD its own
+clone — but the prefix keeps single-checkout multi-PRD use safe too.
+GitHub/GitLab mode is unchanged — issue numbers are globally unique there.
+
+### `/zsl:tdd-parallel`: callable from a routine prompt
+
+`/zsl:tdd-parallel` no longer carries `disable-model-invocation: true`
+in its frontmatter, so `/zsl:afk-worker` can drive it from a scheduled
+remote session's prompt. Other automatic invocation paths should still
+be avoided — the skill is expensive (multi-hour wall-clock, many
+sub-agents) and not appropriate for incidental chaining.
+`/zsl:afk-worker` is the one well-defined caller path.
+
+### `/zsl:verify-coverage`: the `deferred` story state
+
+[`/zsl:verify-coverage`](skills/verify-coverage.md) gains a fifth story
+state, **`deferred`**, to support partial runs. A story claimed **only
+by still-open slices** (none shipped — typically the covering slice is
+gated behind an open `[HITL]` that `/zsl:tdd-parallel` deferred) is not a
+gap: the work to cover it hasn't landed yet. It's distinct from both
+`gap` (a hole to fix *now*) and `out-of-scope` (a permanent exclusion) —
+a *temporary* not-yet. Deferred stories are **never** driven through
+Tier B and **never** filed as gaps; doing so would manufacture a
+spurious gap that re-files every round and never converges.
+
+To compute this, step 2 now inverts the `## User stories covered` map for
+**both** shipped *and* open slices, keeping the two separate so a story
+claimed only by open slices reads as `deferred` rather than a real hole
+(no claiming slice at all). The derivation is **always on** — a function
+of tracker state, not a flag; when every slice is shipped, no story is
+deferred and the run is identical to before. A new `deferred=<n>` count
+joins the matrix and the receipt (plus a `deferred-stories:` line), and
+the terminal block reports it separately so `/zsl:tdd-parallel`'s step 4b
+can read `gap=0 deferred>0` as its partial-complete signal — proceed to
+the `[partial]` PR, don't loop. `--no-generate` and `--no-file` both
+respect deferral (it takes precedence over `unverified`, and deferred
+stories are never filed in any mode).
+
+### `/zsl:to-issues`: `## User stories covered` is now mandatory
+
+The `## User stories covered` section on every PRD-derived slice (only a
+freeform plan with no user stories may omit it) is now explicitly
+**mandatory**, because it's load-bearing in two places that read it back
+from the issue body, not the quiz: `/zsl:verify-coverage`'s Tier A
+story→slice map, *and* `/zsl:tdd-parallel` partial runs, which use it to
+tell a deferred story from a real gap. A slicing run that silently drops
+the section breaks partial-run coverage scoping — deferred stories get
+misclassified as gaps and spuriously re-fanned-out. Legacy slices that
+predate the section still fall back to `/zsl:verify-coverage`'s
+lower-confidence inference, but new slices must carry it.
+
+### `verify-after:` field in agent briefs
+
+[`triage/AGENT-BRIEF.md`](https://github.com/ZunoSmartLabs/zsl-superpowers/blob/main/skills/engineering/triage/AGENT-BRIEF.md)
+gains a `verify-after: ci | local-run | staging` line on every brief.
+The field tells the post-PR pipeline how the slice's integration PR
+should be validated before merge:
+
+- **`ci`** — CI signals are sufficient; diff skim + merge. Default for
+  pure business-logic slices that don't touch system boundaries.
+- **`local-run`** — needs `gh pr checkout` + `/verify` against the local
+  dev env. Use for slices touching external APIs, auth, payments,
+  migrations.
+- **`staging`** — needs a staging deploy + smoke test. Reserved for
+  slices where local dev can't faithfully simulate the deployed
+  environment.
+
+Set by `/zsl:triage` when moving a slice to `ready-for-agent`, surfaced
+by `/zsl:afk-fanout` as each PRD's `verify-after` mix at selection, and
+consumed by `/zsl:morning-review` to prioritise the morning walk-through.
+Default to `ci`; only escalate when there's a concrete reason —
+over-tagging defeats the point of unattended runs.
+
+### New skill: `/zsl:afk-fanout`
+
+[`/zsl:afk-fanout`](skills/afk-fanout.md) is an **interactive
+local-session scheduler**, not a cron job. Run it yourself in the
+evening: it shows the queue of `tracking` PRDs with open
+`ready-for-agent` children — including each PRD's `verify-after` mix —
+and you pick which to run overnight and in what order. It then schedules
+one **one-shot remote routine per PRD**, a **fixed 2h apart**, each
+firing a fresh remote session that runs `/zsl:afk-worker <num>`.
+
+The 2h spacing is a deliberate throttle: claude.ai usage is capped per
+rolling 5-hour window and one worker session is a heavy consumer, so
+spacing keeps each window under the cap. It is never compressed. A
+separate, harder ceiling also applies — claude.ai caps **routines per
+day** (Pro 5 / Max 15 / Team & Enterprise 25 as of 2026-05; confirm
+current values), and each scheduled worker is one routine drawn from the
+same subscription budget as interactive sessions. Selections that
+overflow either limit are reported for you to schedule the next evening.
+
+A light `scheduled` claim on each picked PRD stops a second
+`/zsl:afk-fanout` run the same evening from double-booking it. The skill
+never runs `/zsl:tdd-parallel` itself — it only enumerates, claims, and
+schedules — and refuses at pre-flight unless the repo has a configured
+remote-agent environment (see `/zsl:setup-zsl-superpowers` below).
+
+### New skill: `/zsl:afk-worker`
+
+[`/zsl:afk-worker`](skills/afk-worker.md) is the **per-PRD remote
+executor** each scheduled routine fires. It runs unattended in its own
+remote session — own clone, own working tree, own branch — so PRDs never
+contend on a shared checkout. Running one `/zsl:tdd-parallel` per remote
+session is the whole reason fan-out happens at the session level rather
+than inside one orchestrator.
+
+A worker flips the PRD's claim to `in-progress`, runs
+`/zsl:tdd-parallel <num> --on-review-failure=continue --max 2`, and opens
+one integration PR. Because it owns its clone — where local `.scratch/`
+writes never auto-sync home — successes ride home in the integration PR,
+and everything without a PR (the claim flip, any halt's `needs-info`
+move + RCA) is recorded instead as a **per-PRD entry on the shared
+`afk-runs` git branch** (an orphan ledger branch; one entry per PRD so
+concurrent workers never conflict), which `/zsl:morning-review`
+reconciles back into `.scratch/`. On halt:
+
+- **Clean-tree halts** (3a zero-progress, 3d agent failure) — record the
+  attributable slices as `needs-info` with the `/zsl:tdd-parallel` RCA,
+  and set the PRD parent back to `tracking` to re-queue once re-triaged.
+- **Dirty-tree halts** (3e unresolvable merge conflict) — leave the clone
+  untouched for inspection, RCA on the PRD parent. Because the session is
+  isolated, a stuck PRD can't affect any other PRD's worker.
+- **Integration review failure (4a)** is never a halt here — the worker
+  always passes `--on-review-failure=continue`, so it becomes a PR-body
+  warning instead.
+
+Each worker also fires a **best-effort Telegram heads-up** when it
+finishes a PRD (a plain HTTPS call to the Bot API, no MCP connector) if
+`AFK_TELEGRAM_BOT_TOKEN` / `AFK_TELEGRAM_CHAT_ID` are set in the remote
+environment. It carries no load-bearing data — the `afk-runs` ledger is
+the record — so a missing or failing notification never affects a run.
+`/zsl:afk-worker` is invoked by the routine, not by hand.
+
+### New skill: `/zsl:morning-review`
+
+[`/zsl:morning-review`](skills/morning-review.md) is the consumer side of
+the overnight path. It first **reconciles** the `afk-runs` ledger branch
+back into the canonical `.scratch/` tracker — replaying the claim flips
+and halt RCAs that ran in isolated worker clones and can't reach `main`
+any other way — across **every un-reconciled run, not just last night**
+(so a skipped morning isn't lost). Then it reads `/zsl:afk-fanout`'s
+scheduling manifest and walks you through the artifacts in priority
+order:
+
+1. PRs flagged `## ⚠️ Integration review failed` — re-run
+   `/zsl:code-review` against the PR branch locally before merge.
+2. PRs containing slices with `verify-after: staging` — staging deploy +
+   smoke test (manual, project-specific).
+3. PRs containing slices with `verify-after: local-run` —
+   `gh pr checkout` + `/verify` against your local dev env.
+4. Scheduled-but-no-result PRDs — a worker that never produced output
+   (throttled by the token cap, never fired, or stuck on a 3e dirty
+   tree). The manifest cross-check surfaces these so they aren't silently
+   lost; re-schedule or inspect the routine session.
+5. Halted slices in `needs-info` — re-triage decisions (back to
+   `ready-for-agent`, reformulate the brief, or `wontfix`).
+6. PRs where every slice is `verify-after: ci` — diff skim, merge.
+7. PRs with red CI — surfaced separately; investigate via the checks tab.
+
+The skill does **not** auto-merge and does **not** deploy. Manual-deploy
+projects stay manual-deploy. It sequences attention; the human does the
+work and the merge clicks.
+
+### `/zsl:setup-zsl-superpowers`: optional remote-agent environment
+
+[`/zsl:setup-zsl-superpowers`](skills/setup-zsl-superpowers.md) gains an
+optional **Section F — Remote agent environment** that writes
+`docs/agents/remote-env.md`. It records the claude.ai Claude Code
+**environment id** the overnight loop schedules sessions into, installs
+the **remote-skills `SessionStart` hook** (see below) so the skills
+resolve in the fresh remote session, and confirms the remote has push
+access for the `afk-runs` ledger branch, and optionally records the
+*names* (never values) of the `AFK_TELEGRAM_*` secrets for the Telegram
+heads-up. `/zsl:afk-fanout` refuses at pre-flight until this file exists;
+the rest of the loop is unaffected if you skip it.
+
+### `/zsl:setup-zsl-superpowers`: remote-skills hook replaces "install the plugin in the environment"
+
+Earlier 1.0 drafts told you to install the zsl plugin into the claude.ai
+environment so `/zsl:afk-worker` would resolve when a routine fired.
+**There is no such per-environment lever** — plugin availability isn't an
+environment setting, and a scheduled routine starts in a fresh remote
+session with no plugins installed. Section F now provisions the skills
+the correct way: it writes `.claude/hooks/zsl-remote-skills.sh` and merges
+a `SessionStart` entry into the repo's `.claude/settings.json`. The hook
+fires **only when `CLAUDE_CODE_REMOTE=true`** (a no-op in your local
+sessions, where the plugin is installed), clones zsl-superpowers, and
+symlinks its skills — including the `remote-agents` bucket where
+`/zsl:afk-worker` lives — into `~/.claude/skills/`. `/zsl:afk-fanout`'s
+pre-flight now checks for this hook instead of an environment-level plugin
+install.
+
+### Upgrading from 0.11
+
+**The remote path is opt-in, but two changes affect interactive
+`/zsl:tdd-parallel` and `/zsl:verify-coverage` even if you never use it:**
+
+1. **`/zsl:tdd-parallel` no longer refuses on open `[HITL]` slices.**
+   Where 0.10 hard-refused at pre-flight, it now runs the slices whose
+   blocker closure is HITL-free, defers the rest, and opens a `[partial]`
+   PR that leaves the parent PRD open. It refuses only when *no* slice is
+   runnable. If you relied on the blanket refusal as a signal to clear
+   `[HITL]` first, you'll now get a partial PR instead — clear the gate
+   via `/zsl:human-itl <parent>` and re-run to land the remainder. A PRD
+   with no open `[HITL]` slices is unchanged.
+
+2. **`/zsl:verify-coverage` now classifies some stories `deferred`.**
+   A story covered only by a still-open slice reports as `deferred`
+   (with the blocking slice as evidence) instead of being driven through
+   Tier B and filed as a gap. This is always on. If you had automation
+   parsing the matrix counts, note the new `deferred=<n>` field and the
+   `deferred-stories:` receipt line.
+
+3. **`/zsl:tdd-parallel` worktree naming changed in `.scratch/` mode.**
+   Old `.worktrees/<slice>-<slug>/` directories from prior runs won't
+   match the new `<feat>-<slice>-<slug>` sweep pattern and are left
+   untouched (harmless). To clean up, `rm -rf .worktrees/` once before
+   your next run — the next invocation recreates what it needs.
+
+4. **Existing agent briefs without `verify-after:` still work.**
+   `/zsl:morning-review` treats a missing field as `ci`. To get the
+   risk-aware walk-through, re-triage existing `ready-for-agent` slices
+   and add the field; new briefs written by `/zsl:triage` carry it
+   automatically.
+
+To stand up the overnight path itself:
+
+1. Run `/zsl:setup-zsl-superpowers` and answer **Section F** to write
+   `docs/agents/remote-env.md` with your claude.ai environment id (and,
+   optionally, the Telegram secret names). The same section installs the
+   remote-skills `SessionStart` hook (`.claude/hooks/zsl-remote-skills.sh`)
+   so the skills resolve in the remote session — there's no plugin to
+   install into the environment. Confirm the remote can push the
+   `afk-runs` branch.
+2. In the evening, run `/zsl:afk-fanout` in a local session. Pick the
+   PRDs to run overnight; it schedules one remote routine per PRD, a
+   fixed 2h apart, each running `/zsl:afk-worker`.
+3. Each routine clones a fresh checkout and runs one PRD. Successes come
+   home as integration PRs; claim flips and halt RCAs come home on the
+   shared `afk-runs` ledger branch (`/zsl:afk-fanout` also writes its
+   scheduling manifest there).
+4. The morning after, run `/zsl:morning-review` to reconcile the ledger
+   and walk the resulting PRs, halted slices, and any PRD that produced
+   no result.
+
 ## 0.11.0
 
 Eight engineering skills now bundle decision-pressure rules distilled

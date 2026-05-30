@@ -1,6 +1,6 @@
 ---
 name: setup-zsl-superpowers
-description: Sets up an `## Agent skills` block in AGENTS.md/CLAUDE.md and `docs/agents/` so the engineering skills know this repo's issue tracker (GitHub or local markdown), triage label vocabulary, domain doc layout, and ship style (PR vs direct push). Run before first use of `to-issues`, `to-prd`, `triage`, `diagnose`, `tdd`, `improve-codebase-architecture`, or `zoom-out` — or if those skills appear to be missing context about the issue tracker, triage labels, domain docs, or ship style.
+description: Sets up an `## Agent skills` block in AGENTS.md/CLAUDE.md and `docs/agents/` so the engineering skills know this repo's issue tracker (GitHub or local markdown), triage label vocabulary, domain doc layout, ship style (PR vs direct push), and — optionally — the remote claude.ai environment the overnight agent loop schedules into. Run before first use of `to-issues`, `to-prd`, `triage`, `diagnose`, `tdd`, `improve-codebase-architecture`, or `zoom-out` — or if those skills appear to be missing context about the issue tracker, triage labels, domain docs, ship style, or remote agent environment.
 disable-model-invocation: true
 ---
 
@@ -13,6 +13,7 @@ Scaffold the per-repo configuration that the engineering skills assume:
 - **Domain docs** — where `CONTEXT.md` and ADRs live, and the consumer rules for reading them
 - **Ship style** — how changes reach the default branch (pull request or direct push)
 - **Project board** *(optional)* — a GitHub Projects v2 board whose `Status` column should mirror triage labels and tdd lifecycle
+- **Remote agent environment** *(optional)* — the claude.ai Claude Code environment id the overnight loop (`/afk-fanout`, `/afk-worker`) schedules remote sessions into
 
 This is a prompt-driven skill, not a deterministic script. Explore, present what you found, confirm with the user, then write.
 
@@ -31,7 +32,7 @@ Look at the current repo to understand its starting state. Read whatever exists;
 
 ### 2. Present findings and ask
 
-Summarise what's present and what's missing. Then walk the user through the five decisions **one at a time** — present a section, get the user's answer, then move to the next. Don't dump them all at once.
+Summarise what's present and what's missing. Then walk the user through the decisions **one at a time** — present a section, get the user's answer, then move to the next. Don't dump them all at once. Sections A–D are core; E (project board) and F (remote agent environment) are optional.
 
 Assume the user does not know what these terms mean. Each section starts with a short explainer (what it is, why these skills need it, what changes if they pick differently). Then show the choices and the default.
 
@@ -152,12 +153,37 @@ If the user opts in, walk them through:
 
 If the user opts out, do not write `docs/agents/project-board.md` — the skills detect its absence and silently skip the sync.
 
+**Section F — Remote agent environment (optional).**
+
+> Explainer: The overnight loop runs each PRD in its own remote claude.ai session. `/afk-fanout` (which you run in the evening) schedules one one-shot routine per PRD via the claude.ai routines API; each fires `/afk-worker` in a fresh remote session. To schedule those, `/afk-fanout` needs the **environment id** of the Claude Code environment on claude.ai that the sessions should run in (the clone + setup they use). Skip this section if you don't intend to use the overnight loop — `/afk-fanout` simply refuses at pre-flight until it's configured.
+
+If the user opts in:
+
+1. **Get the environment id.** Ask the user for it. They can find it in claude.ai → Code → Environments (the environment configured for this repo), or — if they already have any routine defined — read it off `RemoteTrigger({action:"list"})` → `job_config.ccr.environment_id`. The id looks like `env_016kJTSSQaEEUatC4vq82c1G`.
+2. **Write the remote-skills hook so the skills resolve in the remote session.** A scheduled routine fires in a fresh remote session that has **no plugins installed**, and plugin availability is **not** configurable per claude.ai environment — so without provisioning, `/afk-worker` (and the skills it drives) won't resolve. The fix is a repo-level `SessionStart` hook that clones zsl-superpowers and symlinks its skills into `~/.claude/skills/` **only when `CLAUDE_CODE_REMOTE=true`** (a no-op locally, where the user has the plugin). Write it:
+   - Copy [remote-skills-hook.sh](./remote-skills-hook.sh) to `.claude/hooks/zsl-remote-skills.sh` in the target repo and `chmod +x` it.
+   - **Merge** a `SessionStart` entry into the repo's `.claude/settings.json` — append to the existing `SessionStart` array if one is present, never overwrite it (the repo may already have its own hooks):
+     ```json
+     {
+       "hooks": {
+         "SessionStart": [
+           { "hooks": [ { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/zsl-remote-skills.sh" } ] }
+         ]
+       }
+     }
+     ```
+   This replaces the old "install the plugin into the environment" step — there is no such per-environment lever; the repo provisions its own skills.
+3. **Confirm a writable remote.** Workers push their per-PRD results to a shared `afk-runs` git branch that `/morning-review` reconciles back into the tracker (`.scratch/` mode). The remote environment needs push access or results can't come home; `/afk-fanout` pre-flights this.
+4. **Offer optional Telegram heads-up (optional within optional).** Each worker can fire a best-effort one-line Telegram message when it finishes a PRD. If the user wants it, have them create a bot via [@BotFather](https://t.me/BotFather) and set `AFK_TELEGRAM_BOT_TOKEN` and `AFK_TELEGRAM_CHAT_ID` as **secrets/env vars in the remote Claude Code environment** (not in the repo). `remote-env.md` records only the var *names*. If they decline, workers skip the notification silently — it carries no load-bearing data.
+
+If the user opts out, do not write `docs/agents/remote-env.md` — `/afk-fanout` detects its absence and refuses (the rest of the loop is unaffected).
+
 ### 3. Confirm and edit
 
 Show the user a draft of:
 
 - The `## Agent skills` block to add to whichever of `CLAUDE.md` / `AGENTS.md` is being edited (see step 4 for selection rules)
-- The contents of `docs/agents/issue-tracker.md`, `docs/agents/triage-labels.md`, `docs/agents/domain.md`, `docs/agents/ship-style.md`, and (if Section E was answered yes) `docs/agents/project-board.md`
+- The contents of `docs/agents/issue-tracker.md`, `docs/agents/triage-labels.md`, `docs/agents/domain.md`, `docs/agents/ship-style.md`, (if Section E was answered yes) `docs/agents/project-board.md`, and (if Section F was answered yes) `docs/agents/remote-env.md`
 
 Let them edit before writing.
 
@@ -203,6 +229,14 @@ If Section E was answered yes, also append:
 [one-line summary — project name and URL]. See `docs/agents/project-board.md`.
 ```
 
+If Section F was answered yes, also append:
+
+```markdown
+### Remote agent environment
+
+[one-line summary — the environment id]. See `docs/agents/remote-env.md`.
+```
+
 Then write the docs files using the seed templates in this skill folder as a starting point:
 
 - [issue-tracker-github.md](./issue-tracker-github.md) — GitHub issue tracker
@@ -213,8 +247,10 @@ Then write the docs files using the seed templates in this skill folder as a sta
 - [ship-style-pr.md](./ship-style-pr.md) — pull-request workflow
 - [ship-style-direct.md](./ship-style-direct.md) — direct push to default branch
 - [project-board.md](./project-board.md) — GitHub Projects v2 sync (only when Section E was answered yes)
+- [remote-env.md](./remote-env.md) — remote agent environment for the overnight loop (only when Section F was answered yes)
+- [remote-skills-hook.sh](./remote-skills-hook.sh) — the `SessionStart` hook that provisions the skills in remote sessions (only when Section F was answered yes); copy to the target repo's `.claude/hooks/zsl-remote-skills.sh`
 
-For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch using the user's description. For `docs/agents/project-board.md`, fill the template placeholders with the project node ID, Status field ID, and option IDs you discovered in Section E.
+For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch using the user's description. For `docs/agents/project-board.md`, fill the template placeholders with the project node ID, Status field ID, and option IDs you discovered in Section E. For `docs/agents/remote-env.md`, replace the `env_xxxxxxxxxxxxxxxxxxxxxx` placeholder with the environment id from Section F. When Section F was answered yes, also install the remote-skills hook (copy `remote-skills-hook.sh` → `.claude/hooks/zsl-remote-skills.sh`, `chmod +x`, and merge the `SessionStart` entry into `.claude/settings.json` per Section F step 2 — append, don't overwrite).
 
 ### 5. Backfill feature numbers and archive date prefixes (local-markdown only)
 
@@ -282,4 +318,4 @@ Don't run any `git mv` without explicit confirmation. Backfilled values are best
 
 ### 6. Done
 
-Tell the user the setup is complete and which engineering skills will now read from these files. Mention they can edit `docs/agents/*.md` directly later — re-running this skill is only necessary if they want to switch issue trackers or restart from scratch.
+Tell the user the setup is complete and which engineering skills will now read from these files. If Section F was configured, note that `/afk-fanout` will read `docs/agents/remote-env.md` to schedule the overnight loop. Mention they can edit `docs/agents/*.md` directly later — re-running this skill is only necessary if they want to switch issue trackers or restart from scratch.

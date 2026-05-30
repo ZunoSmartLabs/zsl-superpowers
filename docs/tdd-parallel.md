@@ -3,7 +3,9 @@
 `tdd-parallel` is the most distinctive skill in the plugin. It fans the unblocked
 `[AFK]` sub-issues of a parent (PRD) issue out into parallel `/tdd` sub-agents,
 merges every slice branch onto the PRD branch in wave order, and opens **one**
-consolidated integration PR.
+consolidated integration PR. When an open `[HITL]` slice is in the way it runs
+*partially* — shipping everything not gated behind the `[HITL]` and deferring the
+rest into a `[partial]` PR that leaves the PRD open ([see below](#partial-runs-hitl-defers-it-doesnt-block)).
 
 If you want the spec, see [`skills/tdd-parallel`](skills/tdd-parallel.md). This
 page covers the *why* — the design decisions you need to understand to use it
@@ -108,14 +110,55 @@ graph and execute it:
 The orchestrator waits for all of wave N to complete and merge before spawning
 wave N+1, so wave N+1 inherits the integration tip from wave N's merges.
 
-## What gets skipped
+## Partial runs: `[HITL]` defers, it doesn't block
+
+`/zsl:tdd-parallel` does **not** refuse a whole PRD when an open `[HITL]`
+slice exists. It runs the PRD **partially**: it fans out every slice
+whose transitive `Blocked by` closure is free of open `[HITL]` gates,
+*defers* each open `[HITL]` slice plus everything downstream of it, and
+opens a **`[partial]`** PR that leaves the parent PRD open. A PRD with no
+open `[HITL]` slices runs fully and closes the parent — byte-for-byte the
+old behaviour. This is **always on; there is no flag.**
+
+### Why this is safe
+
+The old blanket pre-flight refusal — *no open `[HITL]` sub-issues
+anywhere* — was stronger than the invariant it protected. The real
+invariant is **no human gate fires *after* invocation**: once the
+auto-loop starts, nothing stops to wait on a human. That's preserved by
+a weaker, graph-aware rule:
+
+> Run only slices whose transitive `Blocked by` closure contains no open
+> `[HITL]` slice. Defer every open `[HITL]` slice and everything
+> transitively downstream of it.
+
+Because every selected slice's *entire* blocker closure is HITL-free, no
+selected slice can become human-gated mid-run — the invariant holds just
+as firmly, but without throwing away the work that doesn't depend on the
+gate. The only refusal that remains is when *nothing* is runnable (every
+slice is deferred), which is genuinely a no-op run.
+
+The `[partial]` PR carries a `## Deferred` section: the gating `[HITL]`
+issue(s), the deferred slices, the deferred user-story numbers, and the
+re-entry recipe. Clearing the gate with
+[`/zsl:human-itl <parent>`](skills/human-itl.md) and re-running
+`/zsl:tdd-parallel <parent>` lands the remainder — the second run is a
+full run (nothing deferred) and closes the parent. No partial-specific
+state is persisted between runs: the merged sub-issues are already
+closed (excluded from the next Open filter), and the now-closed `[HITL]`
+slice satisfies its downstream via the existing `satisfied_oob` path.
+
+## What gets skipped or deferred
 
 `/zsl:tdd-parallel` is intentionally narrow:
 
 - **`[HITL]` slices** — slices needing a manual action a coding agent
   can't perform (console clicks, credential rotation, external sign-off,
-  a hand-run migration). Clear them with
-  [`/zsl:human-itl <parent>`](skills/human-itl.md) *before* re-running the
+  a hand-run migration). These are **deferred**, not skipped: the run
+  ships everything not behind them and reports them in a
+  **Deferred — HITL-blocked** bucket and the PR's `## Deferred` section.
+  Clear them with
+  [`/zsl:human-itl <parent>`](skills/human-itl.md) then re-run the
   fanout — not `/zsl:tdd`, since a HITL slice is a manual action, not a
   unit of red-green-refactor. (A `[HITL]` slice that's actually a decision
   is a process leak — resolve it upstream in `/zsl:grill-with-docs` + an
@@ -125,23 +168,21 @@ wave N+1, so wave N+1 inherits the integration tip from wave N's merges.
 - **Direct-push repos** — fanouts that land on `main` defeat the
   consolidation point. Refuses with a clear error.
 
-`[HITL]` slices aren't run here and aren't run with `/zsl:tdd` either —
-they're a manual action, not a unit of red-green-refactor. They have
-their own serial, human-present skill, and clearing them feeds back into
-the fanout:
+Clearing a deferred `[HITL]` feeds back into the fanout:
 
 ```mermaid
 flowchart LR
-    tp["/zsl:tdd-parallel &lt;PRD&gt;"] -->|"filter out [HITL]"| skip["Skipped — HITL<br/>bucket reported"]
-    tp -->|"fan out [AFK]"| afk["build + merge<br/>onto PRD branch"]
-    skip --> hi["/zsl:human-itl &lt;PRD&gt;<br/>do the manual action,<br/>record it, mark done"]
+    tp["/zsl:tdd-parallel &lt;PRD&gt;"] -->|"defer [HITL] +<br/>downstream"| skip["Deferred — HITL-blocked<br/>bucket + [partial] PR"]
+    tp -->|"fan out HITL-free [AFK]"| afk["build + merge<br/>onto PRD branch"]
+    afk -->|"runnable slices merged"| ppr["push once →<br/>[partial] PR<br/>(PRD stays open)"]
+    ppr --> hi["/zsl:human-itl &lt;PRD&gt;<br/>do the manual action,<br/>record it, mark done"]
+    skip --> hi
     hi -->|"dependent [AFK] slices<br/>now unblock"| rerun["re-run<br/>/zsl:tdd-parallel &lt;PRD&gt;"]
-    rerun --> afk
-    afk -->|"all discovered AFK merged"| pr["push once →<br/>ONE integration PR"]
+    rerun -->|"full run now"| pr["ONE PR closes<br/>the remainder + parent"]
 
     classDef good fill:#dcfce7,stroke:#16a34a;
     classDef ok fill:#fef3c7,stroke:#d97706;
-    class tp,afk,rerun,pr good
+    class tp,afk,rerun,pr,ppr good
     class skip,hi ok
 ```
 
@@ -185,6 +226,31 @@ When the integration PR merges, GitHub's auto-close behaviour closes every
 referenced issue, and (if `docs/agents/project-board.md` exists) every card lands
 on `Done` automatically.
 
+If the PRD had an open `[HITL]` slice, the PR is **`[partial]`** instead — the
+title gets a `[partial]` marker, the `## Closes` block omits `Closes #<parent>`
+(so the PRD stays open) and lists only the merged sub-issues, and a `## Deferred`
+section spells out the gate and the re-entry recipe:
+
+```markdown
+## Deferred
+
+This run shipped every slice whose `Blocked by` closure is free of open
+`[HITL]` gates and deferred the rest. The parent PRD (#123) stays open
+until the remainder lands.
+
+- Gating open `[HITL]` issue(s): `#124 — Register the OAuth app in the console`
+- Deferred slices: `#127 — Wire callback to session store` (downstream of #124)
+- Deferred user stories: 3, 4
+
+**Re-entry:** clear the gate via `/zsl:human-itl 123`, then re-run
+`/zsl:tdd-parallel 123` to land the remainder.
+
+## Closes
+
+Closes #125
+Closes #126
+```
+
 ## What halts a run
 
 Seven failure paths halt the orchestrator. All halt the same way: print a
@@ -193,7 +259,7 @@ attempt resume — the user takes over from the halted state.
 
 | Halt | Trigger | Most likely cause | Where it leaves you |
 |---|---|---|---|
-| **Pre-flight refusal** | Step 1d found untagged stories, non-automatable stories, or open `[HITL]` sub-issues | PRD pre-dates the tag requirement, or `/zsl:human-itl` hasn't been run yet | No branch state to inspect — refused before any work. Fix the PRD or run `/zsl:human-itl <parent>` and re-invoke. |
+| **Pre-flight refusal** | Step 1d found an in-scope story untagged/non-automatable, or **no slice is runnable** (every slice deferred behind an open `[HITL]` or still in triage) | PRD pre-dates the tag requirement, or every slice is gated and `/zsl:human-itl` hasn't been run yet. (Open `[HITL]` slices *alongside* runnable ones no longer refuse — they trigger a partial run.) | No branch state to inspect — refused before any work. Fix the PRD or run `/zsl:human-itl <parent>` and re-invoke. |
 | **Agent failure** | A sub-agent errored, refused, or returned without a mergeable branch | Bad agent brief, missing access, ambiguous architectural decision | On the PRD branch; failing slice's worktree intact at `.worktrees/<num>-<slug>/` with partial commits on its branch |
 | **Unresolvable merge conflict** | Auto-resolve attempt couldn't produce a clean lint+test-passing merge | Mis-sliced wave (slices in the same wave touched the same area), or genuine cross-wave drift | **On the PRD branch, mid-merge** — no `git merge --abort`. Conflict markers in place; resolve in your main checkout. |
 | **Zero-progress** | No slices unblock and the fanout isn't complete | Circular `Blocked by`, reference outside the parent's sub-tree, or non-existent issue number | On the PRD branch with whatever has merged so far; un-attempted slices' `Blocked by` sections reveal the cycle |

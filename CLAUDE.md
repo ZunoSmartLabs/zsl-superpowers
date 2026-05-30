@@ -3,10 +3,11 @@ Skills are organized into bucket folders under `skills/`:
 - `engineering/` — daily code work
 - `misc/` — kept around but rarely used
 - `productivity/` — daily non-code workflow tools
+- `remote-agents/` — the overnight loop: schedule unattended remote runs, run them, review the results
 
 ## Adding or removing a skill
 
-A skill in `engineering/`, `productivity/`, or `misc/` must be cited in five places, all kept in sync. Adding or removing one means updating all five:
+A skill in `engineering/`, `productivity/`, `misc/`, or `remote-agents/` must be cited in five places, all kept in sync. Adding or removing one means updating all five:
 
 1. `.claude-plugin/plugin.json` — entry in the `skills` array.
 2. Top-level `README.md` — one-line description in the matching bucket of the **Reference** section, skill name linked to its `SKILL.md`. Plus a workflow-section reference if it's part of the end-to-end loop.

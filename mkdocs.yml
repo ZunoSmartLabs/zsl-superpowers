@@ -78,6 +78,10 @@ nav:
           - skills/commit.md
           - skills/commit-push-pr.md
           - skills/code-review.md
+      - Overnight (remote agents):
+          - skills/afk-fanout.md
+          - skills/afk-worker.md
+          - skills/morning-review.md
       - Cross-cutting:
           - skills/improve-codebase-architecture.md
           - skills/zoom-out.md

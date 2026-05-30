@@ -34,6 +34,16 @@ The agent needs to know when it's done. Every agent brief must have concrete, te
 
 State what is out of scope. This prevents the agent from gold-plating or making assumptions about adjacent features.
 
+### Verification routing
+
+Every brief carries a `verify-after:` line that tells the post-PR pipeline how this slice should be validated once its PR opens. `/afk-fanout` surfaces it as the per-PRD `verify-after` mix when you pick what to run overnight; `/morning-review` reads it to decide whether to walk you through `/verify` against your local dev env before merge. Pick exactly one:
+
+- **`verify-after: ci`** — CI signals (lint + types + tests + the per-slice and integration `/code-review --auto` + the `/verify-coverage --auto` receipt) are sufficient. The morning reviewer skims the diff and merges. Default for pure business-logic slices that don't touch system boundaries.
+- **`verify-after: local-run`** — needs a human to `gh pr checkout` and run `/verify` against the local dev env before merge. Use for slices that touch external APIs, auth flows, payment, migrations, or anything where CI-green doesn't mean works-against-real-services.
+- **`verify-after: staging`** — needs a human to deploy to staging and smoke-test before merge. Reserved for slices where local dev env can't faithfully simulate the deployed environment (real infrastructure, third-party webhook callbacks, region-specific behaviour).
+
+The field is set by `/triage` when moving a slice to `ready-for-agent`. The triage step should default to `ci` and only escalate when there's a concrete reason — over-tagging `local-run` or `staging` defeats the point of unattended overnight runs.
+
 ## Template
 
 ```markdown
@@ -41,6 +51,7 @@ State what is out of scope. This prevents the agent from gold-plating or making 
 
 **Category:** bug / enhancement
 **Summary:** one-line description of what needs to happen
+**verify-after:** ci | local-run | staging
 
 **Current behavior:**
 Describe what happens now. For bugs, this is the broken behavior.
@@ -74,6 +85,7 @@ Be specific about edge cases and error conditions.
 
 **Category:** bug
 **Summary:** Skill description truncation drops mid-word, producing broken output
+**verify-after:** ci
 
 **Current behavior:**
 When a skill description exceeds 1024 characters, it is truncated at exactly
@@ -109,6 +121,7 @@ and append "..." to indicate truncation.
 
 **Category:** enhancement
 **Summary:** Add `.out-of-scope/` directory support for tracking rejected feature requests
+**verify-after:** local-run
 
 **Current behavior:**
 When a feature request is rejected, the issue is closed with a `wontfix` label

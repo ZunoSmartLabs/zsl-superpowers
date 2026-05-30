@@ -123,6 +123,16 @@ matters for picking a skill.
 | [commit-push-pr](commit-push-pr.md) | One-shot ship for a feature branch: pre-flight refuses on the default branch, delegates the commit to [`/zsl:commit`](commit.md), then `git push -u`, then `gh pr create`. No force-push, no `--no-verify`, no Claude attribution. |
 | [code-review](code-review.md) | Pre-PR review of the current branch with a parallel six-lens scan (clean-code, CLAUDE.md compliance, git history, prior PR comments, inline comments, spec alignment) and 0–100 confidence scoring (drops <60). The Spec lens fetches the originating PRD/issue and checks the diff against it. Interactive mode keeps an approval gate; `--auto` applies ≥80 findings as a single revertible commit and reports 60–79 in the return summary. Runs automatically inside `/zsl:tdd` step 5 and `/zsl:tdd-parallel` step 4a. See the [deep-dive](../code-review.md) for the lens layout and confidence model. |
 
+### Overnight (remote agents)
+
+The overnight loop — schedule dedicated remote sessions, run them unattended, review the results. Evening `/afk-fanout` → overnight `/afk-worker` routines (one per PRD, 2h apart) → morning `/morning-review`.
+
+| Skill | What it does |
+|---|---|
+| [afk-fanout](afk-fanout.md) | Interactive local-session scheduler. Shows the queue of `tracking` PRDs with `ready-for-agent` children; you pick which to run overnight and in what order; it schedules one one-shot remote routine per PRD a fixed 2h apart (a throttle for the per-5h-window token cap), each running `/afk-worker`. Light `scheduled` claim prevents double-booking. |
+| [afk-worker](afk-worker.md) | Remote per-PRD executor fired by an `/afk-fanout`-scheduled routine. Runs unattended in its own clone: claim → `in-progress`, `/tdd-parallel <num> --on-review-failure=continue --max 2`, open one integration PR, halt → slice + RCA. Reports its outcome on the shared `afk-runs` ledger branch (reconciled by `/morning-review`) + best-effort Telegram heads-up. Invoked by the routine, not by hand. |
+| [morning-review](morning-review.md) | Walk a human through the overnight artifacts. Reconciles the `afk-runs` ledger into the canonical `.scratch/` tracker across every un-reconciled run, then surfaces integration PRs to verify and merge, scheduled-but-no-result PRDs, halted slices to re-triage. Sorts PRs by their brief's `verify-after:` tag so `local-run` and `staging` slices surface first; `ci` slices are batch-mergeable after a diff skim. Does not auto-merge; does not deploy. |
+
 ### Cross-cutting
 
 | Skill | When to reach for it |

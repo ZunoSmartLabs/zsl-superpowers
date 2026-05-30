@@ -93,9 +93,22 @@ A concise description of this vertical slice. Describe the end-to-end behavior, 
 The PRD user story numbers this slice addresses, each with its short
 text **and the parent's `acceptance:` / `observable:` sub-bullets
 carried over verbatim**. The persisted form of the quiz mapping from
-step 4 — `/verify-coverage` consumes it as its Tier A story→slice map,
-and Tier B reads the `observable:` line as the test-generation hint, so
-both must be in the body, not only spoken in the quiz.
+step 4.
+
+**This section is MANDATORY on every PRD-derived slice** (the only
+omission is a freeform plan with no user stories — see below). It is
+load-bearing in two places that both read it back from the issue body,
+not from the quiz:
+
+- `/verify-coverage` consumes it as its Tier A story→slice map, and
+  Tier B reads the `observable:` line as the test-generation hint.
+- `/tdd-parallel` **partial runs** read it to tell a *deferred* story
+  (covered only by a slice still gated behind an open `[HITL]`) apart
+  from a real *gap*. A slicing run that silently drops this section
+  breaks partial-run coverage scoping: deferred stories get
+  misclassified as gaps and spuriously re-fanned-out. (Legacy slices
+  that predate this section fall back to `/verify-coverage`'s
+  lower-confidence inference — don't rely on it for new slices.)
 
 Example:
 

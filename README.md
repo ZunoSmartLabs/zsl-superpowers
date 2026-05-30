@@ -41,6 +41,14 @@ The skills compose into one end-to-end loop. Most days you only touch a few of t
 - **[`/commit`](./skills/engineering/commit/SKILL.md)** for clean, attribution-free commits.
 - **[`/code-review`](./skills/engineering/code-review/SKILL.md)** before opening the PR.
 
+### Overnight (remote agents)
+
+A three-step loop that fans work out to dedicated remote claude.ai sessions — one per PRD — so multiple `/tdd-parallel` runs can happen overnight without contending on a shared checkout.
+
+- **[`/afk-fanout`](./skills/remote-agents/afk-fanout/SKILL.md)** — Run it yourself in the evening. It shows the queue of `tracking` PRDs with `ready-for-agent` children, you pick which to run overnight and in what order, and it schedules one one-shot remote routine per PRD a **fixed 2h apart** (a throttle to stay under the per-5h-window token cap). A light `scheduled` claim stops a re-run double-booking.
+- **[`/afk-worker`](./skills/remote-agents/afk-worker/SKILL.md)** — What each scheduled routine fires. Runs unattended in its own remote session and clone: flips the claim to `in-progress`, runs `/tdd-parallel <num> --on-review-failure=continue --max 2`, opens one integration PR, and on halt moves the offending slice to `needs-info` with an RCA. Per-PRD isolation means a stuck PRD can't take down the others. Invoked by the routine, not by hand.
+- **[`/morning-review`](./skills/remote-agents/morning-review/SKILL.md)** — Run it in the morning. Reconciles the `afk-runs` ledger branch into the canonical `.scratch/` tracker (claim flips and halt RCAs that ran in isolated worker clones), then sorts integration PRs by their slices' `verify-after:` tag and walks the human through `local-run` / `staging` PRs first (the ones CI green can't fully validate), then scheduled-but-no-result PRDs, then halted slices, then batch-mergeable `ci` PRs. Does not auto-merge; does not deploy.
+
 ### Cleanup
 
 - After children merge, manually run `git worktree remove` and `git branch -d` to clean up the parallel-tdd worktrees and branches (the next `/tdd-parallel` run also sweeps these in its pre-flight).
@@ -252,6 +260,14 @@ Tools we keep around but rarely use.
 - **[edit-article](./skills/misc/edit-article/SKILL.md)** — Edit and improve articles by restructuring sections, improving clarity, and tightening prose.
 - **[setup-pre-commit](./skills/misc/setup-pre-commit/SKILL.md)** — Set up Husky pre-commit hooks with lint-staged, Prettier, type checking, and tests.
 - **[steampipe](./skills/misc/steampipe/SKILL.md)** — AWS infrastructure query reference for `steampipe query`. Auto-triggered (not user-invocable); provides table names, column schemas, and JSONB query patterns.
+
+### Remote Agents
+
+The overnight loop — fan work out to dedicated remote claude.ai sessions, then review the results in the morning.
+
+- **[afk-fanout](./skills/remote-agents/afk-fanout/SKILL.md)** — Interactive local-session scheduler. Reviews the queue of `tracking` PRDs with `ready-for-agent` children, lets you pick which to run overnight and in what order, then schedules one one-shot remote routine per PRD a fixed 2h apart (a throttle for the per-5h-window token cap), each running `/afk-worker`. Places a light `scheduled` claim so a re-run won't double-book.
+- **[afk-worker](./skills/remote-agents/afk-worker/SKILL.md)** — Remote per-PRD executor fired by an `/afk-fanout`-scheduled routine. Runs unattended in its own clone: flips the claim to `in-progress`, runs `/tdd-parallel <num> --on-review-failure=continue --max 2`, opens one integration PR, and on halt records the offending slice + RCA. Reports its outcome on the shared `afk-runs` ledger branch (reconciled by `/morning-review`) and fires a best-effort Telegram heads-up. Invoked by the routine, not by hand.
+- **[morning-review](./skills/remote-agents/morning-review/SKILL.md)** — Walk a human through the overnight artifacts. Reconciles the `afk-runs` ledger into the canonical `.scratch/` tracker across every un-reconciled run, then surfaces integration PRs to verify and merge, halted slices to re-triage, and any scheduled PRD that produced no result. Sorts PRs by their brief's `verify-after:` tag so `local-run` and `staging` slices surface first; `ci` slices are batch-mergeable after a diff skim. Does not auto-merge; does not deploy.
 
 ## Engineering-book rules
 

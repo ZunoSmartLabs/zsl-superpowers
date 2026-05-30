@@ -74,12 +74,18 @@ Flags:
 - `--no-file` — produce the matrix and quarantined failing tests, but
   do **not** auto-file gap issues. Report-only. Still a full run —
   writes a gate-satisfying receipt (verification happened; you chose
-  not to file).
+  not to file). No effect on `deferred`: deferred stories are never
+  filed in any mode (there's nothing to fix yet), so the `deferred`
+  count is identical with or without `--no-file`.
 - `--no-generate` — Tier A only. Stories without an existing passing
   test are reported as `unverified` rather than driven through Tier B.
   Fast pass for a quick read; no tests are written. Writes a **partial**
   receipt; **does not satisfy `/tdd-parallel`'s auto-loop termination**
   — unverified rows mean those stories weren't actually checked.
+  Deferral is computed from tracker state *before* Tier A, so a story
+  claimed only by open slices is classified `deferred`, not
+  `unverified`, even under `--no-generate` (deferral takes precedence —
+  it's a known not-yet, not an unchecked unknown).
 
 ## Pre-flight
 
@@ -126,26 +132,48 @@ Tier A then Tier B.
 
 ### 2. Build the story → slice map
 
-Fetch the PRD's sub-issues per `docs/agents/issue-tracker.md`. For each
-**shipped** (closed/done) slice, read its `## User stories covered`
-section — the mapping `/to-issues` persists into each issue body.
-Invert it into `story → [slices]`.
+Fetch the PRD's sub-issues per `docs/agents/issue-tracker.md`. Read the
+`## User stories covered` section of **both** shipped and open slices —
+the mapping `/to-issues` persists into each issue body. For each
+**shipped** (closed/done) slice, invert it into `story → [shipped
+slices]`. For each **open** (not-shipped) slice, invert it into
+`story → [open slices]` separately — this is what tells deferred apart
+from a real gap.
 
 - A slice whose section says `None — enabling/infrastructure slice`
   contributes no story coverage; that is expected, not a gap.
 - Slices created before `/to-issues` persisted this section won't have
   it. Fall back to inferring the map from each slice's `## What to
-  build` + its merged diff, and **warn** that the map is inferred and
-  lower-confidence for those slices.
-- A story with no claiming slice is a strong gap candidate — but
-  absence of a claim is not proof of absence, and presence of a claim
-  is not proof of coverage. Every story is still verified by test
+  build` + (for shipped slices) its merged diff, and **warn** that the
+  map is inferred and lower-confidence for those slices. Apply the same
+  inference to open slices so the shipped-vs-open split still holds.
+- A story claimed **only by still-open slices** (none shipped) is
+  **deferred**, not a gap — the work to cover it hasn't landed yet
+  (typically the covering slice is gated behind an open `[HITL]` and
+  `/tdd-parallel` deferred it to a partial run). Record the blocking
+  open slice ref as evidence. Deferred stories are **not** driven
+  through Tier B and **not** filed as gaps (see steps 4–7).
+- A story with **no claiming slice at all** (neither shipped nor open)
+  is a strong gap candidate — a real hole — but absence of a claim is
+  not proof of absence, and presence of a claim is not proof of
+  coverage. Every non-deferred in-scope story is still verified by test
   below regardless of what the map says; the map only decides Tier A
-  search order and surfaces suspicious holes early.
+  search order, separates deferred from gap, and surfaces suspicious
+  holes early.
+
+This deferral derivation is **always on** — it's a function of tracker
+state (shipped vs open slices), not a flag. When every slice is
+shipped, no story is deferred and the run is identical to before.
 
 ### 3. Tier A — map to an existing passing test
 
-For each in-scope story, search the test suite for the behavioural
+Set aside the `deferred` stories from step 2 (claimed only by still-open
+slices) and the `out-of-scope` stories — neither is verified this run. A
+deferred story has no shipped code to test yet; driving it through Tier A
+would always miss and Tier B would manufacture a spurious gap. The
+remaining in-scope, not-deferred stories go through Tier A then Tier B.
+
+For each such story, search the test suite for the behavioural
 test(s) that exercise it (the story → slice map narrows where to look;
 the glossary aligns naming; the `observable:` line names the
 behaviour). A story is **covered** only when:
@@ -195,9 +223,15 @@ Render one row per story:
 | State | Meaning | Evidence |
 |---|---|---|
 | `covered` | Tier A or Tier B GREEN | test path+name |
-| `gap` | Tier B RED | failing test path |
+| `gap` | Tier B RED, **or** no claiming slice at all (real hole) | failing test path / "no claiming slice" |
+| `deferred` | claimed only by still-open slice(s); none shipped yet | the blocking open slice ref |
 | `unverified` | `--no-generate`, no existing test | — |
 | `out-of-scope` | excluded by PRD `## Out of Scope` | the excluding PRD line |
+
+`deferred` is distinct from both `gap` (a hole to fix now) and
+`out-of-scope` (a permanent exclusion): it's a *temporary* not-yet —
+the covering slice is open and will land on a later `/tdd-parallel` run.
+Deferred stories never become gaps and are never filed.
 
 Print aggregate counts.
 
@@ -317,7 +351,8 @@ Receipt body (stable fields the orchestrator parses):
 - verified-sha: <full git sha>
 - mode: full | partial (--no-generate)
 - invocation: auto | manual
-- matrix: covered=<n> gap=<n> unverified=<n> out-of-scope=<n>
+- matrix: covered=<n> gap=<n> deferred=<n> unverified=<n> out-of-scope=<n>
+- deferred-stories: <story N → blocking open slice ref, … | none>
 - gaps-filed: <#a, #b | none (--no-file) | none (no gaps)>
 - ts: <ISO-8601 UTC>
 ```
@@ -334,12 +369,19 @@ every story actually exercised, not skipped as `unverified`.
 Print the structured terminal block the orchestrator parses:
 
 ```
-verify-coverage: matrix covered=<n> gap=<n> unverified=<n> out-of-scope=<n>
+verify-coverage: matrix covered=<n> gap=<n> deferred=<n> unverified=<n> out-of-scope=<n>
 gaps-filed: <#a, #b | none>
+deferred-stories: <story N → open slice ref, … | none>
 quarantined-tests-commit: <sha | none>
 receipt: <comment URL or file path>
 verified-sha: <full git sha>
 ```
+
+`/tdd-parallel`'s step 4b reads `deferred=<n>` here: `gap=0 deferred>0`
+is its partial-complete signal (proceed to the `[partial]` PR, don't
+loop), while `gap>0` still drives the auto-fix loop. The two counts are
+independent — a run can report both (some stories have a real gap to fix
+now, others are deferred behind an open `[HITL]`).
 
 Plus, for direct invocation (no `--auto`), a one-line next-step hint:
 

@@ -1,16 +1,23 @@
 ---
 name: tdd-parallel
-description: Full-auto PRD pipeline. Fans out the unblocked [AFK] sub-tasks of a parent PRD into parallel /tdd sub-agents, integrates them onto the PRD branch, auto-chains /verify-coverage to prove every user story has a passing non-vacuous test, auto-fixes any gaps (loop), then opens a single integration PR. Refuses up front if any [HITL] slice is open or any user story isn't expressible as an automatable test. PR-style repos only.
-disable-model-invocation: true
+description: Full-auto PRD pipeline. Fans out the unblocked [AFK] sub-tasks of a parent PRD into parallel /tdd sub-agents, integrates them onto the PRD branch, auto-chains /verify-coverage to prove every user story has a passing non-vacuous test, auto-fixes any gaps (loop), then opens a single integration PR. Runs partially when an open [HITL] slice exists — fans out every slice whose blocker closure is HITL-free, defers the rest, and opens a [partial] PR that leaves the PRD open. Refuses only if no slice is runnable or an in-scope user story isn't expressible as an automatable test. PR-style repos only.
 ---
 
 # Parallel TDD
 
 Full-auto pipeline from a PRD to a pushed integration PR: fanout → integrate → review → verify → fix → push, with no mid-run human gates in the happy path. Each `/tdd` sub-agent runs `/tdd <num> --no-ship` in its own worktree, committing locally but never pushing. The orchestrator merges every slice branch onto the parent's PRD branch (which doubles as the integration branch) in wave order with `--no-ff`, runs an integration code review, then chains `/verify-coverage --auto` and loops on any gaps it files before opening one consolidated PR.
 
-`[HITL]` slices are refused up front — they must be cleared via `/human-itl` in a separate session before this skill is invoked. The pre-flight also refuses any PRD whose user stories aren't 100% `acceptance: automatable` (per `/to-prd`'s tag format). Both rules exist to push every human-judgement gate *before* the auto-loop fires, so once `/tdd-parallel` starts, it runs through to PR-push or a circuit-breaker halt.
+`[HITL]` slices don't block the whole run — they're *deferred*. The pre-flight runs every slice whose transitive `Blocked by` closure is HITL-free and defers each open `[HITL]` slice plus everything transitively downstream of it. When anything is deferred, the run is **partial**: it ships the runnable slices in a `[partial]` PR that leaves the parent PRD *open*, with a re-entry recipe for landing the remainder after the gate clears via `/human-itl`. A PRD with no open `[HITL]` slices behaves exactly as a full run — closes the parent, no `[partial]` marker. The pre-flight still refuses any PRD whose *in-scope* user stories aren't 100% `acceptance: automatable` (per `/to-prd`'s tag format), and refuses outright only when no slice is runnable at all. Once `/tdd-parallel` starts, it runs through to PR-push or a circuit-breaker halt.
 
 PR-style repos only — direct-push fanouts merge straight to `main` without consolidation.
+
+## Why partial runs are safe
+
+The old blanket pre-flight refusal — *no open `[HITL]` sub-issues anywhere* — is stronger than the invariant it protects. The real invariant is **no human gate fires *after* invocation**: once the auto-loop starts, nothing should stop to wait on a human. That invariant is preserved by a weaker, graph-aware rule:
+
+> Run only slices whose transitive `Blocked by` closure contains no open `[HITL]` slice. Defer every open `[HITL]` slice and everything transitively downstream of it.
+
+Because every selected slice's *entire* blocker closure is HITL-free, no selected slice can become human-gated mid-run — the invariant holds just as firmly as under the blanket refusal, but without throwing away the work that doesn't depend on the gate. The deferred slices simply wait for a later run, after the gate clears via `/human-itl`. This carve is always on: there is no flag, and a PRD with zero open `[HITL]` slices is byte-for-byte the old behaviour (full fanout, closes the parent).
 
 ## Why one PR
 
@@ -19,12 +26,15 @@ Each push to a feature branch triggers CI workflows. With N sub-issues = N PRs y
 ## Usage
 
 ```
-/tdd-parallel <parent-issue> [--max N] [--max-coverage-rounds R]
+/tdd-parallel <parent-issue> [--max N] [--max-coverage-rounds R] [--on-review-failure halt|continue]
 ```
 
 - `<parent-issue>` — the parent (PRD) issue whose unblocked AFK sub-tasks should be fanned out.
 - `--max N` — concurrency cap *within a wave*. Default 2.
 - `--max-coverage-rounds R` — circuit breaker on the coverage auto-fix loop (step 4b). Default 3. On exhaustion, halts with the residual matrix; the user takes over.
+- `--on-review-failure halt|continue` — what to do when step 4a's `/code-review --auto` applies findings but lint/tests fail and the review commit gets reverted. Default `halt` (preserves the interactive contract). `continue` proceeds to step 4c with the pre-review tip — all slices are still green individually, the integration polish just didn't land — and adds a `## ⚠️ Integration review failed` section to the PR body listing the attempted findings. Use `continue` from unattended paths (`/afk-worker`, the overnight per-PRD remote executor); the morning reviewer runs `/code-review` against the PR locally before merge.
+
+Partial runs are **automatic and unconditional — there is no flag.** When the parent has open `[HITL]` slices (or slices still in triage), `/tdd-parallel` fans out everything not gated behind them and opens a `[partial]` PR, deferring the rest. A parent with no open `[HITL]` slices runs fully and closes the parent, exactly as before.
 
 ## AFK contract
 
@@ -60,15 +70,15 @@ Append `.worktrees/` to the repo root `.gitignore` if not already present.
 
 #### 1b. Auto-clean stale slice worktrees and branches
 
-Scan `.worktrees/*`. For each entry whose name matches `<num>-<slug>`:
+Scan `.worktrees/*`. For each entry whose name matches the configured naming pattern (`<num>-<slug>` for GitHub/GitLab, `<feat>-<slice>-<slug>` for local-markdown — see 3c):
 
-1. Parse the issue number from the directory name.
-2. Query the issue tracker for the issue's state.
-3. **Skip** if the issue is OPEN — not ours to remove.
+1. Parse the slice identifier from the directory name. GitHub/GitLab: `<num>` is the issue number. Local-markdown: `<feat>` is the feature dir number, `<slice>` is the per-feature slice file number; together they resolve to `.scratch/<feat>-*/issues/<slice>-*.md`.
+2. Query the issue tracker for the slice's state.
+3. **Skip** if the slice is OPEN — not ours to remove.
 4. **Skip** if `git -C .worktrees/<dir> status --porcelain` is non-empty — uncommitted changes; the user should investigate.
 5. Otherwise:
-   - `git worktree remove .worktrees/<num>-<slug>` (no `--force`)
-   - `git branch -d tdd/<num>-<slug>` (no `-D`)
+   - `git worktree remove .worktrees/<dir>` (no `--force`)
+   - `git branch -d tdd/<dir>` (no `-D`) — branch name mirrors the worktree dir name
 6. If `git branch -d` refuses because the branch isn't fully merged, **skip and log** — never `-D` automatically.
 
 Print a one-block summary: `cleaned`, `skipped — open`, `skipped — uncommitted`, `skipped — unmerged branch`. Do not refuse on any skip.
@@ -88,13 +98,23 @@ After 1c the orchestrator is on the PRD branch with a clean working tree.
 
 #### 1d. Parent PRD readiness
 
-Fetch the parent issue and its sub-issues per `docs/agents/issue-tracker.md`. Refuse with a clear message if any of these fail:
+Fetch the parent issue and its sub-issues per `docs/agents/issue-tracker.md`. Refuse with a clear message if this fails:
 
 - **Parent has a `## User Stories` section** — otherwise it isn't a PRD and this skill doesn't apply.
-- **Every user story carries `acceptance: automatable` AND an `observable: <description>` sub-bullet** in the exact format `/to-prd` writes. Any story tagged anything other than `automatable` (e.g. `manual-attestation`, which has been removed from this pipeline) is invalid. Any story missing either sub-bullet is invalid. Refuse with the offending story numbers and a pointer to `/to-prd`'s tag format — typically this means the PRD pre-dates the tag requirement and needs editing, or someone added a non-automatable story by hand.
-- **No open `[HITL]` sub-issues.** A `[HITL]` slice in the parent's sub-tree blocks the auto-loop's "no human gates after invocation" invariant. Refuse with the list of open `[HITL]` issue numbers + titles and tell the user to clear them via `/human-itl <parent>` first, then re-invoke. Closed `[HITL]` slices are fine — they're already absorbed via `satisfied_oob` in step 3a.
 
-These checks fail fast and surface the exact thing to fix. Once 1d passes, the auto-loop is committed: it will run through to PR push or a circuit-breaker halt, with no further human prompts in the happy path.
+Then build the HITL-reachability picture and partition the open sub-issues. Parse each open slice's `## Blocked by` references and compute, over the parent's sub-tree:
+
+- **runnable** = `[AFK]`, `ready-for-agent`, non-container slices whose *transitive* `Blocked by` closure contains **no open `[HITL]` slice** (a closed `[HITL]`, already cleared by `/human-itl`, does not gate). These are the slices this run fans out.
+- **deferred** = every open `[HITL]` slice ∪ its transitive downstream closure (anything that, directly or through a chain of `Blocked by`, depends on an open `[HITL]`) ∪ any sub-issue still in triage (`needs-triage`, no `ready-for-agent` label). These wait for a later run.
+
+This is a lightweight pass whose only job is to size `runnable`/`deferred` and scope the story gate below; step 2 rebuilds the full graph for execution, and step 3a's `satisfied` predicate enforces the same closure at pick time. The two cannot diverge: an open `[HITL]` blocker is never `satisfied` in 3a — not merged, not in `satisfied_oob` — so any slice 3a would ever pick is exactly a member of `runnable` here.
+
+Refuse with a clear message if either of these fails:
+
+- **`runnable` is empty** — every slice is deferred (gated behind an open `[HITL]`, or still in triage). There is nothing to do this run. List the open `[HITL]` issue numbers + titles and tell the user to clear them via `/human-itl <parent>` first, then re-invoke. This is the **only** `[HITL]`-related refusal — the presence of *some* open `[HITL]` slices alongside runnable ones is expected and triggers a partial run, not a refusal.
+- **An in-scope user story is not automatable.** Scope this check to the stories the `runnable` slices cover — their `## User stories covered` sections (per `/to-issues`). Every such story must carry `acceptance: automatable` AND an `observable: <description>` sub-bullet in the exact format `/to-prd` writes. Any in-scope story tagged anything other than `automatable` (e.g. `manual-attestation`, removed from this pipeline), or missing either sub-bullet, is invalid — refuse with the offending story numbers and a pointer to `/to-prd`'s tag format (typically the PRD pre-dates the tag requirement, or a non-automatable story was added by hand). Stories covered **only** by `deferred` slices need not satisfy this gate *this run* — they're checked when a later run makes them in-scope.
+
+These checks fail fast and surface the exact thing to fix. Once 1d passes, the auto-loop is committed: it will run through to PR push (full or `[partial]`) or a circuit-breaker halt, with no further human prompts in the happy path.
 
 ### 2. Discover the dependency graph
 
@@ -106,6 +126,8 @@ Using `docs/agents/issue-tracker.md` conventions, fetch the parent issue's sub-i
 - Not a container (have no open sub-issues of their own)
 
 For each surviving slice, parse the `## Blocked by` section to extract referenced issue numbers. Build the dependency graph in memory.
+
+Some discovered `[AFK]` slices may be transitively `Blocked by` an open `[HITL]` slice — they belong to `deferred` (1d). They stay in the graph but never get picked: 3a's `satisfied` predicate never clears an open `[HITL]` blocker. Step 3a's empty-pick branch recognises them as deferred (partial-complete), not as a fault. (Open `[HITL]` slices themselves and still-in-triage items aren't in the discovered set — the `[AFK]` + `ready-for-agent` filter excludes them — but 3b and the `[partial]` PR still report them for the re-entry recipe.)
 
 ### 3. Wave-by-wave fanout loop
 
@@ -128,8 +150,9 @@ Pick all unblocked, not-yet-attempted slices, sorted by issue number, capped by 
 
 If the picked set is empty:
 
-- If every discovered slice is in `merged` → fanout complete. Go to step 4.
-- Otherwise → **zero-progress halt** with hybrid RCA (see "RCA shape" below). By construction this now means a genuine graph fault — a circular `Blocked by`, a slice depending on an *open* issue outside this fanout, or a reference to a non-existent issue — because any blocker satisfiable by an out-of-band close was already absorbed into `satisfied_oob` above. Stop.
+- If every discovered slice is in `merged` → fanout complete (full run). Go to step 4.
+- Else if every still-unmerged discovered slice is in `deferred` (transitively `Blocked by` an open `[HITL]`) → **partial-complete**. There is no more *runnable* work this run; the deferred slices wait for a later invocation. Go to step 4 — do **not** halt. 3a already skips these correctly: an open `[HITL]` blocker is never `satisfied` (not merged, not in `satisfied_oob`), so a HITL-downstream slice never gets picked. The only bug the blanket halt introduced was treating this expected carve-out as a fault.
+- Otherwise → **zero-progress halt** with hybrid RCA (see "RCA shape" below). This now means a genuine graph fault — a circular `Blocked by`, a slice depending on an *open non-`[HITL]`* issue outside this fanout, or a reference to a non-existent issue — because any blocker satisfiable by an out-of-band close was already absorbed into `satisfied_oob` above, and any slice gated behind an open `[HITL]` is in `deferred` and handled by the partial-complete branch. Stop.
 
 #### 3b. Show the wave to the user
 
@@ -137,7 +160,7 @@ Print buckets:
 
 - **Selected** (numbered): issue number + title + branch name + worktree path.
 - **Skipped — over cap (this wave)**: issue number + title.
-- **Skipped — HITL**: should be empty after pre-flight 1d refuses on any open `[HITL]`. If a closed `[HITL]` (already cleared by `/human-itl`) appears, that's fine — it lives in `satisfied_oob`. A non-empty bucket of *open* `[HITL]`s here is an invariant violation (something opened a `[HITL]` between 1d and now) — halt with the issue numbers and tell the user to re-run after clearing them via `/human-itl <parent>`.
+- **Deferred — HITL-blocked**: the open `[HITL]` slices in `deferred`, each with (a) the downstream slices it defers (slices whose `Blocked by` closure reaches it) and (b) the user-story numbers those deferred slices cover (from their `## User stories covered`). Append any still-in-triage sub-issues being deferred. This bucket is **expected and non-fatal** — it's the carve that makes the run partial. These ride into the `[partial]` PR's `## Deferred` section (4c) and land on a later run after the gate clears via `/human-itl <parent>`. A closed `[HITL]` (already cleared) does **not** appear here — it lives in `satisfied_oob`. (If this bucket is empty, the run is a full run and 4c closes the parent.)
 - **Already merged**: list of issue numbers from prior waves.
 - **Satisfied out-of-band**: issue numbers in `satisfied_oob` (closed/done outside this fanout — e.g. a `[HITL]` slice cleared by `/human-itl`), each with the slice it unblocked. Empty on a clean first run; non-empty after a `/human-itl` round-trip.
 - **Pending future waves**: issue number + title + the `Blocked by` references it's still waiting on.
@@ -149,8 +172,10 @@ Confirm with the user before proceeding.
 For each selected slice, derive:
 
 - Slug: kebab-case of the issue title, max 40 chars.
-- Branch: `tdd/<num>-<slug>`.
-- Worktree path: `.worktrees/<num>-<slug>/`.
+- Branch: `tdd/<num>-<slug>` (GitHub/GitLab — `<num>` is globally unique); `tdd/<feat>-<slice>-<slug>` (local-markdown — slice numbers are per-feature scoped so the feature number disambiguates).
+- Worktree path: `.worktrees/<num>-<slug>/` (GitHub/GitLab); `.worktrees/<feat>-<slice>-<slug>/` (local-markdown).
+
+The conditional naming keeps slice worktrees unambiguous: in local-markdown mode slice numbers are per-feature scoped, so without the feature prefix two PRDs each with a `01-…` slice would collide on the same `.worktrees/01-<slug>/` path if `/tdd-parallel` is ever run against more than one PRD in the same checkout. (Overnight, `/afk-worker` gives each PRD its own clone, so this can't arise there — but the prefix keeps any single-checkout multi-PRD use safe too.) Detect the tracker mode from `docs/agents/issue-tracker.md` (set during `/setup-zsl-superpowers`).
 
 Then:
 
@@ -249,7 +274,10 @@ Run `/code-review --auto` against the PRD branch tip. Per-slice reviews ran insi
 
 Auto-fixes commit onto the PRD branch (subject: `review: post-integration cleanup`) and ride into the same PR. Mid-confidence (60–79) findings get captured into the PR body under a **Deferred review findings** section with `file:line` references.
 
-If `/code-review --auto` halts (lint or tests fail after applying review commits, and the review commit was reverted), surface in RCA per "Halt semantics" — **integration review failure**. The PRD branch is left at its pre-review state; the user inspects and decides whether to re-run the fanout (which re-enters 4a) or merge by hand.
+If `/code-review --auto` halts (lint or tests fail after applying review commits, and the review commit was reverted), behaviour depends on `--on-review-failure`:
+
+- **`halt` (default)** — surface in RCA per "Halt semantics" as **integration review failure**. The PRD branch is left at its pre-review state; the user inspects and decides whether to re-run the fanout (which re-enters 4a) or merge by hand.
+- **`continue`** — do not halt. The PRD branch is already at its pre-review state (the failing review commit was reverted), so it's the same green-individually state every slice arrived in via their own `/tdd` cycles. Capture the attempted findings (count, severity, `file:line` references, the reverted commit's sha for `git show <sha>`) and proceed to 4b. The captured payload rides into the PR body at 4c as the `## ⚠️ Integration review failed` section so the morning reviewer can re-run `/code-review` by hand. Used by `/afk-worker`.
 
 #### 4b. Coverage check + auto-fix loop
 
@@ -268,11 +296,14 @@ Parse the terminal block's `matrix:` line and the receipt's
 
 | Outcome | Action |
 |---|---|
-| `mode: full`, `gap=0`, `verified-sha` == current tip | Loop done. Proceed to 4c. |
-| `mode: full`, `gap>0`, `verified-sha` == current tip | Gaps were filed. Update circuit-breaker counters (below). If a breaker fires → halt. Otherwise loop back to step 2 — the new gap sub-issues become the next wave. |
-| `mode: partial` | Halt: `coverage-mode mismatch`. `--auto` should never return partial; indicates a verify-coverage bug. |
+| `mode: full`, `gap=0`, `deferred=0`, `verified-sha` == current tip | Loop done (full run). Proceed to 4c — closes the parent. |
+| `mode: full`, `gap=0`, `deferred>0`, `verified-sha` == current tip | **Partial-complete.** Runnable slices are all merged and coverage-clean; only deferred stories remain. Do **not** loop, do **not** halt. Proceed to 4c — it omits `Closes #<parent>`, marks the PR `[partial]`, and adds a `## Deferred` section. |
+| `mode: full`, `gap>0`, `verified-sha` == current tip | Gaps were filed. Update circuit-breaker counters (below). If a breaker fires → halt. Otherwise loop back to step 2 — the new gap sub-issues become the next wave. (Deferred stories are reported separately and do **not** count as gaps — see below.) |
+| `mode: partial` | Halt: `coverage-mode mismatch`. `--auto` should never return `mode: partial` (that's the `--no-generate` receipt mode, unrelated to deferred stories); indicates a verify-coverage bug. |
 | `verified-sha` ≠ current tip | Halt: `coverage-tree drift`. The tip moved between invocation and receipt write — should not happen inside the orchestrator. |
 | verify-coverage halted internally | Halt: `coverage-verification failure`. Surface its terminal output. |
+
+**Deferred ≠ gap.** A *gap* is a story claimed by a *shipped* slice but lacking a passing non-vacuous test — fixable now, so it loops back to step 2. A *deferred* story is one covered only by a not-yet-shipped slice (because that slice is gated behind an open `[HITL]`); there is nothing to fix this run, so it must **not** loop (it would re-file the same non-gap every round and never converge) and must **not** halt. verify-coverage reports the two in separate counts (`gap=<n>` vs `deferred=<n>` in its matrix block — see `/verify-coverage`); 4b loops only on `gap>0` and treats `deferred>0` as the partial-complete signal. The orchestrator already knows the deferred set from 1d/3b; the coverage `deferred` count is the cross-check.
 
 **Circuit breakers (mandatory):**
 
@@ -310,10 +341,12 @@ Halts in 4b leave the PRD branch with the latest verified state (gaps filed, qua
 
    ```
    gh pr create \
-     --title "<parent-title> (#<parent-num>)" \
+     --title "<title>" \
      --base main \
      --body "<see template>"
    ```
+
+   Title is `<parent-title> (#<parent-num>)` on a full run (`deferred=0`), and `[partial] <parent-title> (#<parent-num>)` when `deferred>0`. The `[partial]` marker is the at-a-glance signal that the PRD stays open after this PR merges.
 
    PR body template:
 
@@ -321,6 +354,15 @@ Halts in 4b leave the PRD branch with the latest verified state (gaps filed, qua
    ## Summary
 
    <one-line, parsed from the parent issue's `## Solution` section if present; otherwise the parent's title>
+
+   ## ⚠️ Integration review failed
+
+   Included **only when** 4a fell through under `--on-review-failure=continue`. Omit this whole section otherwise.
+
+   `/code-review --auto` attempted <N> findings against the PRD branch tip but lint/tests failed after applying them; the review commit was reverted. The slices below were all individually green via their own `/tdd` cycles — cross-slice cleanup just didn't land. Re-run `/code-review` against this PR locally before merging.
+
+   - Attempted findings: <count by severity, with `file:line` references>
+   - Reverted review commit: <sha> (inspect via `git show <sha>`)
 
    ## Slices integrated
 
@@ -338,29 +380,65 @@ Halts in 4b leave the PRD branch with the latest verified state (gaps filed, qua
    - Story <M>: `Cover PRD story <M> — <description>` — #N
    - ...
 
+   ## Deferred
+
+   Included **only when** `deferred>0` (a partial run). Omit this whole section on a full run.
+
+   This run shipped every slice whose `Blocked by` closure is free of open `[HITL]` gates and deferred the rest. The parent PRD (#<parent>) stays **open** until the remainder lands.
+
+   - Gating open `[HITL]` issue(s): `#<n> — <title>`, …
+   - Deferred slices: `#<n> — <title>` (each downstream of a gate above, or still in triage)
+   - Deferred user stories: <story numbers covered only by the deferred slices>
+
+   **Re-entry:** clear the gate(s) via `/human-itl <parent>`, then re-run `/tdd-parallel <parent>` to land the remainder. The merged sub-issues below are already closed, so the next run only fans out what's left; the now-closed `[HITL]` slice satisfies its downstream slices via `satisfied_oob`.
+
    ## Closes
 
+   On a **full run** (`deferred=0`) — closes the parent and every merged sub-issue:
+
+   ```
    Closes #<parent>
    Closes #<sub-issue-1>
    Closes #<sub-issue-2>
    ...
+   ```
+
+   On a **partial run** (`deferred>0`) — OMIT `Closes #<parent>` (the PRD must stay open) and close only the merged sub-issues:
+
+   ```
+   Closes #<sub-issue-1>
+   Closes #<sub-issue-2>
+   ...
+   ```
 
    ---
    Integrated by `/tdd-parallel` across <N> waves and <R> coverage rounds.
+   <On a partial run, append: " — partial run, <N> slice(s) deferred behind open [HITL] gate(s); PRD left open.">
    ```
 
    If `gh pr create` fails because a PR for this branch already exists (e.g. a prior halted run pushed and opened it), fall back to `gh pr view --json url -q .url` and report the existing PR URL. If the repo has an auto-PR workflow (`.github/workflows/auto-pr.yml`) and the push already created the PR, skip `gh pr create` and resolve the URL the same way.
 
-4. **Project board update** (if `docs/agents/project-board.md` exists). Bulk-move the parent issue and every merged sub-issue's project card (including the auto-filed gap issues from 4b) from "In progress" to the option mapped to "PR opened" (typically `In review`) via `updateProjectV2ItemFieldValue`. Use the same lookup-then-update procedure documented in `triage/SKILL.md` step 6. **This step is mandatory when the file exists — do not treat it as optional.** If an individual update fails, log the failure and continue with the rest of the items; only abort if every update fails (that would indicate a credential or project-id problem worth surfacing).
+4. **Project board update** (if `docs/agents/project-board.md` exists). Bulk-move every merged sub-issue's project card (including the auto-filed gap issues from 4b) from "In progress" to the option mapped to "PR opened" (typically `In review`) via `updateProjectV2ItemFieldValue`. On a **full run**, also move the parent's card. On a **partial run** (`deferred>0`), **leave the parent's card where it is** (`In progress` / `tracking`) — the parent stays open and is still a tracking container. Use the same lookup-then-update procedure documented in `triage/SKILL.md` step 6. **This step is mandatory when the file exists — do not treat it as optional.** If an individual update fails, log the failure and continue with the rest of the items; only abort if every update fails (that would indicate a credential or project-id problem worth surfacing).
 
-When the integration PR merges, GitHub's auto-close workflow closes every `Closes #N` issue and lands each card on `Done`.
+When the integration PR merges, GitHub's auto-close workflow closes every `Closes #N` issue and lands each card on `Done`. On a partial run, the parent is deliberately absent from `Closes`, so it stays open and on its tracking status — a later run lands the remainder and (being a full run then) closes it.
+
+#### 4d. Re-run idempotency (partial runs)
+
+A partial run needs **no special re-entry machinery** — a second `/tdd-parallel <parent>` after the gate clears lands the remainder by the same paths the first run used:
+
+- The partial PR's merge closes its shipped sub-issues, so the next run's step-2 Open filter excludes them automatically — they aren't re-fanned-out.
+- The `[HITL]` slice, once `/human-itl` closes it, satisfies its downstream slices via the existing `satisfied_oob` path in 3a (closed + a member of the parent's sub-tree).
+- The parent PRD is still open (4c omitted `Closes #<parent>` on the partial run), so it remains the tracking container and the second run — now a full run with `deferred=0` — closes it via the normal `Closes #<parent>`.
+
+The single hard requirement is that the partial run did **not** close the parent (4c). Everything else falls out of the existing Open-filter + `satisfied_oob` mechanics — there is no partial-specific state persisted between runs.
 
 ### 5. Done
 
 Print a final summary:
 
-- Parent issue + integration PR URL.
+- Parent issue + integration PR URL. State whether this was a **full run** (parent will close on merge) or a **`[partial]` run** (parent left open).
 - Slices integrated, in merge order: number + title.
+- **Deferred** (partial runs only): the open `[HITL]` gate(s), the deferred slices, the deferred user-story numbers, and the re-entry recipe (`/human-itl <parent>` then re-run `/tdd-parallel <parent>`).
 - Auto-fixed coverage gaps, by round: which stories triggered a gap, which sub-issues were filed, which round finally cleared them.
 - Total waves processed (across all coverage rounds).
 - Total coverage rounds (final receipt's `verified-sha` matches the PR's tip).
@@ -371,11 +449,11 @@ The orchestrator session can now be closed. Slice worktrees and branches remain 
 
 Seven failure paths halt the run, all with the same shape: print a hybrid RCA, leave state inspectable, stop. The orchestrator does not attempt resume — the user takes over from the halted state.
 
-- **Pre-flight refusal** (1d): the parent PRD has untagged or non-automatable stories, or has open `[HITL]` sub-issues. Refuses up front, before any branch work — no state to inspect.
+- **Pre-flight refusal** (1d): the parent isn't a PRD, an *in-scope* story is untagged/non-automatable, or **no slice is runnable** (every slice is deferred behind an open `[HITL]` or still in triage). Open `[HITL]` slices *alongside* runnable ones no longer refuse — they trigger a partial run. Refuses up front, before any branch work — no state to inspect.
 - **Agent failure** (3d): a sub-agent errored, refused, or returned without a mergeable branch.
 - **Unresolvable merge conflict** (3e): `git merge --no-ff` conflicted and the orchestrator's auto-resolve attempt couldn't produce a clean, lint+test-passing merge. The merge is left in its conflicted state on the PRD branch.
 - **Zero-progress** (3a): no slices unblock and the fanout isn't complete.
-- **Integration review failure** (4a): `/code-review --auto` applied ≥80 findings to the merged PRD tip but lint or tests failed afterward; the review commit was reverted. The PRD branch is at pre-review state with all slices merged.
+- **Integration review failure** (4a, under default `--on-review-failure=halt`): `/code-review --auto` applied ≥80 findings to the merged PRD tip but lint or tests failed afterward; the review commit was reverted. The PRD branch is at pre-review state with all slices merged. Under `--on-review-failure=continue` this is **not** a halt — 4a falls through to 4b with a captured payload that lands in the PR body at 4c as `## ⚠️ Integration review failed`.
 - **Coverage verification failure** (4b): `/verify-coverage --auto` itself halted internally (pre-flight refusal, mutation-check failure, tracker error). All slices for the round are merged but the receipt wasn't written.
 - **Coverage circuit-breaker halt** (4b): one of three breakers fired during the auto-fix loop:
   - `coverage-rounds-exhausted` — hit `--max-coverage-rounds` without converging to `gap=0`.
@@ -419,8 +497,8 @@ Every halt produces a structured RCA followed by an LLM-generated **Possible int
 **Zero-progress (3a):**
 
 - Un-attempted slices remaining: number, title, `Blocked by` references each is waiting on.
-- Reference classification per blocker: `cycle` (other un-attempted siblings forming a cycle), `external-open` (an *open* issue outside the parent's sub-tree), `unresolvable` (non-existent issue number), `open-hitl` (a `[HITL]` slice in the parent's sub-tree, not yet cleared). A blocker that is closed/done within the parent's sub-tree never reaches this list — 3a absorbs it into `satisfied_oob` — so it is never classified `unresolvable`; a halt that names a blocker you know is finished is a bug in the 3a predicate, not bad tracker data.
-- Suggested next action: for `cycle` / `external-open` / `unresolvable`, edit the offending `Blocked by` sections to break the cycle / reference the right issue / drop the external dep. For `open-hitl`, run `/human-itl <parent>` to clear the manual step. Then re-run `/tdd-parallel` — the cleared blocker is now picked up via `satisfied_oob`.
+- Reference classification per blocker: `cycle` (other un-attempted siblings forming a cycle), `external-open` (an *open* issue outside the parent's sub-tree), `unresolvable` (non-existent issue number). An open `[HITL]` blocker never reaches this list — its downstream slices are `deferred` and handled by 3a's partial-complete branch, so an open `[HITL]` causes a partial run, not a zero-progress halt. A blocker that is closed/done within the parent's sub-tree never reaches this list either — 3a absorbs it into `satisfied_oob` — so it is never classified `unresolvable`; a halt that names a blocker you know is finished is a bug in the 3a predicate, not bad tracker data.
+- Suggested next action: for `cycle` / `external-open` / `unresolvable`, edit the offending `Blocked by` sections to break the cycle / reference the right issue / drop the external dep, then re-run `/tdd-parallel`. (An open `[HITL]` blocker is not a zero-progress cause under partial runs — it defers its downstream and the run completes partially; clear it with `/human-itl <parent>` and re-run to land the remainder via `satisfied_oob`.)
 
 **Integration review failure (4a):**
 
