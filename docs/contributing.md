@@ -1,27 +1,24 @@
 # Contributing
 
 Pull requests welcome. The repo is small and the conventions are explicit — this
-page is the short version.
+page is the short version. For the bigger picture — the three-layer model and
+the five places a skill must be cited — see
+[Plugin architecture](architecture.md).
 
 ## Repo layout
 
-Skills live under `skills/<bucket>/<name>/SKILL.md`:
+Skills live under `skills/<bucket>/<name>/SKILL.md`, in one of four buckets
+(`engineering/`, `productivity/`, `misc/`, `remote-agents/`). Each skill must be
+cited in **five** places kept in lockstep — `.claude-plugin/plugin.json`, the
+top-level `README.md`, its bucket `README.md`, `docs/skills/index.md`, and the
+`mkdocs.yml` nav.
+[Plugin architecture → Keeping the catalogue in sync](architecture.md#keeping-the-catalogue-in-sync)
+is the single source of truth for the bucket layout and the full citation list.
 
-- `engineering/` — daily code work
-- `productivity/` — daily non-code workflow tools
-- `misc/` — kept around but rarely used
-
-Every skill in `engineering/`, `productivity/`, or `misc/` must be:
-
-1. Listed in the top-level [`README.md`](https://github.com/ZunoSmartLabs/zsl-superpowers/blob/main/README.md) (with a name-link to its `SKILL.md`).
-2. Listed in [`.claude-plugin/plugin.json`](https://github.com/ZunoSmartLabs/zsl-superpowers/blob/main/.claude-plugin/plugin.json) under `skills`.
-3. Listed in its bucket's `README.md` with a one-line description.
-
-The docs site picks up new skills automatically — the
+The per-skill docs page is the one thing you *don't* hand-write — the
 [`scripts/mkdocs_hooks/skill_pages.py`](https://github.com/ZunoSmartLabs/zsl-superpowers/blob/main/scripts/mkdocs_hooks/skill_pages.py)
-hook scans every `SKILL.md` at build time. **You do still need to add the new
-skill to the `nav:` block in `mkdocs.yml`** — mkdocs runs in `--strict` mode and
-won't auto-include unlisted pages in the navigation.
+hook generates it from each `SKILL.md` at build time. But the `mkdocs.yml` `nav:`
+entry is still manual, and `mkdocs build --strict` fails on an unlisted page.
 
 ## Adding a new skill
 

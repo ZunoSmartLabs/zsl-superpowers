@@ -299,4 +299,5 @@ as authoritative and the interpretation as a hint.
 - [`/zsl:to-issues`](skills/to-issues.md) — the slicer that produces the wave model `tdd-parallel` consumes.
 - [`/zsl:tdd`](skills/tdd.md) — what each sub-agent actually runs.
 - [Workflow](workflow.md) — how this fits into the end-to-end loop.
-- [The loop](concepts/the-loop.md) — the conceptual map of the engineering workflow.
+- [The loop](workflow.md) — the end-to-end engineering workflow.
+- [Remote agents deep-dive](remote-agents.md) — the overnight loop that drives this skill unattended.

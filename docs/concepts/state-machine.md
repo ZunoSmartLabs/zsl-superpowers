@@ -123,4 +123,4 @@ flowchart TB
   machine. Includes the agent-brief and out-of-scope templates.
 - [`/zsl:to-issues`](../skills/to-issues.md) — the only skill that sets
   `tracking` automatically.
-- [The loop](the-loop.md) — how triage fits into the end-to-end flow.
+- [The loop](../workflow.md) — how triage fits into the end-to-end flow.

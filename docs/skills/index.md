@@ -76,7 +76,7 @@ flowchart TB
 ```
 
 For the conceptual map of how skills compose into one loop, see
-[The loop](../concepts/the-loop.md).
+[The loop](../workflow.md).
 
 ## By role in the loop
 
@@ -156,6 +156,7 @@ The overnight loop — schedule dedicated remote sessions, run them unattended, 
 
 ## See also
 
-- [The loop](../concepts/the-loop.md) — how the skills compose into one workflow
+- [The loop](../workflow.md) — how the skills compose into one workflow
 - [Git branching in the build phase](../concepts/branching.md) — what `/zsl:tdd` and `/zsl:tdd-parallel` actually do to your tree
 - [The triage state machine](../concepts/state-machine.md) — how issues move through the loop
+- [Remote agents deep-dive](../remote-agents.md) — the overnight loop

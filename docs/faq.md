@@ -23,6 +23,7 @@ flowchart LR
         h1["tdd-parallel<br/>(uses Agent, Monitor,<br/>SendMessage, TaskStop)"]
         h3["code-review<br/>(uses parallel Agent calls<br/>for the six-lens scan)"]
         h2["timesheet<br/>(reads ~/.claude/projects/)"]
+        h4["afk-fanout · afk-worker<br/>morning-review<br/>(claude.ai remote routines,<br/>scheduling, ledger branch)"]
     end
     portable -.->|"copy SKILL.md body<br/>to your agent's prompt"| other["any other harness"]
     harness -->|"requires Claude Code"| cc["Claude Code"]
@@ -30,12 +31,18 @@ flowchart LR
     classDef good fill:#dcfce7,stroke:#16a34a;
     classDef bound fill:#fef3c7,stroke:#d97706;
     class p1 good
-    class h1,h2,h3 bound
+    class h1,h2,h3,h4 bound
 ```
 
 The **delivery mechanism** is also Claude Code: skills surface via
 `/plugin install` and route through Claude Code's slash-command and skill-matching
 infrastructure.
+
+The **overnight remote-agents loop** ([`afk-fanout`](skills/afk-fanout.md),
+[`afk-worker`](skills/afk-worker.md),
+[`morning-review`](skills/morning-review.md)) goes furthest: it schedules remote
+claude.ai sessions and coordinates them through a shared git ledger branch, so it
+has no portable form at all outside Claude Code.
 
 To use them outside Claude Code today you'd manually copy the SKILL.md content
 of the skills you want into your agent's system prompt (losing auto-trigger),
@@ -120,6 +127,22 @@ flowchart LR
 
 If you don't run `setup-zsl-superpowers`, the engineering skills bail
 with a setup hint instead of guessing.
+
+### Can it run unattended overnight?
+
+Yes — that's the remote-agents loop. In the evening,
+[`/zsl:afk-fanout`](skills/afk-fanout.md) shows the queue of `tracking`
+PRDs with `ready-for-agent` children, you pick which to run, and it
+schedules one one-shot remote claude.ai routine per PRD a fixed 2h apart
+(a throttle to stay under the per-5h-window token cap). Each routine
+fires [`/zsl:afk-worker`](skills/afk-worker.md), which runs
+`/zsl:tdd-parallel` unattended in its own clone and opens one integration
+PR — `/zsl:tdd-parallel` **partial runs** (1.0) keep it from stalling on a
+human gate by deferring `[HITL]`-blocked slices into a `[partial]` PR. In
+the morning, [`/zsl:morning-review`](skills/morning-review.md) reconciles
+what ran and walks you through the PRs to verify and merge. It never
+auto-merges or deploys. See the
+[Remote agents deep-dive](remote-agents.md) for the full design.
 
 ### What are the bundled engineering-book rules?
 
