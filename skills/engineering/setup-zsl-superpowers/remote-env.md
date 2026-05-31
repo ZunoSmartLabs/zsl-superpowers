@@ -4,7 +4,7 @@ Per-repo config for the overnight remote-agent loop (`/afk-fanout`, `/afk-worker
 
 ## The environment is repo-agnostic (reused across projects)
 
-A Claude Code **environment** on claude.ai has **no repo field** — its config screen is only Name / Network access / Environment variables / Setup script. The repo a routine works on is selected **per-routine** by `/afk-fanout`, which sets `job_config.ccr.sources` from *this* repo's `origin` at schedule time. So **one generic environment is reused across every project** — you do not create a new environment per repo. This file records *which* shared environment this repo schedules into.
+A Claude Code **environment** on claude.ai has **no repo field** — its config screen is only Name / Network access / Environment variables / Setup script. The repo a routine works on is selected **per-routine** by `/afk-fanout`, which sets `job_config.ccr.session_context.sources` from *this* repo's `origin` at schedule time. So **one generic environment is reused across every project** — you do not create a new environment per repo. This file records *which* shared environment this repo schedules into.
 
 - **Environment name:** `<e.g. Full Network + GH + Telegram>`
 - **environment_id:** `env_xxxxxxxxxxxxxxxxxxxxxx`
