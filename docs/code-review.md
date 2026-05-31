@@ -14,12 +14,12 @@ confidence scoring exists, and how interactive vs `--auto` modes differ.
 ```mermaid
 flowchart TB
     diff["The diff<br/>(branch HEAD vs main)"] --> dispatch{{"parallel fanout"}}
-    dispatch --> L1["**Clean-code**<br/>Uncle Bob framing<br/>single responsibility ·<br/>names that lie ·<br/>dead code"]
-    dispatch --> L2["**CLAUDE.md compliance**<br/>repo's own conventions<br/>(formatting, file size,<br/>delete-10% rule…)"]
-    dispatch --> L3["**Git history / blame**<br/>'this looks wrong<br/>but it's pre-existing'<br/>vs introduced here"]
-    dispatch --> L4["**Prior PR comments**<br/>same files reviewed<br/>elsewhere — debated<br/>and resolved already?"]
-    dispatch --> L5["**Inline comments**<br/>does the diff<br/>respect TODO/FIXME/<br/>load-bearing NOTEs?"]
-    dispatch --> L6["**Spec alignment**<br/>fetches originating<br/>PRD/issue, checks<br/>diff against requirements"]
+    dispatch --> L1["`**Clean-code**<br/>Uncle Bob framing<br/>single responsibility ·<br/>names that lie ·<br/>dead code`"]
+    dispatch --> L2["`**CLAUDE.md compliance**<br/>repo's own conventions<br/>(formatting, file size,<br/>delete-10% rule…)`"]
+    dispatch --> L3["`**Git history / blame**<br/>'this looks wrong<br/>but it's pre-existing'<br/>vs introduced here`"]
+    dispatch --> L4["`**Prior PR comments**<br/>same files reviewed<br/>elsewhere — debated<br/>and resolved already?`"]
+    dispatch --> L5["`**Inline comments**<br/>does the diff<br/>respect TODO/FIXME/<br/>load-bearing NOTEs?`"]
+    dispatch --> L6["`**Spec alignment**<br/>fetches originating<br/>PRD/issue, checks<br/>diff against requirements`"]
     L1 --> dedup["Deduplicate findings"]
     L2 --> dedup
     L3 --> dedup

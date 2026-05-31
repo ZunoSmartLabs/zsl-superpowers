@@ -171,9 +171,10 @@ slice satisfies its downstream via the existing `satisfied_oob` path.
 Clearing a deferred `[HITL]` feeds back into the fanout:
 
 ```mermaid
-flowchart LR
-    tp["/zsl:tdd-parallel &lt;PRD&gt;"] -->|"defer [HITL] +<br/>downstream"| skip["Deferred — HITL-blocked<br/>bucket + [partial] PR"]
+flowchart TB
+    tp["/zsl:tdd-parallel &lt;PRD&gt;"]
     tp -->|"fan out HITL-free [AFK]"| afk["build + merge<br/>onto PRD branch"]
+    tp -->|"defer [HITL] +<br/>downstream"| skip["Deferred — HITL-blocked<br/>bucket + [partial] PR"]
     afk -->|"runnable slices merged"| ppr["push once →<br/>[partial] PR<br/>(PRD stays open)"]
     ppr --> hi["/zsl:human-itl &lt;PRD&gt;<br/>do the manual action,<br/>record it, mark done"]
     skip --> hi

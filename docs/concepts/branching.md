@@ -254,9 +254,9 @@ integration PR body yourself.
 flowchart TB
     q1{"Are the slices independent vertical<br/>increments you'd review separately?"}
     q2{"PR-style repo?"}
-    pa["**Pattern A**<br/>one branch + one PR per slice<br/>(/git-branch → /tdd → repeat)"]:::good
-    tp["**/tdd-parallel** &lt;prd&gt;<br/>(--max 1 for strict serial)"]:::good
-    pc["**Pattern C**<br/>/tdd --no-ship twice<br/>then push manually"]:::ok
+    pa["`**Pattern A**<br/>one branch + one PR per slice<br/>(/git-branch → /tdd → repeat)`"]:::good
+    tp["`**/tdd-parallel** &lt;prd&gt;<br/>(--max 1 for strict serial)`"]:::good
+    pc["`**Pattern C**<br/>/tdd --no-ship twice<br/>then push manually`"]:::ok
     q1 -->|Yes| pa
     q1 -->|"No — want ONE consolidated PR"| q2
     q2 -->|Yes| tp

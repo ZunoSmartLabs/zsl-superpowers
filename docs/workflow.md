@@ -45,10 +45,10 @@ overnight, or sit off it entirely.
 flowchart TB
     subgraph loop["📦 On the loop"]
         direction LR
-        a["**Plan**<br/>grill-me<br/>grill-with-docs<br/>to-prd"] --> b["**Break down**<br/>to-issues<br/>triage"]
-        b --> c["**Build**<br/>tdd-parallel<br/>tdd"]
-        c --> d["**Ship**<br/>git-branch<br/>commit<br/>code-review"]
-        d --> e["**Track**<br/>state machine"]
+        a["`**Plan**<br/>grill-me<br/>grill-with-docs<br/>to-prd`"] --> b["`**Break down**<br/>to-issues<br/>triage`"]
+        b --> c["`**Build**<br/>tdd-parallel<br/>tdd`"]
+        c --> d["`**Ship**<br/>git-branch<br/>commit<br/>code-review`"]
+        d --> e["`**Track**<br/>state machine`"]
         e --> a
     end
     subgraph cross["🧭 Cross-cutting"]
@@ -197,10 +197,10 @@ flowchart TB
 ```mermaid
 flowchart TB
     story["one PRD user story<br/>(carries acceptance: automatable<br/>+ observable: tags)"] --> q{"covered by a passing<br/>behavioral test today?"}
-    q -->|"yes"| ta["**Tier A**<br/>map story → existing test"]:::good
-    q -->|"no"| tb["**Tier B**<br/>generate test from observable:<br/>· mutation-prove it goes RED<br/>· run it"]:::ok
+    q -->|"yes"| ta["`**Tier A**<br/>map story → existing test`"]:::good
+    q -->|"no"| tb["`**Tier B**<br/>generate test from observable:<br/>· mutation-prove it goes RED<br/>· run it`"]:::ok
     tb -->|"passes"| tba["covered<br/>(test added to suite)"]:::good
-    tb -->|"fails"| gap["**Gap**<br/>auto-filed as ready-for-agent<br/>sub-issue · tdd-parallel loops"]:::bad
+    tb -->|"fails"| gap["`**Gap**<br/>auto-filed as ready-for-agent<br/>sub-issue · tdd-parallel loops`"]:::bad
 
     classDef good fill:#dcfce7,stroke:#16a34a,color:#1e293b;
     classDef ok fill:#fef3c7,stroke:#d97706,color:#1e293b;

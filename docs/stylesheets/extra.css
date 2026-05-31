@@ -1,0 +1,48 @@
+/* Mermaid dark-mode legibility.
+
+   Every diagram in these docs styles its nodes with light pastel `classDef`
+   fills (fill:#e0e7ff, #dcfce7, #fef3c7, …) and dark label text
+   (color:#1e293b) — i.e. they are designed dark-on-light. That reads fine in
+   the default (light) scheme.
+
+   In Material's `slate` (dark) scheme, Material feeds mermaid a *light* default
+   node/label text colour (--md-mermaid-label-fg-color = --md-code-fg-color).
+   mermaid honours a per-node classDef `color:` only for some shapes
+   (cylinders, stadiums), but for plain rectangle nodes the light default wins
+   — so the rectangular nodes render light-text-on-light-fill and wash out,
+   while the pastel fill itself still shows.
+
+   Fix: in slate, pin mermaid's node/label/edge colours so diagrams render the
+   same dark-on-light as in light mode. Unstyled nodes get a light fill too, so
+   nothing relies on a dark node background. This is scheme-scoped and needs no
+   per-classDef coupling — new pastel classDefs are covered automatically. */
+[data-md-color-scheme="slate"] {
+  --md-mermaid-node-bg-color: #f1f5f9;
+  --md-mermaid-node-fg-color: #1e293b;
+  --md-mermaid-label-bg-color: #f1f5f9;
+  --md-mermaid-label-fg-color: #1e293b;
+  --md-mermaid-edge-color: #64748b;
+}
+
+/* Subgraph (cluster) backgrounds + state-diagram dividers.
+
+   Material renders each diagram into a shadow root and injects its own
+   stylesheet there, so direct CSS rules from this file can't reach the SVG —
+   only CSS *custom properties* (which inherit across the shadow boundary) do.
+   That injected sheet styles:
+       .cluster rect              { fill: var(--md-default-fg-color--lightest) }
+       .statediagram-state rect.divider { fill: var(--md-default-fg-color--lightest) }
+       .cluster span              { color: var(--md-mermaid-label-fg-color) }
+   In slate, --md-default-fg-color--lightest is a near-transparent light tint
+   (reads as dark on the dark page), while the cluster title inherits the dark
+   --md-mermaid-label-fg-color we set above — so subgraph titles render
+   dark-on-dark and vanish (only the leading emoji survives).
+
+   Fix: scope a light value for those two background variables to .mermaid
+   only. They inherit into the shadow root and light up the cluster/divider
+   fills, so the dark titles read; the global Material UI keeps the real
+   values. */
+[data-md-color-scheme="slate"] .mermaid {
+  --md-default-fg-color--lightest: #e2e8f0;
+  --md-default-fg-color--lighter: #94a3b8;
+}

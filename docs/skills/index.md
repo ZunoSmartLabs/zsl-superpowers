@@ -17,14 +17,14 @@ If you're new here, follow the decision tree:
 ```mermaid
 flowchart TB
     start{"What are you trying to do?"}
-    plan["**Plan a new feature**"]
-    breakdown["**Break a plan into work**"]
-    build["**Build something**"]
-    bug["**Hunt a bug or perf regression**"]
-    review["**Ship work**"]
-    inbox["**Manage incoming issues**"]
-    health["**Fight codebase entropy**"]
-    other["**Off the loop**"]
+    plan["`**Plan a new feature**`"]
+    breakdown["`**Break a plan into work**`"]
+    build["`**Build something**`"]
+    bug["`**Hunt a bug or perf regression**`"]
+    review["`**Ship work**`"]
+    inbox["`**Manage incoming issues**`"]
+    health["`**Fight codebase entropy**`"]
+    other["`**Off the loop**`"]
 
     start --> plan
     start --> breakdown

@@ -15,18 +15,18 @@ the design decisions behind the loop.
 ## The shape: evening → overnight → morning
 
 ```mermaid
-flowchart LR
-    you(["You<br/>(evening)"]) --> fanout["**/zsl:afk-fanout**<br/>pick PRDs · schedule"]
+flowchart TB
+    you(["You<br/>(evening)"]) --> fanout["`**/zsl:afk-fanout**<br/>pick PRDs · schedule`"]
     fanout -->|"one one-shot routine<br/>per PRD, 2h apart"| r1["routine #1"]
     fanout --> r2["routine #2"]
     fanout --> r3["routine #3"]
-    r1 -->|"fires"| w1["**/zsl:afk-worker**<br/>own clone · /tdd-parallel"]
-    r2 -->|"fires"| w2["**/zsl:afk-worker**"]
-    r3 -->|"fires"| w3["**/zsl:afk-worker**"]
+    r1 -->|"fires"| w1["`**/zsl:afk-worker**<br/>own clone · /tdd-parallel`"]
+    r2 -->|"fires"| w2["`**/zsl:afk-worker**`"]
+    r3 -->|"fires"| w3["`**/zsl:afk-worker**`"]
     w1 --> ledger[("afk-runs<br/>ledger branch<br/>+ integration PRs")]
     w2 --> ledger
     w3 --> ledger
-    ledger -->|"morning"| review["**/zsl:morning-review**<br/>reconcile · verify · merge"]
+    ledger -->|"morning"| review["`**/zsl:morning-review**<br/>reconcile · verify · merge`"]
     review --> human(["You<br/>(morning)"])
 
     classDef skill fill:#e0e7ff,stroke:#3f51b5,color:#1e293b;
