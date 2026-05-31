@@ -25,21 +25,11 @@ Selected PRDs are scheduled a **fixed 2 hours apart**, never compressed. This is
 
 Because workers run in isolated clones, spacing is **not** needed to avoid the checkout race (that's already solved) and does **not** reduce PR-vs-PR merge conflicts (every worker branches from tonight's `main` regardless of when it fires; `/morning-review` resolves cross-PR conflicts at merge time either way). Spacing buys exactly one thing: staying under the token cap. Keep it fixed.
 
-## The per-day routine cap — a second, independent ceiling
+## The per-day routine cap — why one-off scheduling sidesteps it
 
-The 2h throttle keeps each rolling 5h *token* window under its cap. There is a **separate, harder limit on the number you can schedule at all**: claude.ai caps how many **routines you can run per day**, and each scheduled `/afk-worker` is exactly one routine. As of 2026-05, the per-day caps are (confirm current values — these change):
+claude.ai caps how many **recurring routines you can run per day** (as of 2026-05: Pro 5 · Max 15 · Team/Enterprise 25 — confirm, these change), drawing from the same subscription usage as interactive sessions. **One-off runs are exempt from that cap.** Because each `/afk-worker` is scheduled as a native one-off (`run_once_at` — §5), it does *not* draw down the daily routine allowance; it consumes ordinary subscription usage like any other session.
 
-| Plan | Routines / day |
-|------|----------------|
-| Pro | 5 |
-| Max | 15 |
-| Team / Enterprise | 25 |
-
-Three things follow:
-
-- The count is **per day across all of claude.ai**, and routines draw down the **same** subscription usage as interactive sessions — a heavy interactive day eats into the budget tonight's workers need.
-- Routines beyond the cap require **paid extra usage**. Don't silently schedule into overage.
-- In practice the 2h spacing usually binds first — a 20:00→08:00 window only holds ~6 slots, well under even the Max cap — so a single night rarely hits the routine ceiling. But treat the plan's daily routine count as a **hard upper bound** on a night's selection: never schedule more PRDs than remain in today's routine budget, and apply the same drop-don't-compress overflow policy (§3) if the selection exceeds it.
+So the routine-count cap does **not** bound a night's selection. Only two things do: the overnight window (how many 2h slots fit) and the per-5h *token* throttle the 2h spacing enforces (§"The 2h throttle"). A night is limited by slots and tokens — never by a routine quota.
 
 ## The `afk-runs` ledger branch — how results come home
 
@@ -73,6 +63,8 @@ rca: |                             # present only on halt/refusal — verbatim f
 run-ts: <ISO-8601 UTC | ->
 reconciled: <- | YYYY-MM-DD>       # set by /morning-review once it replays the entry
 ```
+
+The **initial** entry + manifest row (the `claim: scheduled` / `outcome: pending` state) are serialized by `scripts/write-afk-entry.sh` (§6's deterministic gate) — that script is the single source of this schema's initial shape, so any change to the field set, the fixed initial values, the ` · ` separator, or the dated path must update the script and stay in lockstep with `/afk-worker`'s §4 reader and `/morning-review`'s §1 replay.
 
 Who touches it:
 
@@ -142,8 +134,7 @@ Ask the human which PRDs to schedule overnight, and in what priority order (earl
 
 - Establish the overnight window. Default to tonight 20:00 → 08:00 local; let the human override.
 - Assign each selected PRD a slot **2 hours apart** in priority order, starting at the window's start. Pin **off-`:00`** minutes (e.g. `20:07`, `22:07`, `00:07`) so the routines don't land on the global cron rush.
-- **Overflow policy: drop, never compress.** The 2h spacing is fixed (§"The 2h throttle"). If the selection needs more slots than the window holds (e.g. 7 PRDs into a 12h window = 14h), schedule the ones that fit and **report the overflow** — the human re-runs `/afk-fanout` tomorrow evening for the rest. Do not shrink the spacing to make them fit.
-- **Routine-count budget — a second cap.** Independently of the window, the number of PRDs schedulable tonight is bounded by the plan's per-day routine limit (Pro 5 · Max 15 · Team/Enterprise 25 — see §"The per-day routine cap"). Each PRD is one routine. If the selection exceeds the routines still available today, drop the overflow the same way (or warn the human they'll spill into paid extra usage). Whichever cap is tighter — window slots or remaining routine budget — governs.
+- **Overflow policy: drop, never compress.** The 2h spacing is fixed (§"The 2h throttle"). If the selection needs more slots than the window holds (e.g. 7 PRDs into a 12h window = 14h), schedule the ones that fit and **report the overflow** — the human re-runs `/afk-fanout` tomorrow evening for the rest. Do not shrink the spacing to make them fit. The window is the only cap: one-off workers are exempt from the per-day routine quota (§"The per-day routine cap"), so there's no second ceiling to drop against.
 
 Print the proposed timetable and get explicit confirmation before creating any routines.
 
@@ -167,7 +158,7 @@ RemoteTrigger({
   action: "create",
   body: {
     name: "afk-worker-PRD-<feature-num>",
-    cron_expression: "<5-field cron, UTC — pin the slot's exact minute/hour/day/month, off-:00>",
+    run_once_at: "<ISO-8601 UTC timestamp for the slot — must be in the future, off-:00 minute>",
     enabled: true,
     persist_session: false,
     job_config: {
@@ -199,13 +190,14 @@ RemoteTrigger({
 **Confirmed by live probing:**
 
 - **The prompt is `job_config.ccr.events[]`** — an array of SDK-style input events, *not* a scalar field (which is why `prompt`/`message`/`task`/`initial_prompt`/`messages` all got rejected). Each event is `{data: {type:"user", message:{role:"user", content:"<the slash command>"}, parent_tool_use_id:null, session_id:"", uuid:"<uuid>"}}`. Generate a fresh uuid v4 per event; leave `session_id` empty for a new session.
-- `cron_expression` is the schedule — standard 5-field cron, **evaluated in UTC** (confirmed: `0 21 * * 3` → `next_run_at` on a Wednesday at 21:00 UTC). Compute each 2h slot in UTC, not local time. The API returns `next_run_at`, so echo the real fire time back.
+- **`run_once_at` is the schedule — a native one-off.** Pass exactly one of `run_once_at` *or* `cron_expression`; for overnight workers always use `run_once_at` (an RFC3339 UTC timestamp, must be in the future). Confirmed by live probing (2026-05-31): the API echoes `run_once_at` back and computes a real `next_run_at` from it, fires the routine **once**, then **auto-disables** it (`ended_reason: "run_once_fired"`, shown as "Ran" in the UI). Compute each 2h slot in UTC, not local time, and echo the returned `next_run_at` back. **Field-name caveat:** the API **silently drops unknown fields** with no error — `run_at`/`scheduled_at` are accepted-then-ignored and the trigger never fires (`next_run_at` comes back as the zero `0001-01-01T00:00:00Z`), so the field must be exactly `run_once_at`.
 - `job_config.ccr.environment_id` is **required** — the per-repo Claude Code environment configured on claude.ai (the clone + setup the remote session runs in). Read it from `docs/agents/remote-env.md` (written by `/setup-zsl-superpowers` Section F); pre-flight refuses if that file is absent. **`/afk-worker` resolves via the repo's remote-skills `SessionStart` hook** (`.claude/hooks/zsl-remote-skills.sh`), which clones zsl-superpowers and symlinks the skills into `~/.claude/skills/` when `CLAUDE_CODE_REMOTE=true` — *not* via a per-environment plugin install, which doesn't exist. (`enabled_plugins` exists at the trigger level for *additional* marketplace plugins and is normally left empty.)
 - `session_context.allowed_tools` **must include `Skill` and `Task`**, or `/afk-worker` can't be invoked and `/tdd-parallel` can't spawn its per-slice sub-agents. The `preset:default` superset is the safe choice. `session_context.autofix_on_pr_create` is a known bool (default false). `mcp_connections` auto-populates from the account's connectors — don't set it.
 
-**One caveat that remains:**
+**Two properties of one-off routines that matter here:**
 
-- **"One-shot" is not native.** There is no `recurring` flag; a pinned datetime cron (`min hour dom month *`) still recurs annually. For practical one-shot behaviour, schedule the specific datetime, then **disable the trigger after it fires** (`update` with `enabled:false`). Full delete is only available in the claude.ai UI — `RemoteTrigger` has no `delete` action — so a sweep of fired triggers belongs in `/morning-review` (disable via API; the human deletes leftovers in the UI).
+- **Cap-exempt.** One-off (`run_once_at`) runs do **not** count against the per-day routine cap (§"The per-day routine cap") — they draw ordinary subscription usage. Scheduling a full night of workers never spends routine quota.
+- **Auto-disable, no sweep.** After firing, a one-off auto-disables (`ended_reason: "run_once_fired"`) — there's nothing to disable by hand and no fired-trigger sweep for `/morning-review` to run. Spent triggers stay listed as disabled; `RemoteTrigger` has no `delete` action, so the human clears leftovers in the claude.ai UI when convenient. That's cosmetic — it never affects a run.
 
 Relay the returned `next_run_at` and the routine's claude.ai URL back to the human for each PRD so they can confirm the slot and know where each result will surface.
 
@@ -215,7 +207,23 @@ If a `create` call fails for a PRD, **roll back its claim** (set the parent back
 
 Write a scheduling manifest so `/morning-review` knows what was *supposed* to run, not just what produced a PR — the gap (scheduled but no result) is itself a morning signal:
 
-- **`.scratch/` mode:** on the `afk-runs` branch (§"The `afk-runs` ledger branch"), write `.afk-runs/<YYYY-MM-DD>/_scheduled.md` — one row per scheduled PRD (`<feature-num> · <title> · <slot> · <trigger-id> · <routine URL>`) — **and** an initial per-PRD entry `.afk-runs/<YYYY-MM-DD>/<feature-num>.md` with `claim: scheduled`, `outcome: pending`, and the trigger/slot/routine fields filled. Then `git push` the branch. This initial entry is the cross-session claim the worker reads at pre-flight and flips as it runs; `/morning-review` reconciles its final state back into `.scratch/`. Don't commit any of this to `main` — the ledger lives only on `afk-runs`.
+- **`.scratch/` mode:** on the `afk-runs` branch (§"The `afk-runs` ledger branch"), write `.afk-runs/<YYYY-MM-DD>/_scheduled.md` — one row per scheduled PRD (`<feature-num> · <title> · <slot> · <trigger-id> · <routine URL>`) — **and** an initial per-PRD entry `.afk-runs/<YYYY-MM-DD>/<feature-num>.md` with `claim: scheduled`, `outcome: pending`, and the trigger/slot/routine fields filled.
+
+  **Deterministic gate — serialize the entry + row with the shared writer.** The schema (field set, fixed initial values, the ` · ` manifest separator, the dated path) is one correct serialization shared verbatim by `/afk-worker` (§4) and `/morning-review` (§1). Use the writer so the three never drift; pass `<date>` explicitly (the **evening `/afk-fanout` ran** — post-midnight slots do *not* roll). With the `afk-runs` branch checked out, run once per selected PRD:
+
+  ```bash
+  WE=$({ ls "$PWD"/skills/*/afk-fanout/scripts/write-afk-entry.sh 2>/dev/null
+         ls "$HOME/.claude/skills/afk-fanout/scripts/write-afk-entry.sh" 2>/dev/null
+         ls -d "$HOME"/.claude/plugins/cache/zsl-superpowers/zsl/*/skills/*/afk-fanout/scripts/write-afk-entry.sh 2>/dev/null | sort -Vr; } | head -1)
+  if [ -n "$WE" ]; then
+    bash "$WE" --date <YYYY-MM-DD> --feature-num <num> --title "<title>" \
+      --slot "<ISO-8601 UTC>" --trigger-id <trigger-id> --routine-url "<url>"
+  else
+    echo "zsl-gate: write-afk-entry.sh unresolved — hand-write the entry per the schema below (Fallback)"
+  fi
+  ```
+
+  Then `git push` the branch. This initial entry is the cross-session claim the worker reads at pre-flight and flips as it runs; `/morning-review` reconciles its final state back into `.scratch/`. Don't commit any of this to `main` — the ledger lives only on `afk-runs`. **Fallback** (if `$WE` is empty): hand-write `_scheduled.md`'s row and `<feature-num>.md` exactly per the schema in §"The `afk-runs` ledger branch" — `claim: scheduled`, `outcome: pending` (not `scheduled`), the ` · ` separator (not a comma), `reconciled: -`.
 - **GitHub-issues mode:** no file needed — `/morning-review` reconstructs the scheduled set from the `scheduled`/`in-progress` labels and the routines list.
 
 Print a final summary to the session:

@@ -294,10 +294,20 @@ def collect(args: argparse.Namespace) -> dict:
 
 
 def strip_internal(digest: dict) -> dict:
-    # _buckets is internal-only; strip before JSON serialization.
+    # _buckets is internal-only; strip before JSON serialization. duration_label,
+    # window_header and window_phrase are pre-rendered here so the timesheet's final
+    # render copies them verbatim instead of re-deriving the formatting by hand (the
+    # minutes->label arithmetic and the timezone/pluralization in the header line are
+    # deterministic — there is exactly one correct rendering, and it lives here).
     out = dict(digest)
+    out["window_header"] = fmt_window_header(digest)
+    out["window_phrase"] = fmt_window_phrase(digest["hours"])
     out["projects"] = [
-        {**p, "sessions": [{k: v for k, v in s.items() if k != "_buckets"} for s in p["sessions"]]}
+        {
+            **p,
+            "duration_label": fmt_duration(p["active_minutes"]),
+            "sessions": [{k: v for k, v in s.items() if k != "_buckets"} for s in p["sessions"]],
+        }
         for p in digest["projects"]
     ]
     return out
@@ -317,15 +327,21 @@ def fmt_window_phrase(hours: float) -> str:
     return f"last {hours} hours"
 
 
-def render_list(digest: dict) -> str:
-    lines: list[str] = []
-    # Window strings come from collect() so they're guaranteed valid — bypass parse_ts's Optional.
+def fmt_window_header(digest: dict) -> str:
+    """The `_<start> → <end> <tz>_` header line, in local time.
+
+    Window strings come from collect() so they're guaranteed valid — bypass parse_ts's Optional.
+    """
     win_start = datetime.fromisoformat(digest["window_start"]).astimezone()
     win_end = datetime.fromisoformat(digest["window_end"]).astimezone()
     tz = win_end.strftime("%Z") or "local"
+    return f"_{win_start.strftime('%Y-%m-%d %H:%M')} → {win_end.strftime('%H:%M')} {tz}_"
 
+
+def render_list(digest: dict) -> str:
+    lines: list[str] = []
     lines.append(f"## Projects in {fmt_window_phrase(digest['hours'])}")
-    lines.append(f"_{win_start.strftime('%Y-%m-%d %H:%M')} → {win_end.strftime('%H:%M')} {tz}_")
+    lines.append(fmt_window_header(digest))
     lines.append("")
 
     if not digest["projects"]:

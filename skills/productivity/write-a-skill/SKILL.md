@@ -73,6 +73,17 @@ The description is **the only thing your agent sees** when deciding which skill 
 - First sentence: what it does
 - Second sentence: "Use when [specific triggers]"
 
+**Deterministic gate — count the 1024-char cap, don't eyeball it.** The harness silently truncates a description over 1024 chars, dropping the trailing `Use when …` trigger so the skill stops firing for the cases the cut-off text described. `len(description) <= 1024` has one correct answer, so check it:
+
+```bash
+CK=$({ ls "$PWD"/skills/*/write-a-skill/scripts/check-description-length.py 2>/dev/null
+       ls "$HOME/.claude/skills/write-a-skill/scripts/check-description-length.py" 2>/dev/null
+       ls -d "$HOME"/.claude/plugins/cache/zsl-superpowers/zsl/*/skills/*/write-a-skill/scripts/check-description-length.py 2>/dev/null | sort -Vr; } | head -1)
+if [ -n "$CK" ]; then printf '%s' "$DESCRIPTION" | python3 "$CK"; else echo "zsl-gate: check-description-length.py unresolved — count chars by hand (Fallback)"; fi
+```
+
+A `FAIL:` line means trim before shipping. **Fallback** (if `$CK` is empty): count the characters yourself and confirm `<= 1024` — don't approve a description by visual length alone.
+
 **Good example**:
 
 ```
@@ -110,6 +121,7 @@ Split into separate files when:
 After drafting, verify:
 
 - [ ] Description includes triggers ("Use when...")
+- [ ] Description within 1024 chars (run `check-description-length.py` — counted, not eyeballed)
 - [ ] SKILL.md under 100 lines
 - [ ] No time-sensitive info
 - [ ] Consistent terminology

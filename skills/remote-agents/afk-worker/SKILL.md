@@ -32,7 +32,7 @@ The routine starts a fresh clone of `main`, so the invariants should already hol
 - `docs/agents/issue-tracker.md`, `docs/agents/triage-labels.md`, and `docs/agents/ship-style.md` (PR-style) exist.
 - Working tree clean, HEAD on `main`.
 - The `<feature-num>` PRD exists and has ≥1 open `[AFK]` `ready-for-agent` child.
-- The worker is claimed for this PRD. In `.scratch/` mode read the claim from the **ledger entry** — `git fetch origin afk-runs` then read `.afk-runs/<date>/<feature-num>.md`; it must say `claim: scheduled` (the `main`-local claim is not pushed, so don't look there). In GitHub-issues mode read the parent label. If the entry/label is missing or already `in-progress`/terminal, another worker is or was handling it — log and exit without acting.
+- The worker is claimed for this PRD. In `.scratch/` mode read the claim from the **ledger entry** — `git fetch origin afk-runs` then read `.afk-runs/<date>/<feature-num>.md` (the initial entry `/afk-fanout` serialized via `scripts/write-afk-entry.sh`); it must say `claim: scheduled` (the `main`-local claim is not pushed, so don't look there). In GitHub-issues mode read the parent label. If the entry/label is missing or already `in-progress`/terminal, another worker is or was handling it — log and exit without acting.
 
 ## Process
 

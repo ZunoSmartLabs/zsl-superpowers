@@ -60,13 +60,33 @@ Four phases. 1a refuses on failure; 1b cleans up silently and continues; 1c eith
 
 #### 1a. Environment validation
 
-Refuse with a clear error message if any of these fail.
+**Deterministic gate.** The mechanical parts of 1a + 1c (clean tree, HEAD not detached, the three required files exist, `.worktrees/` is gitignored) are scripted — each has one correct boolean answer. Resolve and run the validator; a `FAIL:` line means refuse with that message. It also covers 1c's clean-tree/not-detached checks, so 1c need not re-run them.
 
-- `docs/agents/ship-style.md` exists **and** says PR-style. Direct-push fanouts are unsupported — they'd land slices on `main` directly without consolidation, defeating the point.
+```bash
+SP=$({ ls "$PWD"/skills/*/tdd-parallel/scripts/zsl-preflight.sh 2>/dev/null
+       ls "$HOME/.claude/skills/tdd-parallel/scripts/zsl-preflight.sh" 2>/dev/null
+       ls -d "$HOME"/.claude/plugins/cache/zsl-superpowers/zsl/*/skills/*/tdd-parallel/scripts/zsl-preflight.sh 2>/dev/null | sort -Vr; } | head -1)
+if [ -n "$SP" ]; then
+  bash "$SP" --clean-tree --not-detached \
+    --require-file docs/agents/ship-style.md \
+    --require-file docs/agents/issue-tracker.md \
+    --require-file docs/agents/triage-labels.md \
+    --ensure-gitignore-line '.worktrees/'
+else
+  echo "zsl-gate: zsl-preflight.sh unresolved — run the checks below by hand (Fallback)"
+fi
+```
+
+Then the **one check the script can't make** — `docs/agents/ship-style.md` must *say PR-style*. That's a read of free-form prose, not a clean boolean, so it stays your call: open the file and refuse if it configures direct-push. Direct-push fanouts are unsupported — they'd land slices on `main` directly without consolidation, defeating the point.
+
+**Fallback** (if `$SP` is empty — the gate didn't resolve): refuse with a clear error message if any of these fail, exactly as the script would:
+
+- `docs/agents/ship-style.md` exists **and** says PR-style.
 - `docs/agents/issue-tracker.md` exists.
 - `docs/agents/triage-labels.md` exists.
+- Working tree is clean (`git status --porcelain` empty) and HEAD is not detached.
 
-Append `.worktrees/` to the repo root `.gitignore` if not already present.
+Append `.worktrees/` to the repo root `.gitignore` if not already present (the exact line `.worktrees/`, only if absent).
 
 #### 1b. Auto-clean stale slice worktrees and branches
 
@@ -88,7 +108,7 @@ Print a one-block summary: `cleaned`, `skipped — open`, `skipped — uncommitt
 The PRD branch doubles as the integration branch — sub-task branches will be merged onto it, and it gets pushed once at the end as the integration PR's source.
 
 - Run `git fetch origin`.
-- Refuse if the working tree is dirty (`git status --porcelain` non-empty) or HEAD is detached.
+- The dirty-tree / detached-HEAD refusal is already enforced by 1a's deterministic gate (`--clean-tree --not-detached`); `git fetch` doesn't touch the working tree, so it still holds here. (Fallback, if the gate didn't resolve: refuse if `git status --porcelain` is non-empty or HEAD is detached.)
 - **If the orchestrator is on `main`**: create the PRD branch and switch to it.
   - Branch name: `feature/<parent-num>-<slug>`. Slug is kebab-case of the parent issue title, max 40 chars.
   - `git checkout -b feature/<parent-num>-<slug>` from `main`'s tip.

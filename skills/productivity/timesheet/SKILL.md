@@ -7,7 +7,23 @@ description: Summarize recent Claude Code session histories into copy/paste-read
 
 Build a copy/paste-ready Markdown summary of Claude Code work over a recent window (default 12 hours). The script extracts raw structured session data; **Claude synthesizes the bullets**. No regex parsing of shell commands lives in the script — Claude reads the bash commands, user prompts, and files-touched data directly and infers outcomes.
 
-The script is at `skills/productivity/timesheet/scripts/digest_sessions.py`. From other repos, invoke by absolute path.
+## Resolve the script (deterministic gate)
+
+The digest script renders the deterministic parts of the timesheet for you — each project's duration label (`Xh`/`X.Yh`/`Xm`) and the window/timezone header line — so you copy them verbatim rather than re-deriving minute→label arithmetic or timezone conversion by hand. Resolve its absolute path **once** (this works whether the skill is the installed plugin, a personal skill, the remote `~/.claude/skills` symlink, or this repo's own checkout):
+
+```bash
+DIGEST=$({ ls "$PWD"/skills/*/timesheet/scripts/digest_sessions.py 2>/dev/null
+           ls "$HOME/.claude/skills/timesheet/scripts/digest_sessions.py" 2>/dev/null
+           ls -d "$HOME"/.claude/plugins/cache/zsl-superpowers/zsl/*/skills/*/timesheet/scripts/digest_sessions.py 2>/dev/null | sort -Vr; } | head -1)
+[ -n "$DIGEST" ] && echo "resolved: $DIGEST" || echo "zsl-gate: digest_sessions.py unresolved — see Fallback"
+```
+
+Use `python3 "$DIGEST" …` for every invocation below.
+
+**Fallback (if `$DIGEST` is empty):** the gate didn't resolve — find the script under your install (it lives at `skills/productivity/timesheet/scripts/digest_sessions.py` in the repo) and invoke it by absolute path. If you cannot run it at all, compute the two renders by hand with these exact rules:
+
+- **`duration_label`** from a project's integer `active_minutes`: if `< 60`, `"{minutes}m"`; else hours `= minutes/60` → `"{int}h"` when whole, else `"{h:.1f}h"` (e.g. 270 → `4.5h`, 90 → `1.5h`, 180 → `3h`, 45 → `45m`).
+- **`window_header`**: convert `window_start`/`window_end` to **local** time and render `"_{start:%Y-%m-%d %H:%M} → {end:%H:%M} {TZ}_"`. **`window_phrase`**: `"last {n} hour{s}"` — singular `hour` only when `n == 1` (e.g. `last 1 hour`, `last 12 hours`).
 
 ## Required workflow
 
@@ -16,7 +32,7 @@ The script is at `skills/productivity/timesheet/scripts/digest_sessions.py`. Fro
 1. **List candidates.** Show projects with active hours and full path:
 
    ```bash
-   ./scripts/digest_sessions.py --list
+   python3 "$DIGEST" --list
    ```
 
 2. **Ask which to exclude.** Wait for the response. Suggested phrasing: *"Any of these to exclude before I build the timesheet?"* Do not render anything yet.
@@ -24,10 +40,10 @@ The script is at `skills/productivity/timesheet/scripts/digest_sessions.py`. Fro
 3. **Extract structured data.** Once filtered:
 
    ```bash
-   ./scripts/digest_sessions.py [--exclude PATTERN] [--only PATTERN] [--merge-nested]
+   python3 "$DIGEST" [--exclude PATTERN] [--only PATTERN] [--merge-nested]
    ```
 
-   Output is JSON: per project, `active_minutes` and `sessions[]`; per session, `user_prompts`, `files_touched`, `bash_commands` (deduped, truncated to 300 chars).
+   Output is JSON. Top level: `window_header` (the pre-rendered `_<start> → <end> <tz>_` line) and `window_phrase` (e.g. `last 12 hours`). Per project: `active_minutes`, `duration_label` (the pre-rendered `Xh`/`X.Yh`/`Xm`), and `sessions[]`; per session, `user_prompts`, `files_touched`, `bash_commands` (deduped, truncated to 300 chars). **Copy `duration_label`, `window_header`, and `window_phrase` verbatim** — don't recompute them.
 
 4. **Synthesize the timesheet.** Read the JSON and write outcome bullets following the rules below. Print the result with the standard header.
 
@@ -47,7 +63,7 @@ Build the bullets from the JSON. Apply these rules in order:
 - **Dedupe within a project.** Identical commit subjects appear once.
 - **Tense.** Keep commit-message-style imperative ("Add X", "Remove Y") to match how the messages are written.
 
-Output format (paste-ready Markdown). Group bullets under a per-repo heading, repos sorted by total active time descending. Include the project's `active_minutes` next to the heading as `Xh` / `Xm` so the timesheet entry shows time-per-project at a glance:
+Output format (paste-ready Markdown). Group bullets under a per-repo heading, repos sorted by total active time descending. The title line is `## Timesheet — <window_phrase>` and the second line is `window_header`, both copied verbatim from the JSON. Each per-repo heading shows that project's `duration_label` next to the name (`### <name> · <duration_label>`) — copied verbatim, **not** recomputed from `active_minutes`:
 
 ```
 ## Timesheet — last 12 hours
