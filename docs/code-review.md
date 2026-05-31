@@ -31,10 +31,10 @@ flowchart TB
     filter -->|"yes"| present["Present to user<br/>(or to /tdd orchestrator)"]
     filter -->|"no"| drop["Dropped<br/>(noise floor)"]
 
-    classDef lens fill:#e0e7ff,stroke:#3f51b5;
-    classDef step fill:#fef3c7,stroke:#d97706;
-    classDef out fill:#dcfce7,stroke:#16a34a;
-    classDef noise fill:#fee2e2,stroke:#dc2626;
+    classDef lens fill:#e0e7ff,stroke:#3f51b5,color:#1e293b;
+    classDef step fill:#fef3c7,stroke:#d97706,color:#1e293b;
+    classDef out fill:#dcfce7,stroke:#16a34a,color:#1e293b;
+    classDef noise fill:#fee2e2,stroke:#dc2626,color:#1e293b;
     class L1,L2,L3,L4,L5,L6 lens;
     class dispatch,dedup,score,filter step;
     class present out;
@@ -119,9 +119,9 @@ flowchart LR
     ltest -->|"yes"| keep["keep the commit"]:::good
     ltest -->|"no"| revert["self-revert<br/>(orchestrator sees<br/>the reverted sha in RCA)"]:::bad
 
-    classDef good fill:#dcfce7,stroke:#16a34a;
-    classDef ok fill:#fef3c7,stroke:#d97706;
-    classDef bad fill:#fee2e2,stroke:#dc2626;
+    classDef good fill:#dcfce7,stroke:#16a34a,color:#1e293b;
+    classDef ok fill:#fef3c7,stroke:#d97706,color:#1e293b;
+    classDef bad fill:#fee2e2,stroke:#dc2626,color:#1e293b;
 ```
 
 The interactive mode is the default and the differentiator versus
@@ -153,7 +153,7 @@ flowchart TB
     cr3 --> cov["4b: verify-coverage --auto<br/>(loop on gaps)"]
     cr4 --> human["human reviews findings"]
 
-    classDef skill fill:#e0e7ff,stroke:#3f51b5;
+    classDef skill fill:#e0e7ff,stroke:#3f51b5,color:#1e293b;
     class tdd,tddn,tddp,manual,cr1,cr2,cr3,cr4 skill;
 ```
 

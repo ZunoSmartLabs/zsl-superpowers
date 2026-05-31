@@ -89,8 +89,8 @@ flowchart LR
     grill --> prd{{"/zsl:to-prd"}}
     prd -->|"synthesises chat → PRD"| tracker[("issue tracker<br/>or .scratch/")]
 
-    classDef skill fill:#e0e7ff,stroke:#3f51b5;
-    classDef artifact fill:#dcfce7,stroke:#16a34a;
+    classDef skill fill:#e0e7ff,stroke:#3f51b5,color:#1e293b;
+    classDef artifact fill:#dcfce7,stroke:#16a34a,color:#1e293b;
     class grill,prd skill
     class docs,tracker artifact
 ```
@@ -117,8 +117,8 @@ flowchart LR
     children --> triage{{"/zsl:triage<br/>(one per child)"}}
     triage -->|"per child"| states[("ready-for-agent<br/>ready-for-human<br/>needs-info")]
 
-    classDef skill fill:#e0e7ff,stroke:#3f51b5;
-    classDef artifact fill:#dcfce7,stroke:#16a34a;
+    classDef skill fill:#e0e7ff,stroke:#3f51b5,color:#1e293b;
+    classDef artifact fill:#dcfce7,stroke:#16a34a,color:#1e293b;
     class to_issues,triage skill
     class prd,children,prd_tracking,states artifact
 ```
@@ -149,7 +149,7 @@ flowchart TB
     choice -->|"multiple unblocked AFK"| parallel["/zsl:tdd-parallel &lt;PRD&gt;<br/>worktree per slice<br/>wave-by-wave merges"]
     bug["bug or perf regression"] --> diagnose["/zsl:diagnose<br/>repro → minimise →<br/>hypothesise → fix"]
 
-    classDef skill fill:#e0e7ff,stroke:#3f51b5;
+    classDef skill fill:#e0e7ff,stroke:#3f51b5,color:#1e293b;
     class tdd,parallel,diagnose skill
 ```
 
@@ -178,9 +178,9 @@ flowchart TB
     dec --> leak["process leak"]
     leak --> grill["/zsl:grill-with-docs + ADR<br/>resolve upstream,<br/>then relabel the slice [AFK]"]
 
-    classDef good fill:#dcfce7,stroke:#16a34a;
-    classDef ok fill:#fef3c7,stroke:#d97706;
-    classDef bad fill:#fee2e2,stroke:#dc2626;
+    classDef good fill:#dcfce7,stroke:#16a34a,color:#1e293b;
+    classDef ok fill:#fef3c7,stroke:#d97706,color:#1e293b;
+    classDef bad fill:#fee2e2,stroke:#dc2626,color:#1e293b;
     class afk,tddp,unblock,grill good
     class man,hitl ok
     class dec,leak bad
@@ -202,9 +202,9 @@ flowchart TB
     tb -->|"passes"| tba["covered<br/>(test added to suite)"]:::good
     tb -->|"fails"| gap["**Gap**<br/>auto-filed as ready-for-agent<br/>sub-issue · tdd-parallel loops"]:::bad
 
-    classDef good fill:#dcfce7,stroke:#16a34a;
-    classDef ok fill:#fef3c7,stroke:#d97706;
-    classDef bad fill:#fee2e2,stroke:#dc2626;
+    classDef good fill:#dcfce7,stroke:#16a34a,color:#1e293b;
+    classDef ok fill:#fef3c7,stroke:#d97706,color:#1e293b;
+    classDef bad fill:#fee2e2,stroke:#dc2626,color:#1e293b;
 ```
 
 ## Ship
@@ -222,7 +222,7 @@ flowchart LR
     ship -->|"direct-push"| push[("commits pushed<br/>Closes in commit body")]
     ship -->|"local-markdown"| mv[("Status: shipped<br/>git mv to done/")]
 
-    classDef skill fill:#e0e7ff,stroke:#3f51b5;
+    classDef skill fill:#e0e7ff,stroke:#3f51b5,color:#1e293b;
     class review,fixes_commit skill
 ```
 

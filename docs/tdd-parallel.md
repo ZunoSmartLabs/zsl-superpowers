@@ -180,8 +180,8 @@ flowchart LR
     hi -->|"dependent [AFK] slices<br/>now unblock"| rerun["re-run<br/>/zsl:tdd-parallel &lt;PRD&gt;"]
     rerun -->|"full run now"| pr["ONE PR closes<br/>the remainder + parent"]
 
-    classDef good fill:#dcfce7,stroke:#16a34a;
-    classDef ok fill:#fef3c7,stroke:#d97706;
+    classDef good fill:#dcfce7,stroke:#16a34a,color:#1e293b;
+    classDef ok fill:#fef3c7,stroke:#d97706,color:#1e293b;
     class tp,afk,rerun,pr,ppr good
     class skip,hi ok
 ```

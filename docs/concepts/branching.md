@@ -100,9 +100,9 @@ flowchart TB
     s2b -.->|"merge --no-ff<br/>after wave 2"| prd
     prd ==>|"git push -u origin<br/>gh pr create --base main"| pr
 
-    classDef root fill:#e0e7ff,stroke:#3f51b5;
-    classDef slice fill:#fef3c7,stroke:#d97706;
-    classDef ship fill:#dcfce7,stroke:#16a34a;
+    classDef root fill:#e0e7ff,stroke:#3f51b5,color:#1e293b;
+    classDef slice fill:#fef3c7,stroke:#d97706,color:#1e293b;
+    classDef ship fill:#dcfce7,stroke:#16a34a,color:#1e293b;
     class prd root
     class s1,s2a,s2b slice
     class pr ship
@@ -262,8 +262,8 @@ flowchart TB
     q2 -->|Yes| tp
     q2 -->|"No (direct-push)"| pc
 
-    classDef good fill:#dcfce7,stroke:#16a34a,color:#1a1a1a;
-    classDef ok fill:#fef3c7,stroke:#d97706,color:#1a1a1a;
+    classDef good fill:#dcfce7,stroke:#16a34a,color:#1e293b;
+    classDef ok fill:#fef3c7,stroke:#d97706,color:#1e293b;
 ```
 
 In priority order:

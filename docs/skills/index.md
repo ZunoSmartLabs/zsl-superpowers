@@ -66,13 +66,13 @@ flowchart TB
     other --> caveman["/zsl:caveman<br/><i>token-compressed replies</i>"]:::misc
     other --> write_a_skill["/zsl:write-a-skill<br/><i>author a new skill</i>"]:::misc
 
-    classDef plan fill:#dbeafe,stroke:#2563eb;
-    classDef breakdown fill:#e0e7ff,stroke:#4f46e5;
-    classDef build fill:#fef3c7,stroke:#d97706;
-    classDef diag fill:#fde68a,stroke:#b45309;
-    classDef ship fill:#dcfce7,stroke:#16a34a;
-    classDef cross fill:#fce7f3,stroke:#be185d;
-    classDef misc fill:#f3f4f6,stroke:#6b7280;
+    classDef plan fill:#dbeafe,stroke:#2563eb,color:#1e293b;
+    classDef breakdown fill:#e0e7ff,stroke:#4f46e5,color:#1e293b;
+    classDef build fill:#fef3c7,stroke:#d97706,color:#1e293b;
+    classDef diag fill:#fde68a,stroke:#b45309,color:#1e293b;
+    classDef ship fill:#dcfce7,stroke:#16a34a,color:#1e293b;
+    classDef cross fill:#fce7f3,stroke:#be185d,color:#1e293b;
+    classDef misc fill:#f3f4f6,stroke:#6b7280,color:#1e293b;
 ```
 
 For the conceptual map of how skills compose into one loop, see
