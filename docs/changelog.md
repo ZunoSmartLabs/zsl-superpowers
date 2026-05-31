@@ -44,6 +44,25 @@ the existing distribution — no provisioning or hook change was required. `make
 test` now runs the new scripts' tests (`pytest` + shell runners). See the
 "Deterministic-gate scripts" contract in `CLAUDE.md`.
 
+### afk-fanout: native one-off scheduling
+
+Separately, [`/zsl:afk-fanout`](skills/afk-fanout.md) now schedules each
+overnight worker as a **native one-off routine** (`run_once_at`) instead of a
+pinned recurring cron that had to be disabled after it fired. Two consequences:
+
+- **One-off runs are exempt from the per-day routine cap.** A night of workers no
+  longer spends your daily routine quota (Pro 5 / Max 15 / Team 25) — only the
+  overnight window and the per-5h token throttle (the fixed 2h slot spacing)
+  bound how many PRDs you can queue. The old "routine-count budget" overflow rule
+  is gone.
+- **Routines auto-disable after they fire** (`ended_reason: run_once_fired`), so
+  there's no disable-after-fire step and no fired-trigger sweep. Spent triggers
+  stay listed as disabled; delete them in the claude.ai UI when convenient
+  (cosmetic — `RemoteTrigger` has no delete action).
+
+No migration needed: any routine scheduled by 1.0.0 has already fired and
+disabled itself. [`/zsl:morning-review`](skills/morning-review.md) is unchanged.
+
 ## 1.0.0
 
 The 1.0 release adds an **overnight remote-agent path** alongside the
