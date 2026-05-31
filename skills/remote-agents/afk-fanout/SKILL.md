@@ -74,6 +74,8 @@ run-ts: <ISO-8601 UTC | ->
 reconciled: <- | YYYY-MM-DD>       # set by /morning-review once it replays the entry
 ```
 
+The **initial** entry + manifest row (the `claim: scheduled` / `outcome: pending` state) are serialized by `scripts/write-afk-entry.sh` (§6's deterministic gate) — that script is the single source of this schema's initial shape, so any change to the field set, the fixed initial values, the ` · ` separator, or the dated path must update the script and stay in lockstep with `/afk-worker`'s §4 reader and `/morning-review`'s §1 replay.
+
 Who touches it:
 
 | Session | Writes | Reads |
@@ -215,7 +217,23 @@ If a `create` call fails for a PRD, **roll back its claim** (set the parent back
 
 Write a scheduling manifest so `/morning-review` knows what was *supposed* to run, not just what produced a PR — the gap (scheduled but no result) is itself a morning signal:
 
-- **`.scratch/` mode:** on the `afk-runs` branch (§"The `afk-runs` ledger branch"), write `.afk-runs/<YYYY-MM-DD>/_scheduled.md` — one row per scheduled PRD (`<feature-num> · <title> · <slot> · <trigger-id> · <routine URL>`) — **and** an initial per-PRD entry `.afk-runs/<YYYY-MM-DD>/<feature-num>.md` with `claim: scheduled`, `outcome: pending`, and the trigger/slot/routine fields filled. Then `git push` the branch. This initial entry is the cross-session claim the worker reads at pre-flight and flips as it runs; `/morning-review` reconciles its final state back into `.scratch/`. Don't commit any of this to `main` — the ledger lives only on `afk-runs`.
+- **`.scratch/` mode:** on the `afk-runs` branch (§"The `afk-runs` ledger branch"), write `.afk-runs/<YYYY-MM-DD>/_scheduled.md` — one row per scheduled PRD (`<feature-num> · <title> · <slot> · <trigger-id> · <routine URL>`) — **and** an initial per-PRD entry `.afk-runs/<YYYY-MM-DD>/<feature-num>.md` with `claim: scheduled`, `outcome: pending`, and the trigger/slot/routine fields filled.
+
+  **Deterministic gate — serialize the entry + row with the shared writer.** The schema (field set, fixed initial values, the ` · ` manifest separator, the dated path) is one correct serialization shared verbatim by `/afk-worker` (§4) and `/morning-review` (§1). Use the writer so the three never drift; pass `<date>` explicitly (the **evening `/afk-fanout` ran** — post-midnight slots do *not* roll). With the `afk-runs` branch checked out, run once per selected PRD:
+
+  ```bash
+  WE=$({ ls "$PWD"/skills/*/afk-fanout/scripts/write-afk-entry.sh 2>/dev/null
+         ls "$HOME/.claude/skills/afk-fanout/scripts/write-afk-entry.sh" 2>/dev/null
+         ls -d "$HOME"/.claude/plugins/cache/zsl-superpowers/zsl/*/skills/*/afk-fanout/scripts/write-afk-entry.sh 2>/dev/null | sort -Vr; } | head -1)
+  if [ -n "$WE" ]; then
+    bash "$WE" --date <YYYY-MM-DD> --feature-num <num> --title "<title>" \
+      --slot "<ISO-8601 UTC>" --trigger-id <trigger-id> --routine-url "<url>"
+  else
+    echo "zsl-gate: write-afk-entry.sh unresolved — hand-write the entry per the schema below (Fallback)"
+  fi
+  ```
+
+  Then `git push` the branch. This initial entry is the cross-session claim the worker reads at pre-flight and flips as it runs; `/morning-review` reconciles its final state back into `.scratch/`. Don't commit any of this to `main` — the ledger lives only on `afk-runs`. **Fallback** (if `$WE` is empty): hand-write `_scheduled.md`'s row and `<feature-num>.md` exactly per the schema in §"The `afk-runs` ledger branch" — `claim: scheduled`, `outcome: pending` (not `scheduled`), the ` · ` separator (not a comma), `reconciled: -`.
 - **GitHub-issues mode:** no file needed — `/morning-review` reconstructs the scheduled set from the `scheduled`/`in-progress` labels and the routines list.
 
 Print a final summary to the session:

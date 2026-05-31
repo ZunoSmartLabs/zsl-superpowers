@@ -11,13 +11,14 @@ Skills live in bucket folders under `skills/`:
 
 ## Validating changes
 
-- `make lint` — `ruff check` plus `basedpyright` over the Python (mkdocs hooks, scripts).
+- `make lint` — `ruff check` plus `basedpyright` over the Python (mkdocs hooks, scripts). When you add a Python deterministic-gate script under `skills/**/scripts/`, add it to the `basedpyright` line.
+- `make test` — runs the deterministic-gate script tests: `pytest` over `skills/**` (the Python scripts' `scripts/tests/test_*.py`) plus each shell script's own assertion runner. Add a line per new shell test runner.
 - `make docs` — strict MkDocs build. **This is the exact gate the GitHub Pages deploy runs on push to `main`** — run it locally before pushing any change to `docs/**`, `skills/**/SKILL.md`, `scripts/mkdocs_hooks/**`, or `mkdocs.yml`, or the deploy fails. (`make docs-serve` for live preview.)
 - `make format` — `ruff format`.
 
 ## Invariants that break silently
 
-The rest of this file is lockstep contracts: sets of files or fields that must move together. Editing one surface without the others raises no error at edit time — it surfaces later as a failed deploy, a mismatched marketplace version, or a remote routine that won't resolve. Three of them.
+The rest of this file is lockstep contracts: sets of files or fields that must move together. Editing one surface without the others raises no error at edit time — it surfaces later as a failed deploy, a mismatched marketplace version, or a remote routine that won't resolve. Four of them.
 
 ### Skill sync — five places
 
@@ -54,4 +55,13 @@ Unlike the two contracts above, this one governs *runtime behaviour*, not just r
 
 Scheduled `/afk-worker` routines fire in fresh remote claude.ai sessions with **no plugins installed**, and plugin availability is **not** configurable per claude.ai environment. Skills are provisioned by a repo-level `SessionStart` hook (`.claude/hooks/zsl-remote-skills.sh`, written by `/setup-zsl-superpowers` Section F) — NOT by "installing the plugin in the environment." Don't reintroduce environment-plugin-install language in the remote-agents docs.
 
-The loop is a contract across four files that must stay in lockstep: `afk-fanout`, `afk-worker`, `morning-review` (in `skills/remote-agents/`) plus `skills/engineering/setup-zsl-superpowers/remote-env.md`. They share the `afk-runs` ledger schema and the claim lifecycle (`scheduled → in-progress → done|tracking`); change one, check the others. Anything that must cross from an isolated worker clone to your local session travels on the `afk-runs` branch — `.scratch/` state does not sync across clones.
+The loop is a contract across four files that must stay in lockstep: `afk-fanout`, `afk-worker`, `morning-review` (in `skills/remote-agents/`) plus `skills/engineering/setup-zsl-superpowers/remote-env.md`. They share the `afk-runs` ledger schema and the claim lifecycle (`scheduled → in-progress → done|tracking`); change one, check the others. Anything that must cross from an isolated worker clone to your local session travels on the `afk-runs` branch — `.scratch/` state does not sync across clones. The **initial** ledger entry shape (`claim: scheduled` / `outcome: pending`, the ` · ` manifest separator, the dated path) is serialized by `skills/remote-agents/afk-fanout/scripts/write-afk-entry.sh` — a schema change updates that script too (see the scripts contract below).
+
+### Deterministic-gate scripts — bundle, resolve, fall back
+
+Some skills delegate a *secretly-deterministic* step (one with exactly one correct answer — a length cap, a clean-tree/file-exists preflight, a fixed-schema serialization) to a small script bundled at `skills/<bucket>/<name>/scripts/`, behind a "deterministic gate" callout in the `SKILL.md`. Four rules hold them together:
+
+1. **Bundle inside the owning skill's `scripts/` dir.** Both distribution paths already carry it for free — the marketplace install copies the whole repo to `~/.claude/plugins/cache/zsl-superpowers/zsl/<version>/skills/<bucket>/<name>/`, and the remote `SessionStart` hook (`zsl-remote-skills.sh`) `git clone`s the repo and symlinks each whole skill dir into `~/.claude/skills/<name>/`. **No hook or packaging change is needed** to ship a script — and a repo-root `scripts/` dir (the mkdocs/book tooling) is *not* provisioned to those environments, so skill-shipped scripts must never live there.
+2. **Resolve, never hard-code a path.** `${CLAUDE_PLUGIN_ROOT}` does not expand inside SKILL.md Bash (Claude Code bug), so each callout resolves the script across all three environments with the same priority search and `| head -1`: `$PWD/skills/*/<name>/scripts/<file>` (this repo/dev) → `$HOME/.claude/skills/<name>/scripts/<file>` (remote symlink / personal install) → newest `$HOME/.claude/plugins/cache/zsl-superpowers/zsl/*/skills/*/<name>/scripts/<file>` (local plugin, `sort -Vr`).
+3. **Always preserve a prose fallback.** If the resolver finds nothing it prints a `zsl-gate: … unresolved` line; the SKILL.md must keep the original prose under an explicit **Fallback** heading so the step still works by model judgment. A gate that silently does nothing is a bug.
+4. **Every script has tests, including a fails-the-prose-way case.** Python scripts: `scripts/tests/test_*.py` run by `pytest` (and add the script to `make lint`'s `basedpyright` line). Shell scripts: a `scripts/tests/test_*.sh` runner added to `make test`. Each must include at least one input the old prose way gets wrong (e.g. a 1025-char description, a clean tree on a detached HEAD, a `outcome: scheduled` vs `pending` slip).

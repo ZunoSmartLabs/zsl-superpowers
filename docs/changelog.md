@@ -4,6 +4,46 @@ For the full commit history, see
 [github.com/ZunoSmartLabs/zsl-superpowers/commits/main](https://github.com/ZunoSmartLabs/zsl-superpowers/commits/main).
 This page summarises the user-facing changes per plugin version.
 
+## 1.1.0
+
+Replaces four *secretly-deterministic* skill steps — places a SKILL.md asked
+the model to compute something with exactly one correct answer — with small
+bundled scripts, each behind a **deterministic gate** in its `SKILL.md` with the
+original prose preserved as an explicit fallback. The model copies the script's
+output instead of re-deriving it by hand, so the rare hand-derivation slip (a
+mis-rounded duration, a silently-truncated description, a missed detached HEAD,
+a mis-serialized ledger row) can't happen. Purely additive: if a script can't be
+located the gate prints an `unresolved` line and the skill falls back to the
+same prose it always used, so nothing breaks if you're on an older install.
+
+### What got scripted
+
+- [`/zsl:timesheet`](skills/timesheet.md) — the digest script now emits a
+  per-project `duration_label` (`4.5h`, not a hand-rounded `4h`) and a
+  pre-rendered `window_header` / `window_phrase` (correct timezone + `last 1
+  hour` pluralization). The final timesheet copies them verbatim. Also fixes the
+  old `./scripts/digest_sessions.py` invocation, which only resolved from the
+  plugin's own checkout, to a path resolver that works from any repo.
+- [`/zsl:tdd-parallel`](skills/tdd-parallel.md) — a shared `zsl-preflight.sh`
+  validator runs the mechanical pre-flight gates (clean tree, HEAD not detached,
+  required `docs/agents/*.md` exist, `.worktrees/` gitignored). The
+  "ship-style says PR-style" *content* read stays model-driven.
+- [`/zsl:write-a-skill`](skills/write-a-skill.md) — a `check-description-length.py`
+  gate counts the hard 1024-char description cap instead of eyeballing it (an
+  over-cap description is silently truncated, dropping its `Use when …` trigger).
+- [`/zsl:afk-fanout`](skills/afk-fanout.md) — a `write-afk-entry.sh` serializer
+  owns the initial `afk-runs` ledger entry + manifest row to the exact schema
+  shared with [`/zsl:afk-worker`](skills/afk-worker.md) and
+  [`/zsl:morning-review`](skills/morning-review.md), so the three can't drift.
+
+### Under the hood
+
+Scripts bundle inside each skill's own `scripts/` dir and ride to every
+environment (local plugin install, other repos, remote `/afk-worker` clones) on
+the existing distribution — no provisioning or hook change was required. `make
+test` now runs the new scripts' tests (`pytest` + shell runners). See the
+"Deterministic-gate scripts" contract in `CLAUDE.md`.
+
 ## 1.0.0
 
 The 1.0 release adds an **overnight remote-agent path** alongside the
