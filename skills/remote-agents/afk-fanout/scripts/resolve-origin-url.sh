@@ -53,8 +53,8 @@ case "$RAW" in
   *) err "origin '$RAW' is not a recognizable github.com URL — refusing to schedule a sourceless routine" ;;
 esac
 
-path="${path%.git}"      # strip trailing .git
-path="${path%/}"         # strip a stray trailing slash
+path="${path%/}"         # strip a stray trailing slash first…
+path="${path%.git}"      # …so a trailing ".git/" still loses its .git
 
 # Must be exactly owner/repo — both non-empty, no extra path segments.
 case "$path" in

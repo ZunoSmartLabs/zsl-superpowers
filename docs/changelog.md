@@ -4,6 +4,43 @@ For the full commit history, see
 [github.com/ZunoSmartLabs/zsl-superpowers/commits/main](https://github.com/ZunoSmartLabs/zsl-superpowers/commits/main).
 This page summarises the user-facing changes per plugin version.
 
+## 1.2.1
+
+### remote-agents loop: fix sourceless routines + guided remote setup
+
+- **Fix: `/afk-fanout` now sets the target repo on every scheduled routine.** The
+  step-5 `RemoteTrigger` create body was missing
+  `job_config.ccr.session_context.sources`, so each routine fired with **no repo
+  to clone** and the worker (`/afk-worker` → `/tdd-parallel`) had nothing to
+  operate on — the overnight loop was broken for any repo. `/afk-fanout` now
+  derives the repo's `origin` (normalized to `https://github.com/<owner>/<repo>`)
+  and emits `session_context.sources`. Placement was verified by live API probe:
+  `sources` inside `session_context` round-trips; a copy at the `ccr` level is
+  rejected HTTP 400. `outcomes` is left unset (it auto-populates as a run output,
+  not a scheduler input).
+- Added a deterministic-gate script (`resolve-origin-url.sh`) that normalizes the
+  origin and **fails loudly** on a missing/garbled remote, so a sourceless
+  routine can never be scheduled.
+- **Docs fix: environments are repo-agnostic.** Corrected the "per-repo Claude
+  Code environment" language across `/afk-fanout`, `/setup-zsl-superpowers`
+  Section F, and the `remote-env.md` seed. One generic environment (e.g. "Full
+  Network + GH + Telegram") is reused across all projects; the repo is selected
+  per-routine via `sources`.
+- **`/setup-zsl-superpowers` Section F is now a guided walkthrough.**
+  Field-by-field UI form (Name / Network / env-vars / setup script) with
+  copy-pasteable values, the previously-missing `gh auth setup-git` git-auth
+  prerequisite, fully-walked Telegram bot + chat-id discovery, automatic env-id
+  discovery via `RemoteTrigger`, and a per-repo runtime-cloud-credentials caveat.
+  The `remote-env.md` seed is now a complete operator reference.
+
+#### Upgrading
+
+Any overnight routines scheduled by `/afk-fanout` **before** this fix were created
+without `sources` and could not clone a repo — they either failed at run time or
+produced nothing. Re-run `/afk-fanout` to reschedule under the fixed create body.
+Leftover disabled/spent triggers from the old runs are cosmetic; clear them in the
+claude.ai UI when convenient.
+
 ## 1.1.0
 
 Replaces four *secretly-deterministic* skill steps — places a SKILL.md asked

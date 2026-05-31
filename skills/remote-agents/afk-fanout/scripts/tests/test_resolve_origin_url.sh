@@ -44,6 +44,7 @@ expect_url "ssh://git@github.com/ZunoSmartLabs/zsl-superpowers.git" "$EXPECT"
 expect_url "https://github.com/ZunoSmartLabs/zsl-superpowers.git" "$EXPECT"
 expect_url "https://github.com/ZunoSmartLabs/zsl-superpowers" "$EXPECT"
 expect_url "https://github.com/ZunoSmartLabs/zsl-superpowers/" "$EXPECT"
+expect_url "https://github.com/ZunoSmartLabs/zsl-superpowers.git/" "$EXPECT"
 
 # ── fails-the-prose-way: must fail loudly, never pass garbage through ──────────
 expect_fail ""                                            # empty origin
