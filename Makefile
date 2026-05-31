@@ -14,6 +14,7 @@ test:
 	uvx --with pytest pytest skills -q
 	bash skills/engineering/tdd-parallel/scripts/tests/test_preflight.sh
 	bash skills/remote-agents/afk-fanout/scripts/tests/test_write_afk_entry.sh
+	bash skills/remote-agents/afk-fanout/scripts/tests/test_resolve_origin_url.sh
 
 # Docs run on mkdocs-material with the `social` plugin, which needs cairo at
 # build time (CI installs it via apt; macOS via `brew install cairo`). uvx

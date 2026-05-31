@@ -155,28 +155,83 @@ If the user opts out, do not write `docs/agents/project-board.md` — the skills
 
 **Section F — Remote agent environment (optional).**
 
-> Explainer: The overnight loop runs each PRD in its own remote claude.ai session. `/afk-fanout` (which you run in the evening) schedules one one-shot routine per PRD via the claude.ai routines API; each fires `/afk-worker` in a fresh remote session. To schedule those, `/afk-fanout` needs the **environment id** of the Claude Code environment on claude.ai that the sessions should run in (the clone + setup they use). Skip this section if you don't intend to use the overnight loop — `/afk-fanout` simply refuses at pre-flight until it's configured.
+> Explainer: The overnight loop runs each PRD in its own remote claude.ai session. `/afk-fanout` (you run it in the evening) schedules one one-shot routine per PRD via the claude.ai routines API; each fires `/afk-worker` in a fresh remote session. To schedule those, `/afk-fanout` needs the **environment id** of a Claude Code environment on claude.ai for the sessions to run in. Skip this whole section if you don't intend to use the overnight loop — `/afk-fanout` just refuses at pre-flight until it's configured.
 
-If the user opts in:
+This section is more involved than A–E, so **walk it one decision at a time** — present a step, get the answer, then move on. Don't dump it all at once. If the user opts out at the top, do not write `docs/agents/remote-env.md` (`/afk-fanout` detects its absence and refuses; the rest of the loop is unaffected).
 
-1. **Get the environment id.** Ask the user for it. They can find it in claude.ai → Code → Environments (the environment configured for this repo), or — if they already have any routine defined — read it off `RemoteTrigger({action:"list"})` → `job_config.ccr.environment_id`. The id looks like `env_016kJTSSQaEEUatC4vq82c1G`.
-2. **Write the remote-skills hook so the skills resolve in the remote session.** A scheduled routine fires in a fresh remote session that has **no plugins installed**, and plugin availability is **not** configurable per claude.ai environment — so without provisioning, `/afk-worker` (and the skills it drives) won't resolve. The fix is a repo-level `SessionStart` hook that clones zsl-superpowers and symlinks its skills into `~/.claude/skills/` **only when `CLAUDE_CODE_REMOTE=true`** (a no-op locally, where the user has the plugin). Write it:
-   - Copy [remote-skills-hook.sh](./remote-skills-hook.sh) to `.claude/hooks/zsl-remote-skills.sh` in the target repo and `chmod +x` it.
-   - **Merge** a `SessionStart` entry into the repo's `.claude/settings.json` — append to the existing `SessionStart` array if one is present, never overwrite it (the repo may already have its own hooks):
-     ```json
-     {
-       "hooks": {
-         "SessionStart": [
-           { "hooks": [ { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/zsl-remote-skills.sh" } ] }
-         ]
-       }
-     }
-     ```
-   This replaces the old "install the plugin into the environment" step — there is no such per-environment lever; the repo provisions its own skills.
-3. **Confirm a writable remote.** Workers push their per-PRD results to a shared `afk-runs` git branch that `/morning-review` reconciles back into the tracker (`.scratch/` mode). The remote environment needs push access or results can't come home; `/afk-fanout` pre-flights this.
-4. **Offer optional Telegram heads-up (optional within optional).** Each worker can fire a best-effort one-line Telegram message when it finishes a PRD. If the user wants it, have them create a bot via [@BotFather](https://t.me/BotFather) and set `AFK_TELEGRAM_BOT_TOKEN` and `AFK_TELEGRAM_CHAT_ID` as **secrets/env vars in the remote Claude Code environment** (not in the repo). `remote-env.md` records only the var *names*. If they decline, workers skip the notification silently — it carries no load-bearing data.
+> **Lead with this — the environment is reusable, not per-repo.** A Claude Code *environment* on claude.ai is **repo-agnostic**: its config screen has only **Name / Network access / Environment variables / Setup script** — there is **no repo field**. The repo a routine works on is chosen *per-routine* (via `sources`, which `/afk-fanout` sets at schedule time from this repo's `origin`), not by the environment. So **one** generic environment (e.g. "Full Network + GH + Telegram") is reused across *every* project. The user very likely already has a usable one and does **not** need a new per-repo environment.
 
-If the user opts out, do not write `docs/agents/remote-env.md` — `/afk-fanout` detects its absence and refuses (the rest of the loop is unaffected).
+**F1 — Reuse an existing environment if there is one.** Before walking the form, try to auto-discover an environment id the user already has and offer to reuse it:
+
+```
+RemoteTrigger({ action: "list" })   →  for each trigger, job_config.ccr.environment_id
+```
+
+If any routine exists, surface its `environment_id` (looks like `env_016kJTSSQaEEUatC4vq82c1G`) and ask: "Reuse this environment for the overnight loop?" If yes, record it and **skip F2** (jump to F3 — verify its env vars + setup script match what the loop needs). Only build a new environment if none exists or the user wants a dedicated one.
+
+**F2 — Create the environment (only if needed): walk the UI form field-by-field.** In claude.ai → **Code → Environments → New** (or **Update** an existing one). The form has exactly four fields:
+
+- **Name** — a generic, reusable name, e.g. `Full Network + GH + Telegram`. Not a repo name; this environment serves all repos.
+- **Network access** — **Full**. Needed for `git push`, the `gh` CLI, the Telegram Bot API, and package installs in the setup script. Anything less and workers can't push results or notify.
+- **Environment variables** (the `.env` box) — paste exactly these (drop the two Telegram lines if Telegram isn't wanted — see F4):
+
+  ```
+  GH_TOKEN=<github PAT>
+  AFK_TELEGRAM_BOT_TOKEN=<from BotFather>     # only if Telegram opted in (F4)
+  AFK_TELEGRAM_CHAT_ID=<chat id>              # only if Telegram opted in (F4)
+  ZSL_SUPERPOWERS_REF=main
+  ```
+
+  ⚠️ **This box is NOT a secret vault.** The UI itself warns the values are *visible to anyone using this environment — don't add secrets*. So use a **minimally-scoped, ROTATABLE** GitHub PAT, never a broad personal token. The scopes the loop actually needs:
+  - **read** on `zsl-superpowers` — the `SessionStart` hook clones it to provision the skills.
+  - **read + write on the repos workers ship to** — `contents` + `pull requests` (a fine-grained PAT), or `repo` (classic). This is what lets `/tdd-parallel` push feature branches, open PRs, and push the `afk-runs` ledger branch.
+
+  `ZSL_SUPERPOWERS_REF=main` pins which ref the skills-provisioning hook checks out (override to a tag/branch to freeze a version).
+
+- **Setup script** — paste verbatim, and know *why* each line is there:
+
+  ```bash
+  #!/bin/bash
+  apt update && apt install -y gh
+  gh auth setup-git
+  ```
+
+  `apt install gh` puts the GitHub CLI on the box. **`gh auth setup-git` is the load-bearing line** and is the prerequisite that was previously missing from this setup: it configures git's credential helper to use `GH_TOKEN`, so raw **`git push`** authenticates — that's what the worker's `afk-runs` ledger-branch push and `/tdd-parallel`'s feature-branch push rely on. Installing `gh` **alone is not enough** for `git push`; without `gh auth setup-git`, pushes fail and results never come home.
+
+**F3 — Obtain the environment id.** The id is **not shown in the env config dialog**, so don't make the user hunt. The reliable path (have the skill run it): read it off any routine via `RemoteTrigger({ action: "list" })` → `job_config.ccr.environment_id`. (If the env URL surfaces it, that works too — but the routines list is the dependable source.) Record this id; it's what goes into `remote-env.md` and what `/afk-fanout` schedules into.
+
+**F4 — Telegram heads-up (optional within optional), fully walked.** Each worker can fire a best-effort one-line Telegram message when it finishes a PRD, so the user wakes to a status. If they want it, step them through it — don't just say "set two env vars":
+
+1. **Create the bot.** Message [@BotFather](https://t.me/BotFather), send `/newbot`, follow the prompts, and **capture the bot token** it returns (`AFK_TELEGRAM_BOT_TOKEN`).
+2. **Get the chat id.** Have the user *message their new bot first* (send it any text — the bot can't see a chat until the user opens it), then have the skill run:
+   ```bash
+   curl -s "https://api.telegram.org/bot<TOKEN>/getUpdates"
+   ```
+   Extract `result[].message.chat.id` — that's `AFK_TELEGRAM_CHAT_ID` (for a self-DM it's the user's own id). If `result` is empty, the user hasn't messaged the bot yet — prompt them to, then re-run.
+3. **(Optional) confirm end-to-end.** Send one test message so the user sees it actually arrives:
+   ```bash
+   curl -s "https://api.telegram.org/bot<TOKEN>/sendMessage" -d chat_id=<CHAT_ID> -d text="afk loop wired up ✅"
+   ```
+4. **Record both as env vars** in the environment's `.env` box (F2) — `AFK_TELEGRAM_BOT_TOKEN` and `AFK_TELEGRAM_CHAT_ID`. The values never go in the repo; `remote-env.md` records only the var *names*. If they decline Telegram, workers skip the heads-up silently — it carries no load-bearing data.
+
+**F5 — Write the remote-skills hook so the skills resolve in the remote session.** A scheduled routine fires in a fresh remote session with **no plugins installed**, and plugin availability is **not** configurable per claude.ai environment — so without provisioning, `/afk-worker` (and the skills it drives) won't resolve. The fix is a repo-level `SessionStart` hook that clones zsl-superpowers and symlinks its skills into `~/.claude/skills/` **only when `CLAUDE_CODE_REMOTE=true`** (a no-op locally, where the user has the plugin):
+
+- Copy [remote-skills-hook.sh](./remote-skills-hook.sh) to `.claude/hooks/zsl-remote-skills.sh` in the target repo and `chmod +x` it.
+- **Merge** a `SessionStart` entry into the repo's `.claude/settings.json` — append to the existing `SessionStart` array if one is present, never overwrite it (the repo may already have its own hooks):
+  ```json
+  {
+    "hooks": {
+      "SessionStart": [
+        { "hooks": [ { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/zsl-remote-skills.sh" } ] }
+      ]
+    }
+  }
+  ```
+There is no "install the plugin into the environment" lever — the repo provisions its own skills via this hook.
+
+**F6 — Confirm a writable remote.** Workers `git push` their per-PRD results to a shared `afk-runs` git branch that `/morning-review` reconciles back into the tracker (`.scratch/` mode). The environment's PAT (F2) must have push access to this repo or results can't come home; `/afk-fanout` pre-flights this with `git push --dry-run`.
+
+**F7 — Per-repo runtime credentials caveat.** Ask: *"Does this repo's tests or slices need cloud credentials at run time — e.g. AWS for infra work?"* If yes, those must **also** live in the environment's env vars — **static keys or a CI role**; interactive SSO won't work in a headless routine session — or workers will stall on integration tests. A generic environment with no cloud creds is fine for pure-code repos but **breaks infra repos**. (These are runtime creds for *this repo's* tests, distinct from the `GH_TOKEN` the loop itself needs.) Record any required cloud-cred var *names* in `remote-env.md` so the next operator knows the environment must carry them.
 
 ### 3. Confirm and edit
 
@@ -250,7 +305,7 @@ Then write the docs files using the seed templates in this skill folder as a sta
 - [remote-env.md](./remote-env.md) — remote agent environment for the overnight loop (only when Section F was answered yes)
 - [remote-skills-hook.sh](./remote-skills-hook.sh) — the `SessionStart` hook that provisions the skills in remote sessions (only when Section F was answered yes); copy to the target repo's `.claude/hooks/zsl-remote-skills.sh`
 
-For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch using the user's description. For `docs/agents/project-board.md`, fill the template placeholders with the project node ID, Status field ID, and option IDs you discovered in Section E. For `docs/agents/remote-env.md`, replace the `env_xxxxxxxxxxxxxxxxxxxxxx` placeholder with the environment id from Section F. When Section F was answered yes, also install the remote-skills hook (copy `remote-skills-hook.sh` → `.claude/hooks/zsl-remote-skills.sh`, `chmod +x`, and merge the `SessionStart` entry into `.claude/settings.json` per Section F step 2 — append, don't overwrite).
+For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch using the user's description. For `docs/agents/project-board.md`, fill the template placeholders with the project node ID, Status field ID, and option IDs you discovered in Section E. For `docs/agents/remote-env.md`, fill the seed from Section F: the environment id (replacing the `env_xxxxxxxxxxxxxxxxxxxxxx` placeholder), the chosen env **name**, the env-var **names** the environment must carry (never values — `GH_TOKEN`, the Telegram pair if opted in, any F7 cloud-cred names), and confirm the verbatim setup script and PAT-scope notes match what you walked. When Section F was answered yes, also install the remote-skills hook (copy `remote-skills-hook.sh` → `.claude/hooks/zsl-remote-skills.sh`, `chmod +x`, and merge the `SessionStart` entry into `.claude/settings.json` per Section F step F5 — append, don't overwrite).
 
 ### 5. Backfill feature numbers and archive date prefixes (local-markdown only)
 

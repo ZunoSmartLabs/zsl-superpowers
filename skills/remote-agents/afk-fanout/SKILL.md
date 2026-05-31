@@ -93,7 +93,24 @@ Refuse with a clear message if any of these fail:
 - `docs/agents/ship-style.md` exists and says PR-style. `/tdd-parallel` refuses on direct-push; failing here produces a cleaner error than letting every scheduled worker refuse identically at 2am.
 - Working tree is clean (`git status --porcelain` empty) and HEAD is on `main`. You're scheduling work against `main`; a dirty or off-branch local tree means the queue enumeration can't be trusted.
 - `RemoteTrigger` is available (the claude.ai routines API). Without it there's no way to schedule the remote sessions — refuse rather than silently fall back to a single-session serial run.
-- `docs/agents/remote-env.md` exists and carries an `environment_id` (the `job_config.ccr.environment_id` each routine runs in — a per-repo Claude Code environment configured on claude.ai), **and** the repo has the remote-skills `SessionStart` hook installed (`.claude/hooks/zsl-remote-skills.sh` wired in `.claude/settings.json`). The hook is what makes the skills resolve in the fresh remote session — plugin availability is **not** configurable per claude.ai environment, so without the hook `/afk-worker` won't resolve. Both are written by `/setup-zsl-superpowers` (Section F). If `remote-env.md` is missing or the hook isn't wired, refuse and point the user at `/setup-zsl-superpowers` — without a valid environment id every `create` produces a trigger that can't run, and without the hook the trigger runs but `/afk-worker` is undefined.
+- `docs/agents/remote-env.md` exists and carries an `environment_id` (the `job_config.ccr.environment_id` each routine runs in). The environment is **repo-agnostic** — its claude.ai config screen has only name / network-access / env-vars / setup-script, **no repo field** — so a single generic environment (e.g. "Full Network + GH + Telegram") is reused across every project; the target repo is selected **per-routine** via `session_context.sources` (set in §5), not per-environment. Also require that the repo has the remote-skills `SessionStart` hook installed (`.claude/hooks/zsl-remote-skills.sh` wired in `.claude/settings.json`). The hook is what makes the skills resolve in the fresh remote session — plugin availability is **not** configurable per claude.ai environment, so without the hook `/afk-worker` won't resolve. Both are written by `/setup-zsl-superpowers` (Section F). If `remote-env.md` is missing or the hook isn't wired, refuse and point the user at `/setup-zsl-superpowers` — without a valid environment id every `create` produces a trigger that can't run, and without the hook the trigger runs but `/afk-worker` is undefined.
+- The repo's `origin` remote resolves to a clean `https://github.com/<owner>/<repo>` URL. **This is the URL each scheduled routine's `sources` carries — what every worker's clone is created from (§5)** — so a missing or garbled origin must **fail loudly here**, never schedule a sourceless routine that fires with no repo to clone. Resolve it with the deterministic gate below; capture the result as `<origin https URL>` for §5.
+
+  **Deterministic gate — resolve the origin URL.** Normalizing an origin to canonical https (strip `.git`, convert `git@github.com:owner/repo` SSH form to https, reject anything that isn't a github.com `owner/repo`) has exactly one correct answer, and the loud-failure requirement is the whole point — so delegate it to the bundled script:
+
+  ```bash
+  RO=$({ ls "$PWD"/skills/*/afk-fanout/scripts/resolve-origin-url.sh 2>/dev/null
+         ls "$HOME/.claude/skills/afk-fanout/scripts/resolve-origin-url.sh" 2>/dev/null
+         ls -d "$HOME"/.claude/plugins/cache/zsl-superpowers/zsl/*/skills/*/afk-fanout/scripts/resolve-origin-url.sh 2>/dev/null | sort -Vr; } | head -1)
+  if [ -n "$RO" ]; then
+    ORIGIN_URL=$(bash "$RO") || { echo "afk-fanout: origin unresolved — refusing to schedule sourceless routines"; exit 1; }
+    echo "origin → $ORIGIN_URL"
+  else
+    echo "zsl-gate: resolve-origin-url.sh unresolved — resolve the origin by hand per the Fallback below"
+  fi
+  ```
+
+  **Fallback** (if `$RO` is empty): run `git remote get-url origin`, strip a trailing `.git`, convert a `git@github.com:owner/repo` SSH URL to `https://github.com/owner/repo`, and **refuse** (don't schedule anything) if the result isn't a clean `https://github.com/<owner>/<repo>` — a sourceless routine fires with nothing to clone, which the worker can't recover from.
 - The repo has a **writable remote**. Workers push their per-PRD entries to the shared `afk-runs` branch (§"The `afk-runs` ledger branch") — without push access their results can't come home. A quick `git push --dry-run` against the remote is enough to confirm.
 
 ## Process
@@ -163,7 +180,7 @@ RemoteTrigger({
     persist_session: false,
     job_config: {
       ccr: {                                      // "ccr" = Claude Code Routine
-        environment_id: "<the repo's configured Claude Code environment id>",
+        environment_id: "<the reused generic Claude Code environment id — from remote-env.md>",
         events: [                                 // the prompt lives HERE — an SDK user-message event
           {
             data: {
@@ -179,7 +196,12 @@ RemoteTrigger({
           // MUST include Skill (to invoke /afk-worker) and Task (so /tdd-parallel can fan out
           // sub-agents). The standard "preset:default" superset covers both — prefer it.
           allowed_tools: ["preset:default", "Task", "Skill", "Bash", "Read", "Write", "Edit", "Glob", "Grep", "WebFetch", "WebSearch"],
-          autofix_on_pr_create: false
+          autofix_on_pr_create: false,
+          // sources SELECTS THE REPO this routine clones — it lives INSIDE session_context
+          // (a ccr-level `sources` sibling is silently dropped — live-probe confirmed).
+          // <origin https URL> is the pre-flight-resolved origin. WITHOUT this the routine
+          // fires with no checkout and /afk-worker → /tdd-parallel has nothing to operate on.
+          sources: [{ git_repository: { url: "<origin https URL>" } }]
         }
       }
     }
@@ -191,7 +213,9 @@ RemoteTrigger({
 
 - **The prompt is `job_config.ccr.events[]`** — an array of SDK-style input events, *not* a scalar field (which is why `prompt`/`message`/`task`/`initial_prompt`/`messages` all got rejected). Each event is `{data: {type:"user", message:{role:"user", content:"<the slash command>"}, parent_tool_use_id:null, session_id:"", uuid:"<uuid>"}}`. Generate a fresh uuid v4 per event; leave `session_id` empty for a new session.
 - **`run_once_at` is the schedule — a native one-off.** Pass exactly one of `run_once_at` *or* `cron_expression`; for overnight workers always use `run_once_at` (an RFC3339 UTC timestamp, must be in the future). Confirmed by live probing (2026-05-31): the API echoes `run_once_at` back and computes a real `next_run_at` from it, fires the routine **once**, then **auto-disables** it (`ended_reason: "run_once_fired"`, shown as "Ran" in the UI). Compute each 2h slot in UTC, not local time, and echo the returned `next_run_at` back. **Field-name caveat:** the API **silently drops unknown fields** with no error — `run_at`/`scheduled_at` are accepted-then-ignored and the trigger never fires (`next_run_at` comes back as the zero `0001-01-01T00:00:00Z`), so the field must be exactly `run_once_at`.
-- `job_config.ccr.environment_id` is **required** — the per-repo Claude Code environment configured on claude.ai (the clone + setup the remote session runs in). Read it from `docs/agents/remote-env.md` (written by `/setup-zsl-superpowers` Section F); pre-flight refuses if that file is absent. **`/afk-worker` resolves via the repo's remote-skills `SessionStart` hook** (`.claude/hooks/zsl-remote-skills.sh`), which clones zsl-superpowers and symlinks the skills into `~/.claude/skills/` when `CLAUDE_CODE_REMOTE=true` — *not* via a per-environment plugin install, which doesn't exist. (`enabled_plugins` exists at the trigger level for *additional* marketplace plugins and is normally left empty.)
+- **`job_config.ccr.session_context.sources` selects the repo this routine clones** — confirmed by live probing (2026-05-31, probe `trig_01XPe4Ld8fHEpHHpump1JLQR`, created disabled + far-future and read back with `get`): a one-off created with `sources: [{ git_repository: { url } }]` **inside `session_context`** echoes that URL back verbatim. A control copy placed at the `ccr` level (sibling of `session_context`) in the *same* probe was **silently dropped** — the same "unknown fields are silently dropped" trap as `run_once_at`, so the nesting must be exact. Without `sources` the routine fires with no checkout and `/afk-worker` → `/tdd-parallel` has nothing to operate on — the bug this skill exists to avoid. The URL is the pre-flight-resolved `<origin https URL>`; never hardcode it (`/afk-fanout` runs against whatever repo the PRDs live in).
+- **`outcomes` is NOT set at create — leave it unset.** The probe omitted `outcomes` and the API added none. It auto-populates as an **output** field: a pre-existing fired routine read via `list` carried `session_context.outcomes` with run-produced `git_info` (the repo + branches the run created), derived from `sources` and the run itself — not something the scheduler provides. The worker's `gh pr create` targets the repo of its checkout, which is the `sources` repo, so setting `sources` alone is sufficient and correct.
+- `job_config.ccr.environment_id` is **required** — the Claude Code environment on claude.ai the session runs in. **Environments are repo-agnostic** (their config screen has only name / network-access / env-vars / setup-script — no repo field), so this is a single generic environment reused across every project (the repo is chosen per-routine via `sources`, above), **not** a per-repo one. Read it from `docs/agents/remote-env.md` (written by `/setup-zsl-superpowers` Section F); pre-flight refuses if that file is absent. **`/afk-worker` resolves via the repo's remote-skills `SessionStart` hook** (`.claude/hooks/zsl-remote-skills.sh`), which clones zsl-superpowers and symlinks the skills into `~/.claude/skills/` when `CLAUDE_CODE_REMOTE=true` — *not* via a per-environment plugin install, which doesn't exist. (`enabled_plugins` exists at the trigger level for *additional* marketplace plugins and is normally left empty.)
 - `session_context.allowed_tools` **must include `Skill` and `Task`**, or `/afk-worker` can't be invoked and `/tdd-parallel` can't spawn its per-slice sub-agents. The `preset:default` superset is the safe choice. `session_context.autofix_on_pr_create` is a known bool (default false). `mcp_connections` auto-populates from the account's connectors — don't set it.
 
 **Two properties of one-off routines that matter here:**
