@@ -27,9 +27,9 @@ flowchart LR
     ship --> ship_users["/zsl:tdd<br/>/zsl:tdd-parallel<br/>/zsl:human-itl"]
     board --> board_users["/zsl:triage<br/>/zsl:tdd<br/>/zsl:tdd-parallel"]
 
-    classDef input fill:#e0e7ff,stroke:#3f51b5;
-    classDef output fill:#dcfce7,stroke:#16a34a;
-    classDef consumer fill:#fef3c7,stroke:#d97706;
+    classDef input fill:#e0e7ff,stroke:#3f51b5,color:#1e293b;
+    classDef output fill:#dcfce7,stroke:#16a34a,color:#1e293b;
+    classDef consumer fill:#fef3c7,stroke:#d97706,color:#1e293b;
     class q1,q2,q3,q4 input;
     class tracker,labels,domain,ship,board output;
     class tracker_users,label_users,domain_users,ship_users,board_users consumer;

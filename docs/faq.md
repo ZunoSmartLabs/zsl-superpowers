@@ -28,8 +28,8 @@ flowchart LR
     portable -.->|"copy SKILL.md body<br/>to your agent's prompt"| other["any other harness"]
     harness -->|"requires Claude Code"| cc["Claude Code"]
 
-    classDef good fill:#dcfce7,stroke:#16a34a;
-    classDef bound fill:#fef3c7,stroke:#d97706;
+    classDef good fill:#dcfce7,stroke:#16a34a,color:#1e293b;
+    classDef bound fill:#fef3c7,stroke:#d97706,color:#1e293b;
     class p1 good
     class h1,h2,h3,h4 bound
 ```
@@ -71,8 +71,8 @@ flowchart LR
     match -->|"two plugins<br/>define tdd"| ambig["Claude Code asks<br/>which one you meant"]
     user2["/zsl:tdd typed"] --> exact["zsl plugin's tdd runs<br/>(unambiguous)"]
 
-    classDef good fill:#dcfce7,stroke:#16a34a;
-    classDef warn fill:#fef3c7,stroke:#d97706;
+    classDef good fill:#dcfce7,stroke:#16a34a,color:#1e293b;
+    classDef warn fill:#fef3c7,stroke:#d97706,color:#1e293b;
     class zsl,exact good
     class ambig warn
 ```
@@ -121,7 +121,7 @@ flowchart LR
     triage -.->|"ready-for-agent"| tdd
     triage -.->|"ready-for-agent"| tddp
 
-    classDef root fill:#e0e7ff,stroke:#3f51b5;
+    classDef root fill:#e0e7ff,stroke:#3f51b5,color:#1e293b;
     class setup root
 ```
 
@@ -267,8 +267,8 @@ flowchart LR
     check -->|"no (direct-push)"| refuse["refuse with error<br/>'PR-style only'"]:::bad
     refuse --> options["options:<br/>1. edit ship-style.md → PR-style<br/>2. run /zsl:tdd sessions by hand"]
 
-    classDef good fill:#dcfce7,stroke:#16a34a;
-    classDef bad fill:#fee2e2,stroke:#dc2626;
+    classDef good fill:#dcfce7,stroke:#16a34a,color:#1e293b;
+    classDef bad fill:#fee2e2,stroke:#dc2626,color:#1e293b;
 ```
 
 ### Lost a slice worktree, can I recover?
@@ -300,8 +300,8 @@ flowchart LR
         oci --> review["reviewer reads<br/>--first-parent log<br/>to see wave shape"]
     end
 
-    classDef bad fill:#fee2e2,stroke:#dc2626;
-    classDef good fill:#dcfce7,stroke:#16a34a;
+    classDef bad fill:#fee2e2,stroke:#dc2626,color:#1e293b;
+    classDef good fill:#dcfce7,stroke:#16a34a,color:#1e293b;
     class n1,n2,n3,ci1,ci2,ci3 bad
     class o1,oci,review good
 ```

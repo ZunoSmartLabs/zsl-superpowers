@@ -103,8 +103,8 @@ flowchart TB
     state --> gl_label["GitLab:<br/>labels[] on the issue"]
     state --> local["Local markdown:<br/>'Status:' line near top of .md file<br/>under .scratch/&lt;NNN&gt;-&lt;feature-slug&gt;/issues/"]
 
-    classDef src fill:#e0e7ff,stroke:#3f51b5;
-    classDef mirror fill:#dcfce7,stroke:#16a34a;
+    classDef src fill:#e0e7ff,stroke:#3f51b5,color:#1e293b;
+    classDef mirror fill:#dcfce7,stroke:#16a34a,color:#1e293b;
     class gh_label,gl_label,local src
     class gh_board mirror
 ```

@@ -29,9 +29,9 @@ flowchart LR
     ledger -->|"morning"| review["**/zsl:morning-review**<br/>reconcile · verify · merge"]
     review --> human(["You<br/>(morning)"])
 
-    classDef skill fill:#e0e7ff,stroke:#3f51b5;
-    classDef artifact fill:#dcfce7,stroke:#16a34a;
-    classDef person fill:#fef3c7,stroke:#d97706;
+    classDef skill fill:#e0e7ff,stroke:#3f51b5,color:#1e293b;
+    classDef artifact fill:#dcfce7,stroke:#16a34a,color:#1e293b;
+    classDef person fill:#fef3c7,stroke:#d97706,color:#1e293b;
     class fanout,w1,w2,w3,review skill;
     class ledger artifact;
     class you,human person;
@@ -49,27 +49,51 @@ The human is the **dispatcher**, not the operator: all the judgment about
 *which* PRDs are worth overnight budget goes into `/zsl:afk-fanout`, once,
 interactively. The autonomy lives downstream.
 
-## Why one session per PRD
+## Why one isolated session per PRD
 
-`/zsl:tdd-parallel` already fans *slices* out into parallel worktrees —
-but all those worktrees share one checkout and one orchestrator session.
-Running several PRDs that way would mean several orchestrators contending
-on the same working tree.
+The obvious way to run several PRDs unattended is **one scheduled session
+that works through them in a loop**. The loop deliberately doesn't do this,
+for the same reason `/zsl:tdd-parallel` can't run two PRDs in one checkout:
+it treats its working tree as the integration surface. Stack several PRDs
+into one session and you get the worst of three worlds —
 
-The remote loop fans out one level higher: **one whole clone per PRD.**
-Each `/zsl:afk-worker` gets its own clone, its own working tree, its own
-branch. Workers never race each other, and a PRD that gets stuck — a dirty
-tree, an unresolvable conflict, a halt — can't take down the others. That
-per-PRD isolation is the entire reason fan-out happens at the *session*
-level rather than just the worktree level.
+- **Serial only.** Each `/zsl:tdd-parallel` run owns the branch and PR for
+  its PRD, so they can't overlap — PRD #2 waits for PRD #1 to finish.
+- **Token bunching.** A single session runs every PRD's fan-out back to
+  back, concentrating the whole night's token cost into one continuous
+  burst — straight into the per-5h cap (see below).
+- **One failure sinks the batch.** A crash, timeout, or dirty-tree halt on
+  one PRD ends the session, and every remaining PRD never runs.
 
-## The 2h throttle
+`/zsl:tdd-parallel` already fans *slices* out into parallel worktrees, but
+those worktrees share one checkout and one orchestrator — fine within a
+PRD, useless across them. So the remote loop fans out **one level higher:
+one whole clone per PRD.** Each `/zsl:afk-worker` gets its own clone,
+working tree, and branch. Workers never race each other, and a PRD that
+gets stuck — a dirty tree, an unresolvable conflict, a halt — can't take
+down the others; the failure stays contained to the one clone that hit it.
+That per-PRD isolation is the entire reason fan-out happens at the
+*session* level rather than just the worktree level.
 
-Routines are scheduled a **fixed 2 hours apart**, not all at once. This is
-a deliberate throttle: a fleet of `/zsl:tdd-parallel` runs (each spawning
-its own sub-agents) burns tokens fast, and claude.ai enforces a per-5h-
-window cap. Spacing the routines keeps a single night's fan-out under that
-cap instead of tripping it on the first two PRDs and starving the rest.
+## How the routines are scheduled
+
+Each PRD is scheduled as a **native one-off routine** — a claude.ai routine
+with a `run_once_at` timestamp that fires once at its slot and then
+auto-disables. There's no recurring cron to disable or sweep afterwards;
+spent routines just sit in the list marked as run.
+
+One-off runs are **exempt from the per-day routine cap**, so scheduling a
+full night of workers never spends your routine quota — each draws ordinary
+subscription usage like any other session. That leaves exactly one ceiling
+that matters: **tokens.**
+
+A fleet of `/zsl:tdd-parallel` runs (each spawning its own sub-agents) burns
+tokens fast, and claude.ai enforces a per-5h-window cap. So the routines are
+spaced a **fixed 2 hours apart**, not fired all at once — enough that a
+single night's fan-out stays under the token cap instead of tripping it on
+the first two PRDs and starving the rest. How many PRDs you can queue in one
+night is bounded only by the overnight window and that token throttle —
+never by a routine count.
 
 ## Partial runs: the enabler
 
@@ -105,8 +129,8 @@ flowchart LR
     ledger -->|"reconcile into<br/>canonical tracker"| review["/zsl:morning-review"]
     review --> scratch[(".scratch/<br/>tracker")]
 
-    classDef skill fill:#e0e7ff,stroke:#3f51b5;
-    classDef artifact fill:#dcfce7,stroke:#16a34a;
+    classDef skill fill:#e0e7ff,stroke:#3f51b5,color:#1e293b;
+    classDef artifact fill:#dcfce7,stroke:#16a34a,color:#1e293b;
     class fanout,w1,w2,review skill;
     class ledger,scratch artifact;
 ```
