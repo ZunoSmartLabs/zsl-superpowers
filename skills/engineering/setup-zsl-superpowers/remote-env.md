@@ -43,7 +43,7 @@ A scheduled routine fires in a fresh remote session with **no plugins installed*
 - **Overnight window:** 20:00–08:00 local (override at schedule time).
 - **Slot spacing:** fixed 2h — a deliberate throttle to keep each rolling 5-hour usage window under the token cap. Don't compress it; overflow drops to the next evening.
 - **Schedule timezone:** UTC. `/afk-fanout` computes each slot's `run_once_at` (a native one-off) in UTC.
-- **`job_config.ccr.session_context.sources`:** set by `/afk-fanout` from this repo's `origin` (normalized to `https://github.com/<owner>/<repo>`) — selects the repo each routine clones. It lives **inside** `session_context` (a `ccr`-level sibling is silently dropped — live-probe confirmed).
+- **`job_config.ccr.session_context.sources`:** set by `/afk-fanout` from this repo's `origin` (normalized to `https://github.com/<owner>/<repo>`) — selects the repo each routine clones. It lives **inside** `session_context` (a `ccr`-level sibling is rejected HTTP 400 — live-probe confirmed).
 - **`session_context.allowed_tools`:** must include `Skill` and `Task` (so `/afk-worker` can be invoked and `/tdd-parallel` can fan out its sub-agents). Default to the `preset:default` superset.
 
 The full verified `RemoteTrigger` create body — where the prompt lives in `job_config.ccr.events[]` as an SDK user-message event and the repo in `job_config.ccr.session_context.sources` — is documented in `/afk-fanout`'s `SKILL.md`, step 5.
