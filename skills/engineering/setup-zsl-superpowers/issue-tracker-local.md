@@ -12,6 +12,10 @@ Issues and PRDs for this repo live as markdown files in `.scratch/`.
 - Feature numbers are permanent and unique across active and archived features. Never renumber — references in commit history, PRD bodies, and external trackers depend on them.
 - Triage state is recorded as a `Status:` line near the top of each issue file (see `triage-labels.md` for the role strings)
 - Comments and conversation history append to the bottom of the file under a `## Comments` heading
+- Because comments land in a committed `.md` file, hard-wrap every comment and triage note to
+  ≤100 characters per line so it passes the project's markdownlint MD013 gate. Wrap prose only —
+  leave markdown tables and fenced code blocks unwrapped (MD013 exempts them, and wrapping breaks
+  their rendering).
 
 ## When a skill says "create a new feature"
 
