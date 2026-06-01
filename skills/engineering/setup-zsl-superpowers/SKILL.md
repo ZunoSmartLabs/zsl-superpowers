@@ -307,18 +307,44 @@ Then write the docs files using the seed templates in this skill folder as a sta
 
 For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch using the user's description. For `docs/agents/project-board.md`, fill the template placeholders with the project node ID, Status field ID, and option IDs you discovered in Section E. For `docs/agents/remote-env.md`, fill the seed from Section F: the environment id (replacing the `env_xxxxxxxxxxxxxxxxxxxxxx` placeholder), the chosen env **name**, the env-var **names** the environment must carry (never values — `GH_TOKEN`, the Telegram pair if opted in, any F7 cloud-cred names), and confirm the verbatim setup script and PAT-scope notes match what you walked. When Section F was answered yes, also install the remote-skills hook (copy `remote-skills-hook.sh` → `.claude/hooks/zsl-remote-skills.sh`, `chmod +x`, and merge the `SessionStart` entry into `.claude/settings.json` per Section F step F5 — append, don't overwrite).
 
-### 5. Backfill feature numbers and archive date prefixes (local-markdown only)
+### 5. Migrate local-markdown layout (local-markdown only)
 
-Only runs if Section A selected local-markdown. Check whether any existing features lack the new prefixes:
+Only runs if Section A selected local-markdown. Two one-time migrations, **in this order** — the folder rename must run before the number/date backfill, because the backfill globs `.scratch/_done/` and treats anything else directly under `.scratch/` as an active feature, so a stale `.scratch/done/` would get mis-numbered.
+
+#### 5a. Rename legacy archive folders `done/` → `_done/`
+
+Older repos archived closed work under `done/`; the convention is now `_done/` so the archive sorts to the top of its parent directory. Detect first (read-only):
+
+```bash
+# Feature archive still using the old name:
+[ -d .scratch/done ] && echo ".scratch/done"
+# Per-feature issue archives still using the old name (active + archived features):
+find .scratch -type d -path '*/issues/done' 2>/dev/null
+```
+
+If both probes print nothing, the repo is already on the new layout — skip to 5b. Otherwise show the maintainer the moves and, on confirmation, apply them with `git mv` so history follows the rename:
+
+```bash
+[ -d .scratch/done ] && git mv .scratch/done .scratch/_done
+for d in $(find .scratch -type d -path '*/issues/done' 2>/dev/null); do
+  git mv "$d" "${d%/done}/_done"
+done
+```
+
+Move the feature archive first so the loop's `find` also sweeps the just-renamed `.scratch/_done/*/issues/done`. Nothing is deleted and no numbers change — only the two folder names. Use plain `mv` if `.scratch/` isn't git-tracked. Commit as its own `chore: migrate archive folders done/ → _done/`, or fold it into the backfill commit below.
+
+#### 5b. Backfill feature numbers and archive date prefixes
+
+Check whether any existing features lack the new prefixes:
 
 ```bash
 # Active features missing the <NNN>- number prefix:
 find .scratch -mindepth 1 -maxdepth 1 -type d \
-  -not -name 'done' \
+  -not -name '_done' \
   -not -name '[0-9][0-9][0-9]-*' 2>/dev/null
 
 # Archived features missing either the date or the number (or both):
-find .scratch/done -mindepth 1 -maxdepth 1 -type d \
+find .scratch/_done -mindepth 1 -maxdepth 1 -type d \
   -not -name '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9]-*' 2>/dev/null
 ```
 
@@ -328,7 +354,7 @@ Otherwise, offer a single unified backfill that handles both the number prefix (
 
 #### Algorithm
 
-1. **Catalog** every feature directory across `.scratch/` (exclude `done`) and `.scratch/done/`.
+1. **Catalog** every feature directory across `.scratch/` (exclude `_done`) and `.scratch/_done/`.
 
 2. **Classify** each by its current prefix state:
 
@@ -357,8 +383,8 @@ Otherwise, offer a single unified backfill that handles both the number prefix (
    ```
    .scratch/auth/                   → .scratch/001-auth/                       (assigned number 001)
    .scratch/billing/                → .scratch/002-billing/                    (assigned number 002)
-   .scratch/done/oauth/             → .scratch/done/20251020-003-oauth/        (assigned date 2025-10-20, number 003)
-   .scratch/done/20251114-payments/ → .scratch/done/20251114-004-payments/    (assigned number 004)
+   .scratch/_done/oauth/             → .scratch/_done/20251020-003-oauth/        (assigned date 2025-10-20, number 003)
+   .scratch/_done/20251114-payments/ → .scratch/_done/20251114-004-payments/    (assigned number 004)
    ```
 
 7. **Ask**: "Apply these renames in a single commit?" Wait for confirmation. The maintainer may want to override a date, override a number (e.g. to keep an external reference stable), or skip specific entries entirely — accept edits before applying.

@@ -157,7 +157,7 @@ flowchart TB
 :   The full-auto pipeline from a PRD to a pushed integration PR. It fans out the unblocked **`[AFK]`** `ready-for-agent` children into parallel `/zsl:tdd --no-ship` sub-agents in worktrees, merges every slice branch onto the PRD branch in wave order with `--no-ff`, then runs two automated integration steps: **4a** `/zsl:code-review --auto` against the merged tip, **4b** `/zsl:verify-coverage --auto` to prove every user story has a test. Gaps found at 4b are filed as `ready-for-agent` and re-fanouted — the loop iterates until `gap=0` or a circuit breaker fires (`--max-coverage-rounds`, default 3). On clean coverage, **4c** delegates the commit to `/zsl:commit`, pushes, and opens **one** consolidated PR. Pre-flight (1d) refuses up front only if *no* slice is runnable or an in-scope story isn't `acceptance: automatable`. PR-style repos only. See the [deep-dive](tdd-parallel.md).
 
 [`/zsl:tdd`](skills/tdd.md) `<child>`
-:   Single-issue red-green-refactor. Refuses if you point it at a container. Runs [`/zsl:code-review`](skills/code-review.md) automatically between Refactor and Ship (step 5). **On local-markdown trackers you can run it with no argument** — it scans `.scratch/`, resolves each open issue's `## Blocked by` against the `issues/done/` archive, and lets you pick from the unblocked ones.
+:   Single-issue red-green-refactor. Refuses if you point it at a container. Runs [`/zsl:code-review`](skills/code-review.md) automatically between Refactor and Ship (step 5). **On local-markdown trackers you can run it with no argument** — it scans `.scratch/`, resolves each open issue's `## Blocked by` against the `issues/_done/` archive, and lets you pick from the unblocked ones.
 
 ### How a slice routes by type
 
@@ -220,7 +220,7 @@ flowchart LR
     fixes_commit --> ship["/zsl:tdd step 6: ship it"]
     ship -->|"PR-style"| pr[("PR opened<br/>Closes #&lt;sub-task&gt;")]
     ship -->|"direct-push"| push[("commits pushed<br/>Closes in commit body")]
-    ship -->|"local-markdown"| mv[("Status: shipped<br/>git mv to done/")]
+    ship -->|"local-markdown"| mv[("Status: shipped<br/>git mv to _done/")]
 
     classDef skill fill:#e0e7ff,stroke:#3f51b5,color:#1e293b;
     class review,fixes_commit skill
@@ -275,7 +275,7 @@ stateDiagram-v2
         Auto-closes when the last
         child closes (GitHub) or
         when you move the folder
-        to .scratch/done/ (local).
+        to .scratch/_done/ (local).
     end note
 ```
 
@@ -296,8 +296,8 @@ number alone — `/zsl:triage 23` resolves to feature `023-*` via glob.
 Closure is folder-based, atomic with the slice commit, and nothing is
 deleted:
 
-- Close an issue → on ship, [`/zsl:tdd`](skills/tdd.md) flips the `Status:` line to `shipped` and `git mv`s the issue file into `issues/done/` in the same commit as the code.
-- Close a feature → move the whole `.scratch/<NNN>-<feature-slug>/` directory to `.scratch/done/<YYYYMMDD>-<NNN>-<feature-slug>/`. There's no auto-close: when an issue's close empties the feature's open `issues/`, `/zsl:tdd` **prompts** you to run the feature-level `git mv` (never automatic — you might still want to add a follow-up issue).
+- Close an issue → on ship, [`/zsl:tdd`](skills/tdd.md) flips the `Status:` line to `shipped` and `git mv`s the issue file into `issues/_done/` in the same commit as the code.
+- Close a feature → move the whole `.scratch/<NNN>-<feature-slug>/` directory to `.scratch/_done/<YYYYMMDD>-<NNN>-<feature-slug>/`. There's no auto-close: when an issue's close empties the feature's open `issues/`, `/zsl:tdd` **prompts** you to run the feature-level `git mv` (never automatic — you might still want to add a follow-up issue).
 
 See [the state machine page](concepts/state-machine.md) for the full
 transition policy.

@@ -40,7 +40,7 @@ At step 6 (*Ship it* — step 5 is Review), `/zsl:tdd` reads
 |---|---|---|
 | `PR-style` | Pushes the branch, opens a PR via [`/zsl:commit`](../skills/commit.md) | `Closes #<sub-task>` in the **PR body** |
 | `direct-push` | Pushes the branch; you merge by hand | `Closes #<sub-task>` in the **commit body** (replaces the `Sub-task:` line) |
-| Local-markdown tracker | Flips `Status:` to `shipped` + `git mv` the issue file into `issues/done/` — in the same commit as the slice's code | The folder move is the close. Prompts to archive the whole feature if it's now empty. |
+| Local-markdown tracker | Flips `Status:` to `shipped` + `git mv` the issue file into `issues/_done/` — in the same commit as the slice's code | The folder move is the close. Prompts to archive the whole feature if it's now empty. |
 
 ## `/zsl:tdd-parallel` orchestration
 
@@ -189,7 +189,7 @@ automatically only when *all* its children close (GitHub) or when you run
 the feature-level `git mv` (local-markdown).
 
 !!! info "Local-markdown closure inside Pattern A"
-    On local-markdown trackers, each `/zsl:tdd` slice closes by flipping `Status:` to `shipped` and `git mv`-ing the issue file from `.scratch/<NNN>-<feature-slug>/issues/<NN>-<slug>.md` into `issues/done/` — atomic with the slice's code in the same commit. The folder move *is* the close. There's no separate "merge the PR" step; the slice branch merges to `main` and the issue file is already in `issues/done/`. When the feature's `issues/` is empty, `/zsl:tdd` prompts you to run the feature-level `git mv` to `.scratch/done/<YYYYMMDD>-<NNN>-<feature-slug>/`. See [The loop — Track & close](../workflow.md#track-close) for the full closure flow.
+    On local-markdown trackers, each `/zsl:tdd` slice closes by flipping `Status:` to `shipped` and `git mv`-ing the issue file from `.scratch/<NNN>-<feature-slug>/issues/<NN>-<slug>.md` into `issues/_done/` — atomic with the slice's code in the same commit. The folder move *is* the close. There's no separate "merge the PR" step; the slice branch merges to `main` and the issue file is already in `issues/_done/`. When the feature's `issues/` is empty, `/zsl:tdd` prompts you to run the feature-level `git mv` to `.scratch/_done/<YYYYMMDD>-<NNN>-<feature-slug>/`. See [The loop — Track & close](../workflow.md#track-close) for the full closure flow.
 
 ### Pattern B — both `/zsl:tdd`s on the same `feature/123-prd` branch (broken)
 

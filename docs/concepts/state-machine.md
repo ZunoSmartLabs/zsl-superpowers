@@ -113,8 +113,8 @@ flowchart TB
   best-effort mirror.
 - **GitLab** — labels only; no board mirroring.
 - **Local markdown** — the `Status:` line is the truth, and closure is
-  folder-based (`git mv` between `issues/` and `issues/done/`, then the
-  whole feature folder into `.scratch/done/` when finished). Nothing is
+  folder-based (`git mv` between `issues/` and `issues/_done/`, then the
+  whole feature folder into `.scratch/_done/` when finished). Nothing is
   ever deleted.
 
 ## See also
