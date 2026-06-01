@@ -4,6 +4,48 @@ For the full commit history, see
 [github.com/ZunoSmartLabs/zsl-superpowers/commits/main](https://github.com/ZunoSmartLabs/zsl-superpowers/commits/main).
 This page summarises the user-facing changes per plugin version.
 
+## 1.3.0
+
+### local-markdown tracker: archive folders renamed `done/` → `_done/`
+
+The local-markdown issue tracker's two archive folders are renamed so they sort
+to the **top** of their parent directory instead of getting lost among the active
+feature dirs:
+
+- Closed issues now archive to `.scratch/<NNN>-<feature-slug>/issues/_done/`
+  (was `issues/done/`).
+- Closed features now archive to `.scratch/_done/<YYYYMMDD>-<NNN>-<feature-slug>/`
+  (was `.scratch/done/`).
+
+Under the default locale (the one macOS Finder and the shell use), the leading
+`_` sorts ahead of digit-prefixed feature dirs, so the archive sits at the top
+where it's easy to find. All skills that `git mv` into, exclude, or glob the
+archive (`/zsl:tdd`, `/zsl:human-itl`, `/setup-zsl-superpowers` backfill, the
+feature-number resolver) move in lockstep. Purely a folder-name change — nothing
+is deleted, and feature/issue numbering is untouched.
+
+#### Upgrading from 1.2.x
+
+Existing repos still have their archives under the old `done/` names; the new
+globs won't find them until you rename. **The easiest path is to re-run
+[`/zsl:setup-zsl-superpowers`](skills/setup-zsl-superpowers.md)** — its Section 5
+now detects legacy `done/` archive folders and offers to `git mv` them to
+`_done/` (step 5a, ahead of the existing feature-number backfill). Prefer to do
+it by hand? One-time migration, run from the repo root:
+
+```bash
+# closed features: .scratch/done/ -> .scratch/_done/
+[ -d .scratch/done ] && git mv .scratch/done .scratch/_done
+# closed issues in every feature (active + archived): issues/done/ -> issues/_done/
+for d in $(find .scratch -type d -path '*/issues/done' 2>/dev/null); do
+  git mv "$d" "${d%/done}/_done"
+done
+```
+
+Commit the renames. If you skip this, closed work stays readable on disk but
+`/zsl:tdd`'s no-arg discovery and the archive lookups will treat the old `done/`
+folders as if they were active issues.
+
 ## 1.2.1
 
 ### remote-agents loop: fix sourceless routines + guided remote setup

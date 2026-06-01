@@ -92,7 +92,7 @@ Then, for each slice in dependency order:
    negotiated limit), write or update an ADR — lazily, like
    `/grill-with-docs`. Don't batch; capture it now.
 5. Mark the issue done per the tracker convention (close it / `git mv`
-   into `issues/done/` for local-markdown). This is what unblocks the
+   into `issues/_done/` for local-markdown). This is what unblocks the
    dependent `[AFK]` slices.
 
 ### 4. Finish

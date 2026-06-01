@@ -51,7 +51,7 @@ The ship style controls what `/zsl:tdd` does at step 6 ("Ship it"). It's indepen
 |---|---|---|---|
 | **`PR-style`** | Pushes the slice branch and opens a PR via `gh pr create` | `Closes #<n>` in the PR body | GitHub, GitLab |
 | **`direct-push`** | Pushes the slice branch; you merge it by hand | `Closes #<n>` in the **commit body** | GitHub, GitLab |
-| **Local-markdown** | Flips `Status:` to `shipped` and `git mv`s the issue file into `issues/done/` in the slice's commit | Folder move is the close. Prompts to archive the feature folder if `issues/` is empty | Local-markdown tracker only |
+| **Local-markdown** | Flips `Status:` to `shipped` and `git mv`s the issue file into `issues/_done/` in the slice's commit | Folder move is the close. Prompts to archive the feature folder if `issues/` is empty | Local-markdown tracker only |
 
 [`/zsl:tdd-parallel`](skills/tdd-parallel.md) is **PR-style only** — direct-push and local-markdown can't consolidate into a single integration PR by definition.
 
@@ -61,7 +61,7 @@ Two ways state is persisted, depending on Q1 above:
 
 **GitHub project dashboard** — state lives as labels on each issue and is mirrored to the project board's `Status` field via the mapping in `docs/agents/project-board.md`. `/zsl:triage` updates both. Closure is automatic via GitHub's PR-merge → issue-close behaviour.
 
-**Local markdown files** — state lives as a `Status:` line near the top of each `.md` file under `.scratch/<NNN>-<feature-slug>/`, where `<NNN>` is a 3-digit feature number assigned at creation (auto-incremented). Features can be addressed by number alone — `/zsl:triage 23` resolves to feature `023-*` via glob. Closure is folder-based: move issue files to `.scratch/<NNN>-<feature-slug>/issues/done/` when complete, and the whole feature folder to `.scratch/done/<YYYYMMDD>-<NNN>-<feature-slug>/` when shipped (date prefix orders archived features chronologically; the feature number stays embedded). Nothing is deleted; the archive records why each issue closed.
+**Local markdown files** — state lives as a `Status:` line near the top of each `.md` file under `.scratch/<NNN>-<feature-slug>/`, where `<NNN>` is a 3-digit feature number assigned at creation (auto-incremented). Features can be addressed by number alone — `/zsl:triage 23` resolves to feature `023-*` via glob. Closure is folder-based: move issue files to `.scratch/<NNN>-<feature-slug>/issues/_done/` when complete, and the whole feature folder to `.scratch/_done/<YYYYMMDD>-<NNN>-<feature-slug>/` when shipped (date prefix orders archived features chronologically; the feature number stays embedded). Nothing is deleted; the archive records why each issue closed.
 
 ## When to re-run
 
