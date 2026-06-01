@@ -4,6 +4,23 @@ For the full commit history, see
 [github.com/ZunoSmartLabs/zsl-superpowers/commits/main](https://github.com/ZunoSmartLabs/zsl-superpowers/commits/main).
 This page summarises the user-facing changes per plugin version.
 
+## 1.3.1
+
+### `/triage`: wrap local-markdown comments at 100 chars to satisfy markdownlint
+
+`/triage` wrote its triage notes and disclaimer comments into the local-markdown
+tracker as single long lines. Repos that lint their committed markdown with
+markdownlint-cli2 enforce MD013 (line-length), so every triage note failed
+`make lint` and needed manual reflowing before it could be committed.
+
+`/triage` now hard-wraps every comment and triage note it writes to a local-markdown
+tracker at ≤100 characters per line — prose only; markdown tables and fenced code
+blocks are left intact, since MD013 exempts them and wrapping would break their
+rendering. The rule lives in `issue-tracker-local.md` (next to the `## Comments`
+convention) with a pointer from the triage skill's disclaimer instruction. Local
+markdown only — GitHub Issues, ClickUp, and other non-markdown trackers have no
+MD013 and are unaffected.
+
 ## 1.3.0
 
 ### local-markdown tracker: archive folders renamed `done/` → `_done/`
