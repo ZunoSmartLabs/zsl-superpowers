@@ -60,6 +60,7 @@ flowchart TB
     health --> ica["/zsl:improve-codebase-architecture<br/><i>every few days</i>"]:::cross
 
     other --> prototype["/zsl:prototype<br/><i>throwaway exploration</i>"]:::misc
+    other --> teach["/zsl:teach-me-the-codebase<br/><i>learn an unfamiliar repo</i>"]:::misc
     other --> handoff["/zsl:handoff<br/><i>compact session → next agent</i>"]:::misc
     other --> timesheet["/zsl:timesheet<br/><i>standup notes</i>"]:::misc
 
@@ -141,6 +142,7 @@ The overnight loop — schedule dedicated remote sessions, run them unattended, 
 | Skill | What it does |
 |---|---|
 | [prototype](prototype.md) | Throwaway terminal app or radically-different UI variations. Flushes out a design before committing to a PRD. |
+| [teach-me-the-codebase](teach-me-the-codebase.md) | On-the-fly conversational tutor for an unfamiliar repo. Reads `CONTEXT.md`/ADRs/`CLAUDE.md`/code and teaches the domain, architecture, and conventions. Zero persisted artefacts; hands doc gaps to `grill-with-docs`. |
 | [handoff](handoff.md) | Compact the current conversation into a handoff doc in OS temp dir; redacts secrets, references existing artifacts instead of duplicating them, suggests skills for the next session. |
 | [timesheet](timesheet.md) | Recent Claude Code session histories → copy/paste standup bullets, grouped by project. |
 | [writing-great-skills](writing-great-skills.md) | Principles + vocabulary reference for authoring great skills: progressive disclosure, sharp descriptions/triggers, deterministic-gate scripts. Replaces the old `write-a-skill` process skill. |

@@ -43,3 +43,10 @@ cheat-sheet on demand rather than persisting one. Flag it
 ## Blocked by
 
 - #16 ([AFK] 3 — Extract domain-modeling) — references `domain-modeling`.
+
+## Verification
+
+Ran on the feature branch — observable PASS, `make lint test docs` exit 0.
+
+- Story 14: `skills/engineering/teach-me-the-codebase/SKILL.md` exists, `disable-model-invocation: true`; no `lessons/` or `learning-records/` directories; the body states it reads `CONTEXT.md`/ADRs/`CLAUDE.md`/code and hands undocumented terms/decisions to `domain-modeling`/`grill-with-docs` (teacher-only boundary — never writes `CONTEXT.md` or a parallel glossary); offers an optional, ephemeral `md-to-html` cheat-sheet on demand rather than persisting one → PASS.
+- Five-place sync: plugin.json, top README, engineering bucket README, docs/skills/index.md role table + decision-tree node (Off-loop "other" branch), mkdocs.yml nav.
