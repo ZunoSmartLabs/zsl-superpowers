@@ -64,3 +64,12 @@ state is re-verified by the release slice (#21).
 ## Blocked by
 
 None - can start immediately.
+
+## Verification
+
+Ran on `feature/v2.0.0-upstream-skill-integration` — all observables PASS, `make lint test docs` exit 0.
+
+- Story 1: `test -f docs/invocation.md && grep "may invoke model-invoked skills, but never another" docs/invocation.md` → PASS.
+- Story 2: `grep "disable-model-invocation: true"` in `commit`, `commit-push-pr`, `afk-fanout`, `tdd-parallel` SKILL.md → all PASS (four existing orchestrators; the four new ones flagged in #13/#18/#19/#20, re-verified in #21).
+- Story 3: `grep "Sixth lane"` + `grep "Shared / model-invoked"` in `CLAUDE.md` → PASS (registered in plugin.json + Shared/model-invoked subsection; omitted from decision tree + user-command lists).
+- Story 28: `test -f docs/adr/0001-user-invoked-model-invoked-taxonomy.md` + `not_in_nav: adr/*` in `mkdocs.yml` + `make docs` exit 0 → PASS.

@@ -118,6 +118,7 @@ nav:
   - Contributing:
       - How to contribute: contributing.md
       - Plugin architecture: architecture.md
+      - Skill invocation model: invocation.md
 
 markdown_extensions:
   - admonition

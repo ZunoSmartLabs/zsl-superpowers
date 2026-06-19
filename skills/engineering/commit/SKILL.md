@@ -1,6 +1,7 @@
 ---
 name: commit
 description: Plan and create git commits autonomously for changes made in this session (no per-commit approval prompt). Cross-session dirty files — files modified outside this conversation's tool calls — get confirmed before inclusion. Explicit file lists only, never `git add -A`. No Claude attribution lines. Use when user wants to commit, says "/commit", or asks to land changes.
+disable-model-invocation: true
 ---
 
 # Commit Changes
