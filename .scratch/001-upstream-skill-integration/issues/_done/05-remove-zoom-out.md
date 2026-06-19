@@ -33,3 +33,9 @@ named is the changelog (which records its removal).
 ## Blocked by
 
 - #11 ([AFK] 1 — Establish invocation taxonomy)
+
+## Verification
+
+Ran on the feature branch — observable PASS, `make lint test docs` exit 0.
+
+- Story 21: `skills/engineering/zoom-out/` is absent (git rm). `grep -rn zoom-out` over the repo excluding `docs/changelog.md`, `.scratch/` (the spec describing the removal), and `site/` → no hits. Swept from all ~14 surfaces: plugin.json, top README (×4: Cross-cutting, Why#4, setup list, Reference), engineering bucket README, docs/skills/index.md role table + decision-tree node, mkdocs.yml nav, docs/workflow.md (mermaid + 2 tables), docs/why.md, docs/index.md, docs/faq.md, docs/quickstart.md, docs/setup.md (mermaid + prose), setup-zsl-superpowers SKILL.md description.

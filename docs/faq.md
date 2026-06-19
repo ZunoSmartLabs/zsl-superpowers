@@ -101,7 +101,7 @@ metadata under their own infrastructure logging.
 
 Yes. Skills are independent. If you only want the productivity ones
 ([`grill-me`](skills/grill-me.md), [`timesheet`](skills/timesheet.md),
-[`caveman`](skills/caveman.md), [`write-a-skill`](skills/write-a-skill.md)),
+[`writing-great-skills`](skills/writing-great-skills.md)),
 ignore the engineering skills — nothing forces you to run `setup-zsl-superpowers`.
 
 The engineering skills do depend on each other, though: `/zsl:tdd-parallel`
@@ -169,7 +169,7 @@ rule set is wrong for your codebase, override it in your project's
 `/zsl:improve-codebase-architecture` for this codebase; we use a
 feature-folder layout intentionally"*) and Claude will honour it.
 
-The supporting files inside each affected skill (e.g. `LANGUAGE.md`,
+The supporting files inside each affected skill (e.g. `DEEPENING.md`,
 `CONTEXT-FORMAT.md`, `tests.md`) have been aligned with the bundled
 vocabulary where it sharpens the skill's process — see the
 [0.11.0 changelog entry](changelog.md) for the per-skill detail.
@@ -246,9 +246,9 @@ A few things to check:
 - The skill might have `disable-model-invocation: true`. Those are
   user-invocable only — call them explicitly with `/zsl:<name>`.
   ([`grill-with-docs`](skills/grill-with-docs.md),
-  [`tdd-parallel`](skills/tdd-parallel.md),
-  [`setup-zsl-superpowers`](skills/setup-zsl-superpowers.md), and
-  [`zoom-out`](skills/zoom-out.md) are all user-invocable only by design.)
+  [`tdd-parallel`](skills/tdd-parallel.md), and
+  [`setup-zsl-superpowers`](skills/setup-zsl-superpowers.md) are all
+  user-invocable only by design.)
 - The trigger phrases are listed verbatim on each skill's page (and in its
   `SKILL.md` frontmatter `description:` field). If your prompt doesn't match,
   rephrase or invoke explicitly.

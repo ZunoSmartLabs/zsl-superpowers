@@ -35,6 +35,7 @@ flowchart TB
     start --> health
     start --> other
 
+    plan --> decision_mapping["/zsl:decision-mapping<br/><i>mature a fuzzy idea → decision map</i>"]:::plan
     plan --> grill_me["/zsl:grill-me<br/>or<br/>/zsl:grill-with-docs<br/><i>(updates CONTEXT.md + ADRs)</i>"]:::plan
     plan --> to_prd["/zsl:to-prd<br/><i>synthesise the chat → PRD</i>"]:::plan
 
@@ -58,13 +59,11 @@ flowchart TB
     inbox --> triage_in["/zsl:triage"]:::cross
 
     health --> ica["/zsl:improve-codebase-architecture<br/><i>every few days</i>"]:::cross
-    health --> zoom["/zsl:zoom-out<br/><i>lost in code</i>"]:::cross
 
     other --> prototype["/zsl:prototype<br/><i>throwaway exploration</i>"]:::misc
+    other --> teach["/zsl:teach-me-the-codebase<br/><i>learn an unfamiliar repo</i>"]:::misc
     other --> handoff["/zsl:handoff<br/><i>compact session → next agent</i>"]:::misc
     other --> timesheet["/zsl:timesheet<br/><i>standup notes</i>"]:::misc
-    other --> caveman["/zsl:caveman<br/><i>token-compressed replies</i>"]:::misc
-    other --> write_a_skill["/zsl:write-a-skill<br/><i>author a new skill</i>"]:::misc
 
     classDef plan fill:#dbeafe,stroke:#2563eb,color:#1e293b;
     classDef breakdown fill:#e0e7ff,stroke:#4f46e5,color:#1e293b;
@@ -88,6 +87,7 @@ matters for picking a skill.
 
 | Skill | What it does |
 |---|---|
+| [decision-mapping](decision-mapping.md) | Turn a loose, multi-session idea into a sequenced map of decisions + ticket-sized slices, so it matures before a PRD. Writes the map to `.scratch/decision-maps/`; composes `grilling`/`domain-modeling`/`prototype`, then hands off to `to-prd`. |
 | [grill-with-docs](grill-with-docs.md) | Interview-driven planning. Sharpens terminology against `CONTEXT.md` and ADRs inline — the highest-leverage skill in the plugin. |
 | [grill-me](grill-me.md) | Interview-only variant (no doc updates). Use for non-code planning. |
 | [to-prd](to-prd.md) | Synthesise the current conversation into a PRD on the tracker. No interview — just packaging. Each story is written at value altitude with testable assertions in `AC<n>:` acceptance criteria; refuses non-automatable stories. Every story carries at least one `AC<n>:` acceptance criterion. |
@@ -138,21 +138,35 @@ The overnight loop — schedule dedicated remote sessions, run them unattended, 
 | Skill | When to reach for it |
 |---|---|
 | [improve-codebase-architecture](improve-codebase-architecture.md) | Every few days, to find deepening opportunities and fight entropy. Step 4 optionally renders an HTML report mixing Mermaid graphs with hand-built SVG when candidates would land better visually than as a numbered list. |
-| [zoom-out](zoom-out.md) | When you're lost in unfamiliar code and need higher-level framing. |
 
 ### Off-loop and meta
 
 | Skill | What it does |
 |---|---|
 | [prototype](prototype.md) | Throwaway terminal app or radically-different UI variations. Flushes out a design before committing to a PRD. |
+| [teach-me-the-codebase](teach-me-the-codebase.md) | On-the-fly conversational tutor for an unfamiliar repo. Reads `CONTEXT.md`/ADRs/`CLAUDE.md`/code and teaches the domain, architecture, and conventions. Zero persisted artefacts; hands doc gaps to `grill-with-docs`. |
+| [ask-zsl](ask-zsl.md) | Thin interactive router — asks situational questions and points you at the right ZSL skill mid-session, deferring each skill's description to its own page. The interactive twin of the decision tree above. |
 | [handoff](handoff.md) | Compact the current conversation into a handoff doc in OS temp dir; redacts secrets, references existing artifacts instead of duplicating them, suggests skills for the next session. |
 | [timesheet](timesheet.md) | Recent Claude Code session histories → copy/paste standup bullets, grouped by project. |
-| [caveman](caveman.md) | Ultra-compressed reply mode (~75% token cut). |
-| [write-a-skill](write-a-skill.md) | Author a new skill with proper progressive disclosure. |
+| [writing-great-skills](writing-great-skills.md) | Principles + vocabulary reference for authoring great skills: progressive disclosure, sharp descriptions/triggers, deterministic-gate scripts. Replaces the old `write-a-skill` process skill. |
 | [setup-zsl-superpowers](setup-zsl-superpowers.md) | One-time per-repo scaffold. Run before any of the engineering loop skills. |
 | [edit-article](edit-article.md) | Restructure and tighten article drafts. (Misc — rarely reached for.) |
 | [setup-pre-commit](setup-pre-commit.md) | Husky + lint-staged + Prettier + type-check + tests. (Misc.) |
 | [steampipe](steampipe.md) | AWS infra query reference. Auto-triggered only — not user-invocable. (Misc.) |
+
+## Shared / model-invoked
+
+These skills are **model-invoked** — they hold reusable design vocabulary and
+protocols that other skills compose, rather than commands you invoke off a list.
+You won't normally type them; they auto-activate when the task fits, or another
+skill pulls them in. They're deliberately absent from the decision tree and the
+role tables above. See [the invocation model](../invocation.md) for the split.
+
+| Skill | What it owns |
+|---|---|
+| [codebase-design](codebase-design.md) | The deep-module design language — module/interface/depth/seam/adapter, the deletion test, the one-adapter-hypothetical / two-adapters-real refinement, interface-for-testability, and the "design it twice" parallel sub-agent pattern. Composed by `improve-codebase-architecture` and `tdd`. |
+| [domain-modeling](domain-modeling.md) | The domain-doc reasoning home — the `CONTEXT.md` Ubiquitous Language format, the ADR format, and the bundled Domain-Driven Design book-rules. Composed by `grill-with-docs` and `improve-codebase-architecture`. |
+| [grilling](grilling.md) | The shared design-tree interview protocol — status markers, the example tree, the reprint rules, and the node status-lifecycle diagram. Composed by `grill-me` and `grill-with-docs`. |
 
 ## See also
 

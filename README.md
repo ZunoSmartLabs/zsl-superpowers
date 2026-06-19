@@ -17,6 +17,7 @@ The skills compose into one end-to-end loop. Most days you only touch a few of t
 
 ### Plan
 
+- **[`/decision-mapping`](./skills/engineering/decision-mapping/SKILL.md)** — for a loose, multi-session idea that isn't a PRD yet: mature it into a sequenced map of decisions and ticket-sized slices under `.scratch/decision-maps/`, then hand off to `/to-prd`. Composes the `grilling`/`domain-modeling` engines and `/prototype`.
 - **[`/grill-me`](./skills/productivity/grill-me/SKILL.md)** or **[`/grill-with-docs`](./skills/engineering/grill-with-docs/SKILL.md)** — interview yourself to surface what you're actually building. `grill-with-docs` also updates `CONTEXT.md` and ADRs inline.
 - **[`/to-prd`](./skills/engineering/to-prd/SKILL.md)** — synthesise that conversation into a PRD on the issue tracker.
 
@@ -71,7 +72,6 @@ Where state is stored and how closure works depends on the backend you picked in
 - **[`/triage`](./skills/engineering/triage/SKILL.md)** is also the entry point for **inbound issues** (bugs, feature requests from others) and re-evaluating stale ones — not just for the children you just sliced.
 - **[`/diagnose`](./skills/engineering/diagnose/SKILL.md)** for hard bugs and performance regressions.
 - **[`/improve-codebase-architecture`](./skills/engineering/improve-codebase-architecture/SKILL.md)** every few days to fight entropy.
-- **[`/zoom-out`](./skills/engineering/zoom-out/SKILL.md)** when you need a higher-level view of unfamiliar code.
 
 ## Install
 
@@ -211,7 +211,6 @@ For debugging, we've also built a **[`/diagnose`](./skills/engineering/diagnose/
 This is built in to every layer of these skills:
 
 - [`/to-prd`](./skills/engineering/to-prd/SKILL.md) quizzes you about which modules you're touching before creating a PRD
-- [`/zoom-out`](./skills/engineering/zoom-out/SKILL.md) tells the agent to explain code in the context of the whole system
 
 And crucially, [`/improve-codebase-architecture`](./skills/engineering/improve-codebase-architecture/SKILL.md) helps you rescue a codebase that has become a ball of mud. I recommend running it on your codebase once every few days.
 
@@ -225,20 +224,22 @@ Software engineering fundamentals matter more than ever. These skills are my bes
 
 Skills we use daily for code work.
 
+- **[decision-mapping](./skills/engineering/decision-mapping/SKILL.md)** — Turn a loose, multi-session idea into a sequenced map of decisions + ticket-sized slices so it matures before a PRD. Writes maps to `.scratch/decision-maps/`; composes `grilling`/`domain-modeling`/`prototype` and hands off to `to-prd`. Local and interactive (not AFK-wired).
 - **[diagnose](./skills/engineering/diagnose/SKILL.md)** — Disciplined diagnosis loop for hard bugs and performance regressions: reproduce → minimise → hypothesise → instrument → fix → regression-test.
 - **[grill-with-docs](./skills/engineering/grill-with-docs/SKILL.md)** — Grilling session that challenges your plan against the existing domain model, sharpens terminology, and updates `CONTEXT.md` and ADRs inline.
 - **[triage](./skills/engineering/triage/SKILL.md)** — Triage issues through a state machine of triage roles.
 - **[improve-codebase-architecture](./skills/engineering/improve-codebase-architecture/SKILL.md)** — Find deepening opportunities in a codebase, informed by the domain language in `CONTEXT.md` and the decisions in `docs/adr/`.
 - **[prototype](./skills/engineering/prototype/SKILL.md)** — Build a throwaway prototype to flush out a design before committing. Routes between a runnable terminal app for state/logic questions and several radically different UI variations for design questions.
-- **[setup-zsl-superpowers](./skills/engineering/setup-zsl-superpowers/SKILL.md)** — Scaffold the per-repo config (issue tracker, triage label vocabulary, domain doc layout) that the other engineering skills consume. Run once per repo before using `to-issues`, `to-prd`, `triage`, `diagnose`, `tdd`, `improve-codebase-architecture`, or `zoom-out`.
+- **[setup-zsl-superpowers](./skills/engineering/setup-zsl-superpowers/SKILL.md)** — Scaffold the per-repo config (issue tracker, triage label vocabulary, domain doc layout) that the other engineering skills consume. Run once per repo before using `to-issues`, `to-prd`, `triage`, `diagnose`, `tdd`, or `improve-codebase-architecture`.
 - **[tdd](./skills/engineering/tdd/SKILL.md)** — Test-driven development with a red-green-refactor loop. Builds features or fixes bugs one vertical slice at a time.
 - **[tdd-parallel](./skills/engineering/tdd-parallel/SKILL.md)** — Full-auto PRD pipeline: fanout `[AFK]` slices into parallel `/tdd` sub-agents, integrate onto the PRD branch, auto-chain `/verify-coverage --auto` and auto-fix any gaps via a re-fanout loop (capped by `--max-coverage-rounds`), then open one consolidated integration PR. Refuses up front if any `[HITL]` is open or any user story isn't expressible as an automatable test. PR-style only.
 - **[human-itl](./skills/engineering/human-itl/SKILL.md)** — Walk a human through the manual-action `[HITL]` slices of a PRD (console clicks, credential rotation, sign-off), record each as an audit trail, mark them done. Must run **before** `/tdd-parallel`, which refuses with any `[HITL]` open. Hard-refuses disguised-decision slices.
 - **[to-issues](./skills/engineering/to-issues/SKILL.md)** — Break any plan, spec, or PRD into independently-grabbable GitHub issues using vertical slices. Propagates the parent PRD's `AC<n>:` acceptance criteria into each slice body verbatim.
 - **[to-prd](./skills/engineering/to-prd/SKILL.md)** — Turn the current conversation context into a PRD and submit it as a GitHub issue. No interview — just synthesizes what you've already discussed. Writes each story at value altitude with detailed assertions pushed into `AC<n>:` acceptance criteria; refuses non-automatable stories. Every story carries at least one `AC<n>:` acceptance criterion that `/verify-coverage` consumes downstream.
 - **[verify-coverage](./skills/engineering/verify-coverage/SKILL.md)** — Verify every PRD user story is covered by a passing, non-vacuous behavioral test (Tier A maps to existing tests; Tier B generates one from the story's `AC<n>:` acceptance criteria and mutation-proves it). Auto-files gaps and writes a coverage receipt. Almost always chained by `/tdd-parallel --auto`; direct invocation is for auditing PRDs whose slices shipped via a different path.
-- **[zoom-out](./skills/engineering/zoom-out/SKILL.md)** — Tell the agent to zoom out and give broader context or a higher-level perspective on an unfamiliar section of code.
 - **[code-review](./skills/engineering/code-review/SKILL.md)** — Comprehensive pre-PR code review of the current branch with an issues-only tone and an approval gate before applying fixes.
+- **[teach-me-the-codebase](./skills/engineering/teach-me-the-codebase/SKILL.md)** — On-the-fly conversational tutor for an unfamiliar repo: reads `CONTEXT.md`/ADRs/`CLAUDE.md`/code and teaches the domain, architecture, and conventions interactively. Zero persisted artefacts; hands documentation gaps to `grill-with-docs`. Optional `md-to-html` cheat-sheet on demand.
+- **[ask-zsl](./skills/engineering/ask-zsl/SKILL.md)** — Thin interactive router. Asks situational questions and points you at the right ZSL skill mid-session — over the whole loop (`decision-mapping`, grill/PRD/issues, `tdd` vs `tdd-parallel`, `verify-coverage`, `human-itl`, the overnight remote agents). Defers each skill's description to its own page.
 - **[commit](./skills/engineering/commit/SKILL.md)** — Plan and create git commits with user approval, no Claude attribution, and explicit file lists (never `git add -A`).
 - **[commit-push-pr](./skills/engineering/commit-push-pr/SKILL.md)** — One-shot ship for a feature branch: refuses on the default branch, delegates the commit to `/zsl:commit`, then `git push -u`, then `gh pr create`. No force-push, no `--no-verify`, no Claude attribution.
 - **[git-branch](./skills/engineering/git-branch/SKILL.md)** — Create a git branch with the prefix convention (`feature/`, `fix/`, `chore/`, `refactor/`, `env/`) required by the auto-PR workflow.
@@ -247,11 +248,10 @@ Skills we use daily for code work.
 
 General workflow tools, not code-specific.
 
-- **[caveman](./skills/productivity/caveman/SKILL.md)** — Ultra-compressed communication mode. Cuts token usage ~75% by dropping filler while keeping full technical accuracy.
 - **[grill-me](./skills/productivity/grill-me/SKILL.md)** — Get relentlessly interviewed about a plan or design until every branch of the decision tree is resolved.
 - **[handoff](./skills/productivity/handoff/SKILL.md)** — Compact the current conversation into a handoff document so a fresh agent (or session) can continue cleanly. Saves to the OS temp dir, redacts secrets, references existing artifacts instead of duplicating them.
 - **[timesheet](./skills/productivity/timesheet/SKILL.md)** — Summarize recent Claude Code session histories into timesheet-ready outcome bullets, grouped by project.
-- **[write-a-skill](./skills/productivity/write-a-skill/SKILL.md)** — Create new skills with proper structure, progressive disclosure, and bundled resources.
+- **[writing-great-skills](./skills/productivity/writing-great-skills/SKILL.md)** — Principles and vocabulary for authoring great skills: progressive disclosure, sharp descriptions/triggers, when to bundle deterministic-gate scripts. Replaces the old `write-a-skill` process skill.
 
 ### Misc
 

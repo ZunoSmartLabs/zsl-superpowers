@@ -55,7 +55,6 @@ flowchart TB
         direction LR
         x1["diagnose<br/><i>bugs / perf</i>"]
         x2["improve-codebase-architecture<br/><i>fight entropy</i>"]
-        x3["zoom-out<br/><i>find your footing</i>"]
         x4["triage<br/><i>inbound issues</i>"]
     end
     subgraph overnight["🌙 Overnight (remote agents)"]
@@ -68,8 +67,7 @@ flowchart TB
         o1["prototype<br/><i>throwaway exploration</i>"]
         o2["handoff<br/><i>session compaction</i>"]
         o3["timesheet<br/><i>standup notes</i>"]
-        o4["caveman<br/><i>compressed mode</i>"]
-        o5["write-a-skill<br/><i>meta</i>"]
+        o5["writing-great-skills<br/><i>meta</i>"]
     end
     cross -.-> loop
     overnight -.->|"runs the Build→Ship→Track<br/>stretch unattended"| loop
@@ -334,7 +332,6 @@ These don't belong to a single phase — they run *across* the loop:
 | [`/zsl:triage`](skills/triage.md) | Inbound bug reports / feature requests, or re-evaluating stale issues — not just the children you sliced. |
 | [`/zsl:diagnose`](skills/diagnose.md) | Hard bugs and performance regressions, whatever phase you're in. |
 | [`/zsl:improve-codebase-architecture`](skills/improve-codebase-architecture.md) | Every few days, to fight entropy. Surfaces deepening opportunities informed by `CONTEXT.md` + ADRs. |
-| [`/zsl:zoom-out`](skills/zoom-out.md) | When you're lost in a section of code and need higher-level framing. |
 
 ## Cleanup
 
@@ -368,10 +365,9 @@ For the full per-skill descriptions and decision tree, see the
 | Overnight | [afk-worker](skills/afk-worker.md) | Per-PRD remote executor: own clone, `/tdd-parallel`, one PR, ledger + Telegram |
 | Overnight | [morning-review](skills/morning-review.md) | Reconcile the `afk-runs` ledger; surface PRs, halted slices, no-result PRDs |
 | Cross-cut | [improve-codebase-architecture](skills/improve-codebase-architecture.md) | Find deepening opportunities |
-| Cross-cut | [zoom-out](skills/zoom-out.md) | Broader context on unfamiliar code |
 | Off-loop | [prototype](skills/prototype.md) | Throwaway exploration |
 | Off-loop | [handoff](skills/handoff.md) | Compact the current session into a tmp-dir handoff doc |
-| Off-loop | [timesheet](skills/timesheet.md), [caveman](skills/caveman.md), [write-a-skill](skills/write-a-skill.md) | Productivity helpers |
+| Off-loop | [timesheet](skills/timesheet.md), [writing-great-skills](skills/writing-great-skills.md) | Productivity helpers |
 
 ## See also
 

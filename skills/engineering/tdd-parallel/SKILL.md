@@ -1,6 +1,7 @@
 ---
 name: tdd-parallel
 description: Full-auto PRD pipeline. Fans out the unblocked [AFK] sub-tasks of a parent PRD into parallel /tdd sub-agents, integrates them onto the PRD branch, auto-chains /verify-coverage to prove every user story has a passing non-vacuous test, auto-fixes any gaps (loop), then opens a single integration PR. Runs partially when an open [HITL] slice exists — fans out every slice whose blocker closure is HITL-free, defers the rest, and opens a [partial] PR that leaves the PRD open. Refuses only if no slice is runnable or an in-scope user story isn't expressible as an automatable test. PR-style repos only.
+disable-model-invocation: true
 ---
 
 # Parallel TDD

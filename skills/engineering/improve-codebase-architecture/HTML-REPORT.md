@@ -46,7 +46,7 @@ Repo name, date, and a compact legend: solid box = module, dashed line = seam, r
 
 ## Candidate card
 
-The diagrams carry the weight. Prose is sparse, plain, and uses the glossary terms ([LANGUAGE.md](LANGUAGE.md)) without ceremony.
+The diagrams carry the weight. Prose is sparse, plain, and uses the glossary terms ([codebase-design](../codebase-design/SKILL.md)) without ceremony.
 
 Each candidate is one `<article>`:
 
@@ -112,13 +112,13 @@ One larger card. Candidate name, one sentence on why, anchor link to its card. T
 
 ## Tone
 
-Plain English, concise — but the architectural nouns and verbs come straight from [LANGUAGE.md](LANGUAGE.md). Concision is not an excuse to drift.
+Plain English, concise — but the architectural nouns and verbs come straight from [codebase-design](../codebase-design/SKILL.md). Concision is not an excuse to drift.
 
 **Use exactly:** module, interface, implementation, depth, deep, shallow, seam, boundary, layer, port, adapter, leverage, locality, cognitive load, change amplification, temporal coupling.
 
 **Never substitute:** component, service, unit (for module) · API, signature (for interface) · wrapper (for module, when you mean module).
 
-**Boundary and seam are not synonyms** — boundary is a seam that *also* enforces a dependency direction (Clean Architecture's sense). Reach for seam when the topic is testability and substitution; boundary when the topic is policy/detail separation. See [LANGUAGE.md](LANGUAGE.md).
+**Boundary and seam are not synonyms** — boundary is a seam that *also* enforces a dependency direction (Clean Architecture's sense). Reach for seam when the topic is testability and substitution; boundary when the topic is policy/detail separation. See [codebase-design](../codebase-design/SKILL.md).
 
 **Phrasings that fit the style:**
 
@@ -129,7 +129,7 @@ Plain English, concise — but the architectural nouns and verbs come straight f
 
 **Wins bullets** name the gain in glossary terms: *"locality: bugs concentrate in one module"*, *"leverage: one interface, N call sites"*, *"interface shrinks; implementation absorbs the wrappers"*. Don't write *"easier to maintain"* or *"cleaner code"* — those terms aren't in the glossary and don't earn their place.
 
-No hedging, no throat-clearing, no "it's worth noting that…". If a sentence could be a bullet, make it a bullet. If a bullet could be cut, cut it. If a term isn't in [LANGUAGE.md](LANGUAGE.md), reach for one that is before inventing a new one.
+No hedging, no throat-clearing, no "it's worth noting that…". If a sentence could be a bullet, make it a bullet. If a bullet could be cut, cut it. If a term isn't in [codebase-design](../codebase-design/SKILL.md), reach for one that is before inventing a new one.
 
 ## Why HTML, not Markdown
 

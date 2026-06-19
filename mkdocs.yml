@@ -51,6 +51,9 @@ hooks:
 # kept out of the nav; this suppresses the --strict "not in nav" error.
 not_in_nav: |
   adr/*
+  skills/codebase-design.md
+  skills/domain-modeling.md
+  skills/grilling.md
 
 # docs/agents/ is this repo's own per-repo agent config (written by
 # /setup-zsl-superpowers — issue tracker, triage labels, domain, ship style,
@@ -76,6 +79,7 @@ nav:
   - Skills:
       - Overview: skills/index.md
       - Plan:
+          - skills/decision-mapping.md
           - skills/grill-with-docs.md
           - skills/grill-me.md
           - skills/to-prd.md
@@ -100,13 +104,13 @@ nav:
           - skills/morning-review.md
       - Cross-cutting:
           - skills/improve-codebase-architecture.md
-          - skills/zoom-out.md
       - Off-loop and meta:
           - skills/prototype.md
+          - skills/teach-me-the-codebase.md
+          - skills/ask-zsl.md
           - skills/handoff.md
           - skills/timesheet.md
-          - skills/caveman.md
-          - skills/write-a-skill.md
+          - skills/writing-great-skills.md
           - skills/edit-article.md
           - skills/setup-pre-commit.md
           - skills/steampipe.md
@@ -118,6 +122,7 @@ nav:
   - Contributing:
       - How to contribute: contributing.md
       - Plugin architecture: architecture.md
+      - Skill invocation model: invocation.md
 
 markdown_extensions:
   - admonition

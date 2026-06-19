@@ -23,7 +23,7 @@ flowchart LR
 
     tracker --> tracker_users["/zsl:to-prd<br/>/zsl:to-issues<br/>/zsl:triage<br/>/zsl:tdd<br/>/zsl:verify-coverage"]
     labels --> label_users["/zsl:triage<br/>/zsl:to-issues"]
-    domain --> domain_users["/zsl:grill-with-docs<br/>/zsl:improve-codebase-architecture<br/>/zsl:zoom-out"]
+    domain --> domain_users["/zsl:grill-with-docs<br/>/zsl:improve-codebase-architecture"]
     ship --> ship_users["/zsl:tdd<br/>/zsl:tdd-parallel<br/>/zsl:human-itl"]
     board --> board_users["/zsl:triage<br/>/zsl:tdd<br/>/zsl:tdd-parallel"]
 
@@ -41,7 +41,7 @@ If a skill needs config it can't find, it bails with a setup hint. Re-run `/zsl:
 
 The engineering skills in this plugin make assumptions about your repo's setup — *which issue tracker, what label vocabulary, where domain docs live, how you ship*. Rather than hard-code one opinion, `setup-zsl-superpowers` writes a small per-repo config that the other skills read.
 
-`/zsl:to-issues`, `/zsl:to-prd`, `/zsl:triage`, `/zsl:diagnose`, `/zsl:tdd`, `/zsl:improve-codebase-architecture`, and `/zsl:zoom-out` all consume this config. If they appear to be missing context (don't know which tracker to use, can't find the right labels), it's because setup hasn't run.
+`/zsl:to-issues`, `/zsl:to-prd`, `/zsl:triage`, `/zsl:diagnose`, `/zsl:tdd`, and `/zsl:improve-codebase-architecture` all consume this config. If they appear to be missing context (don't know which tracker to use, can't find the right labels), it's because setup hasn't run.
 
 ## Three ship styles
 

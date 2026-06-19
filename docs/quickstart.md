@@ -26,15 +26,14 @@ tree is fully resolved — no code changes, no commits, just a conversation that
 forces clarity. This is the cheapest way to feel the difference: the agent stops
 guessing and starts asking.
 
-You can also try [`/zsl:caveman`](skills/caveman.md) for a token-cut compressed
-reply mode, [`/zsl:timesheet`](skills/timesheet.md) to turn this morning's
+You can also try [`/zsl:timesheet`](skills/timesheet.md) to turn this morning's
 sessions into standup notes, or [`/zsl:handoff`](skills/handoff.md) to compact
 a long conversation into a tmp-dir doc your next session can pick up.
 
 ## 3. Configure a repo
 
 For the engineering skills (`tdd`, `triage`, `to-prd`, `to-issues`,
-`improve-codebase-architecture`, `diagnose`, `zoom-out`) you need to teach the
+`improve-codebase-architecture`, `diagnose`) you need to teach the
 plugin about *this* repo's setup. From inside the repo, run:
 
 ```

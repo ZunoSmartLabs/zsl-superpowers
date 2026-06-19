@@ -25,12 +25,13 @@ entry is still manual, and `mkdocs build --strict` fails on an unlisted page.
 The plugin includes a skill for this:
 
 ```
-/zsl:write-a-skill
+/zsl:writing-great-skills
 ```
 
-It walks you through name, bucket, frontmatter, trigger phrases, and bundled
-resources. Use it — it knows the conventions better than this page can write
-them down.
+It's the principles + vocabulary reference for authoring a skill — name, bucket,
+frontmatter, sharp descriptions/triggers, progressive disclosure, and when to
+bundle a deterministic-gate script. Use it — it knows the conventions better than
+this page can write them down.
 
 Manually, the shape is:
 
@@ -116,9 +117,9 @@ region (or removing one) cleanly.
 
 The current skill→book mapping table lives in
 [`vendor/agent-rules-books/README.md`](https://github.com/ZunoSmartLabs/zsl-superpowers/blob/main/vendor/agent-rules-books/README.md).
-Per-skill supporting files (e.g. `LANGUAGE.md` in
+Per-skill supporting files (e.g. `DEEPENING.md` in
 `improve-codebase-architecture/`, `CONTEXT-FORMAT.md` in
-`grill-with-docs/`, `tests.md`/`mocking.md`/`refactoring.md` in `tdd/`)
+`domain-modeling/`, `tests.md`/`mocking.md`/`refactoring.md` in `tdd/`)
 sit *outside* the fences and **are** hand-editable — they exist to
 align skill-specific vocabulary and process with the bundled rules.
 

@@ -1,6 +1,6 @@
 ---
 name: setup-zsl-superpowers
-description: Sets up an `## Agent skills` block in AGENTS.md/CLAUDE.md and `docs/agents/` so the engineering skills know this repo's issue tracker (GitHub, local markdown, or a hybrid local-markdown-plus-GitHub-mirror), triage label vocabulary, domain doc layout, ship style (PR vs direct push), and — optionally — the remote claude.ai environment the overnight agent loop schedules into. Run before first use of `to-issues`, `to-prd`, `triage`, `diagnose`, `tdd`, `improve-codebase-architecture`, or `zoom-out` — or if those skills appear to be missing context about the issue tracker, triage labels, domain docs, ship style, or remote agent environment.
+description: Sets up an `## Agent skills` block in AGENTS.md/CLAUDE.md and `docs/agents/` so the engineering skills know this repo's issue tracker (GitHub, local markdown, or a hybrid local-markdown-plus-GitHub-mirror), triage label vocabulary, domain doc layout, ship style (PR vs direct push), and — optionally — the remote claude.ai environment the overnight agent loop schedules into. Run before first use of `to-issues`, `to-prd`, `triage`, `diagnose`, `tdd`, or `improve-codebase-architecture` — or if those skills appear to be missing context about the issue tracker, triage labels, domain docs, ship style, or remote agent environment.
 disable-model-invocation: true
 ---
 

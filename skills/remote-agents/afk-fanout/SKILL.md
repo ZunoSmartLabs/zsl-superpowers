@@ -1,6 +1,7 @@
 ---
 name: afk-fanout
 description: Interactive local-session scheduler for overnight remote /tdd-parallel runs. Reviews the queue of tracking PRDs with ready-for-agent children, lets the human pick which to run overnight and in what order, then schedules one one-shot remote routine per selected PRD spaced a fixed 2h apart — each fires its own remote claude.ai session running /afk-worker against one PRD. The 2h spacing is a deliberate throttle to stay under the per-5h-window token cap. Places a light scheduled claim on each PRD so a re-run the same evening won't double-book. Morning you walks the results via /morning-review.
+disable-model-invocation: true
 ---
 
 # AFK Fanout

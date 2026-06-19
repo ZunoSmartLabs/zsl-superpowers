@@ -58,3 +58,11 @@ add the `ask-zsl` ↔ decision-tree pairing to the `CLAUDE.md` sync contract.
 - #19 ([AFK] 5 — Add decision-mapping)
 
 (Authored last against the final inventory.)
+
+## Verification
+
+Ran on the feature branch (authored last, against the final inventory) — all observables PASS, `make lint test docs` exit 0.
+
+- Story 15: `skills/engineering/ask-zsl/SKILL.md` exists, `disable-model-invocation: true`; encodes situational routing questions and routes over the full ZSL loop including `afk-fanout`/`afk-worker`/`morning-review`, `tdd` vs `tdd-parallel`, `verify-coverage`, `human-itl`, and `decision-mapping`; thin router that defers each skill's description to its own page → PASS.
+- Story 16: `CLAUDE.md` names `ask-zsl` and `docs/skills/index.md`'s decision tree as a routing pair that must move together (new "Routing pair" note in the skill-sync contract) → PASS.
+- Five-place sync: plugin.json, top README, engineering bucket README, docs/skills/index.md Off-loop role table, mkdocs.yml nav.

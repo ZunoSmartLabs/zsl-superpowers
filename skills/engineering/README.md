@@ -3,6 +3,7 @@
 Skills I use daily for code work.
 
 - **[diagnose](./diagnose/SKILL.md)** — Disciplined diagnosis loop for hard bugs and performance regressions: reproduce → minimise → hypothesise → instrument → fix → regression-test.
+- **[decision-mapping](./decision-mapping/SKILL.md)** — Turn a loose, multi-session idea into a sequenced map of decisions + ticket-sized slices so it matures before a PRD. Writes maps to `.scratch/decision-maps/`; composes `grilling`/`domain-modeling`/`prototype` and hands off to `to-prd`.
 - **[grill-with-docs](./grill-with-docs/SKILL.md)** — Grilling session that challenges your plan against the existing domain model, sharpens terminology, and updates `CONTEXT.md` and ADRs inline.
 - **[triage](./triage/SKILL.md)** — Triage issues through a state machine of triage roles.
 - **[improve-codebase-architecture](./improve-codebase-architecture/SKILL.md)** — Find deepening opportunities in a codebase, informed by the domain language in `CONTEXT.md` and the decisions in `docs/adr/`.
@@ -14,8 +15,9 @@ Skills I use daily for code work.
 - **[to-issues](./to-issues/SKILL.md)** — Break any plan, spec, or PRD into independently-grabbable GitHub issues using vertical slices. Propagates the parent PRD's `AC<n>:` acceptance criteria into each slice body verbatim.
 - **[verify-coverage](./verify-coverage/SKILL.md)** — Verify every PRD user story is covered by a passing, non-vacuous behavioral test (Tier A maps to existing tests; Tier B generates one from the story's `AC<n>:` acceptance criteria and mutation-proves it); auto-files gaps and writes a coverage receipt. Almost always chained by `/tdd-parallel --auto`; direct invocation is for auditing PRDs whose slices shipped via a different path.
 - **[to-prd](./to-prd/SKILL.md)** — Turn the current conversation context into a PRD and submit it as a GitHub issue. Writes each story at value altitude with detailed assertions in `AC<n>:` acceptance criteria; refuses non-automatable stories. Every story carries at least one `AC<n>:` acceptance criterion.
-- **[zoom-out](./zoom-out/SKILL.md)** — Tell the agent to zoom out and give broader context or a higher-level perspective on an unfamiliar section of code.
 - **[code-review](./code-review/SKILL.md)** — Comprehensive pre-PR code review of the current branch with an issues-only tone and an approval gate before applying fixes.
+- **[teach-me-the-codebase](./teach-me-the-codebase/SKILL.md)** — On-the-fly conversational tutor for an unfamiliar repo: reads `CONTEXT.md`/ADRs/`CLAUDE.md`/code and teaches the domain, architecture, and conventions. Zero persisted artefacts; hands documentation gaps to `grill-with-docs`.
+- **[ask-zsl](./ask-zsl/SKILL.md)** — Thin interactive router. Asks situational questions and points you at the right ZSL skill mid-session, deferring each skill's description to its own page. Paired with the "Which skill do I want?" decision tree.
 - **[commit](./commit/SKILL.md)** — Plan and create git commits with user approval, no Claude attribution, and explicit file lists (never `git add -A`).
 - **[commit-push-pr](./commit-push-pr/SKILL.md)** — One-shot ship: refuse on the default branch, delegate to `/zsl:commit`, then `git push -u`, then `gh pr create`.
 - **[git-branch](./git-branch/SKILL.md)** — Create a git branch with the prefix convention (`feature/`, `fix/`, `chore/`, `refactor/`, `env/`) required by the auto-PR workflow.

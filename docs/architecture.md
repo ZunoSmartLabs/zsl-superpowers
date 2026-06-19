@@ -28,7 +28,7 @@ flowchart TB
 | Layer | What lives there | Who reads it |
 |---|---|---|
 | **Runtime** | Claude Code itself — slash commands, the `Agent` tool, `Monitor`, `SendMessage`, `Worktree`. | The skill body, at execution time. |
-| **Knowledge** | 28 `SKILL.md` files. Markdown with YAML frontmatter that tells the harness *when* to fire. Sibling resource files (scripts, templates) referenced by relative paths. | Claude Code loads the relevant `SKILL.md` as context when the skill activates. |
+| **Knowledge** | 32 `SKILL.md` files. Markdown with YAML frontmatter that tells the harness *when* to fire. Sibling resource files (scripts, templates) referenced by relative paths. | Claude Code loads the relevant `SKILL.md` as context when the skill activates. |
 | **Distribution** | `plugin.json` (the manifest), `marketplace.json` (the catalogue entry), the docs site, the README. | Users discovering, installing, and updating the plugin. |
 
 !!! info "Why this matters when revising skills"
@@ -45,7 +45,7 @@ which folder it sits in.
 | Bucket | What's in it |
 |---|---|
 | `engineering/` | Daily code-work skills — the bulk of the loop. |
-| `productivity/` | Daily non-code workflow tools (`grill-me`, `timesheet`, `caveman`, `handoff`, `write-a-skill`). |
+| `productivity/` | Daily non-code workflow tools (`grill-me`, `timesheet`, `handoff`, `writing-great-skills`). |
 | `misc/` | Kept around but rarely reached for (`edit-article`, `setup-pre-commit`, `steampipe`). |
 | `remote-agents/` | The overnight loop (`afk-fanout`, `afk-worker`, `morning-review`). |
 
@@ -67,7 +67,7 @@ by hand. `mkdocs build --strict` runs on every docs-touching push to
 
 !!! warning "The total skill count is hand-maintained"
     The Knowledge-layer row above hard-codes the total number of
-    `SKILL.md` files (28). It is *not* auto-generated and the strict build
+    `SKILL.md` files (32). It is *not* auto-generated and the strict build
     does *not* catch a stale number — bump it whenever you add or remove a
     skill. Verify with `grep -c './skills/' .claude-plugin/plugin.json`.
 

@@ -59,3 +59,12 @@ across its lighter surfaces (plugin.json + "Shared / model-invoked" subsection).
 - #12 ([AFK] 2a — Extract codebase-design) — shares
   `improve-codebase-architecture/SKILL.md`; serialized to avoid integration
   conflicts.
+
+## Verification
+
+Ran on the feature branch — all observables PASS, `make lint test docs` exit 0.
+
+- Story 7: `skills/engineering/domain-modeling/` contains ADR-FORMAT.md + CONTEXT-FORMAT.md (git mv from grill-with-docs); SKILL.md has no `disable-model-invocation` flag (model-invoked); `grill-with-docs/{ADR-FORMAT,CONTEXT-FORMAT}.md` no longer exist → PASS.
+- Story 8: `grill-with-docs/SKILL.md` and `improve-codebase-architecture/SKILL.md` both reference `domain-modeling`; neither carries an inline ADR/CONTEXT format definition → PASS.
+- Story 9: `sync_book_rules.py` MAPPING keys `engineering/domain-modeling` (not `grill-with-docs`); `make sync-books` left the DDD `BEGIN/END` block on `domain-modeling/SKILL.md` and removed it from `grill-with-docs/SKILL.md`; sync is idempotent ("All SKILL.md files already in sync."); `make docs` passes → PASS.
+- Model-invoked sync: plugin.json + "Shared / model-invoked" subsection row + `not_in_nav: skills/domain-modeling.md`; absent from READMEs / role tables / decision tree.

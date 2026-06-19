@@ -59,3 +59,12 @@ Sync the add/remove across all five places.
 ## Blocked by
 
 - #11 ([AFK] 1 — Establish invocation taxonomy)
+
+## Verification
+
+Ran on the feature branch — all observables PASS, `make lint test docs` exit 0.
+
+- Story 17: `skills/productivity/writing-great-skills/{SKILL.md,GLOSSARY.md}` exist; `skills/productivity/write-a-skill/` does not → PASS.
+- Story 18: `scripts/check-description-length.py` + `scripts/tests/test_check_description_length.py` present at the new path; `pytest` → 7 passed (incl `test_boundary_1025_fails` and `test_fails_the_prose_way_1190_chars`); SKILL.md has a "Deterministic gate" callout with the three-environment resolver (`$PWD` → `$HOME/.claude/skills` → `plugins/cache/zsl-superpowers`) and a **Fallback** heading. `disable-model-invocation: true` set → PASS.
+- Story 19: `make lint`'s `basedpyright` line and `make test`'s pytest target now cover `writing-great-skills/scripts/`; no `write-a-skill/scripts` reference remains; `make lint test` pass → PASS.
+- Five-place sync updated (plugin.json, top README, bucket README, docs/skills/index.md role table, mkdocs.yml nav); `write_a_skill` decision-tree node dropped; broken changelog/workflow/faq links to the gone `skills/write-a-skill.md` page repaired.

@@ -1,6 +1,7 @@
 ---
 name: commit-push-pr
 description: Commit session changes, push the branch, and open a PR — in one shot. Refuses to run on the repo's default branch (main/master) so the PR step can't fail. Delegates the commit step to `/zsl:commit`, then pushes with `-u`, then opens the PR via `gh`. Use when user wants to ship a feature branch end-to-end, says "/commit-push-pr", or asks to commit, push, and open a PR.
+disable-model-invocation: true
 ---
 
 # Commit, Push, Open PR
