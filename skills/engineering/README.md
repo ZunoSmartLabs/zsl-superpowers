@@ -17,6 +17,7 @@ Skills I use daily for code work.
 - **[to-prd](./to-prd/SKILL.md)** — Turn the current conversation context into a PRD and submit it as a GitHub issue. Writes each story at value altitude with detailed assertions in `AC<n>:` acceptance criteria; refuses non-automatable stories. Every story carries at least one `AC<n>:` acceptance criterion.
 - **[code-review](./code-review/SKILL.md)** — Comprehensive pre-PR code review of the current branch with an issues-only tone and an approval gate before applying fixes.
 - **[teach-me-the-codebase](./teach-me-the-codebase/SKILL.md)** — On-the-fly conversational tutor for an unfamiliar repo: reads `CONTEXT.md`/ADRs/`CLAUDE.md`/code and teaches the domain, architecture, and conventions. Zero persisted artefacts; hands documentation gaps to `grill-with-docs`.
+- **[ask-zsl](./ask-zsl/SKILL.md)** — Thin interactive router. Asks situational questions and points you at the right ZSL skill mid-session, deferring each skill's description to its own page. Paired with the "Which skill do I want?" decision tree.
 - **[commit](./commit/SKILL.md)** — Plan and create git commits with user approval, no Claude attribution, and explicit file lists (never `git add -A`).
 - **[commit-push-pr](./commit-push-pr/SKILL.md)** — One-shot ship: refuse on the default branch, delegate to `/zsl:commit`, then `git push -u`, then `gh pr create`.
 - **[git-branch](./git-branch/SKILL.md)** — Create a git branch with the prefix convention (`feature/`, `fix/`, `chore/`, `refactor/`, `env/`) required by the auto-PR workflow.

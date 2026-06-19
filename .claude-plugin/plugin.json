@@ -7,6 +7,7 @@
     "url": "https://github.com/ZunoSmartLabs"
   },
   "skills": [
+    "./skills/engineering/ask-zsl",
     "./skills/engineering/codebase-design",
     "./skills/engineering/decision-mapping",
     "./skills/engineering/diagnose",
