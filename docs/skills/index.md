@@ -90,13 +90,13 @@ matters for picking a skill.
 |---|---|
 | [grill-with-docs](grill-with-docs.md) | Interview-driven planning. Sharpens terminology against `CONTEXT.md` and ADRs inline — the highest-leverage skill in the plugin. |
 | [grill-me](grill-me.md) | Interview-only variant (no doc updates). Use for non-code planning. |
-| [to-prd](to-prd.md) | Synthesise the current conversation into a PRD on the tracker. No interview — just packaging. Each story is written at value altitude with testable assertions in `AC<n>:` acceptance criteria; refuses non-automatable stories. Every story carries `acceptance: automatable` + at least one acceptance criterion. |
+| [to-prd](to-prd.md) | Synthesise the current conversation into a PRD on the tracker. No interview — just packaging. Each story is written at value altitude with testable assertions in `AC<n>:` acceptance criteria; refuses non-automatable stories. Every story carries at least one `AC<n>:` acceptance criterion. |
 
 ### Break down
 
 | Skill | What it does |
 |---|---|
-| [to-issues](to-issues.md) | Break the PRD into vertical-slice sub-issues with `[AFK\|HITL] <wave><letter>` titles and `Blocked by` graphs. Propagates the parent PRD's `acceptance:` tag and `AC<n>:` acceptance criteria into each slice body. Auto-relabels the parent to `tracking`. |
+| [to-issues](to-issues.md) | Break the PRD into vertical-slice sub-issues with `[AFK\|HITL] <wave><letter>` titles and `Blocked by` graphs. Propagates the parent PRD's `AC<n>:` acceptance criteria into each slice body. Auto-relabels the parent to `tracking`. |
 | [triage](triage.md) | Walk each child through the [state machine](../concepts/state-machine.md). Entry point for inbound issues too. |
 
 ### Build

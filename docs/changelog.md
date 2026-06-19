@@ -4,6 +4,73 @@ For the full commit history, see
 [github.com/ZunoSmartLabs/zsl-superpowers/commits/main](https://github.com/ZunoSmartLabs/zsl-superpowers/commits/main).
 This page summarises the user-facing changes per plugin version.
 
+## 1.5.0
+
+### Dropped the `acceptance: automatable` tag from PRD user stories
+
+Since 1.4.0 every PRD user story carried *both* an `acceptance:
+automatable` tag *and* at least one `AC<n>:` acceptance criterion. With
+the `manual-attestation` lane already removed from the pipeline, the tag
+had exactly one legal value — `automatable` — on every story. A field
+that can only ever hold one value carries no signal: the `AC<n>:`
+criterion is what makes a story expressible as a test, and `/zsl:to-prd`
+already refuses to draft a story that has no automatable criterion. The
+tag was ceremony, re-described in lockstep prose across five skills and
+the docs, with nothing reading its value.
+
+`/zsl:to-prd` no longer writes the tag. The pipeline invariant is now
+simply **every in-scope story carries at least one `AC<n>:` acceptance
+criterion** — `/zsl:tdd-parallel`'s pre-flight (1d),
+`/zsl:verify-coverage`'s pre-flight, and `/zsl:triage`'s PRD check all
+key off criterion presence instead of the tag. The semantic guard ("is
+this story automatable?") stays exactly where it was load-bearing:
+`/zsl:to-prd`'s refuse-to-draft gate at authoring time. `/zsl:to-issues`
+no longer propagates the tag into slice bodies (it still carries the
+`AC<n>:` criteria verbatim).
+
+#### Upgrading from 1.4
+
+No action needed. Existing PRDs that still carry `acceptance: automatable`
+lines continue to pass every gate — a leftover tag is now simply ignored,
+not rejected. Every story that was valid under 1.4 (tag + `AC<n>:`)
+remains valid under 1.5 (`AC<n>:` alone), so no PRD needs re-authoring.
+Legacy `observable:` sub-bullets still count as one acceptance criterion,
+unchanged.
+
+### `/zsl:setup-zsl-superpowers` project-board fixes + a hybrid tracker
+
+A batch of fixes and one new capability for `/zsl:setup-zsl-superpowers`,
+all surfaced while wiring a real board onto a local-markdown repo:
+
+- **Fixed a broken Section E mutation.** The "replace Status options"
+  step passed a `projectId` argument that the current GitHub GraphQL
+  schema rejects (`UpdateProjectV2FieldInput doesn't accept argument
+  'projectId'`), so creating a fresh board's canonical columns failed
+  mid-setup. The mutation now uses `fieldId` + `singleSelectOptions`
+  only, and is bundled as a tested deterministic-gate script
+  (`set-status-options.sh`) whose test asserts the `projectId`
+  regression can't return.
+- **New "Hybrid (local markdown + GitHub mirror)" issue tracker.** A
+  Projects v2 board can only track GitHub-native objects, so plain
+  local-markdown issues can't appear on one. The hybrid keeps `.scratch/`
+  as the source of truth and mirrors each issue to a thin linked GitHub
+  issue purely so it lands on the board. New `issue-tracker-hybrid.md`
+  seed; `/zsl:triage` and `/zsl:tdd` resolve the mirror issue number from
+  the `.scratch/` file's `github:` frontmatter before any board update.
+- **Surfaced the tracker ↔ board coupling.** Sections A and E now state
+  outright that a board needs a GitHub-native tracker, and that a
+  local-markdown user who wants a board should pick the hybrid rather
+  than have Section E silently skipped.
+- **Pull-request reference guard.** `/zsl:to-issues` and `/zsl:triage`
+  now confirm before acting when a bare number resolves to a PR (GitHub
+  shares one number space), instead of trying to slice or triage a
+  shipped release PR.
+
+#### Upgrading from 1.4
+
+No action needed. Existing setups are unaffected; the fixes apply the
+next time you run `/zsl:setup-zsl-superpowers` or its board sync.
+
 ## 1.4.0
 
 ### PRD user stories split into value-level stories + `AC` acceptance criteria

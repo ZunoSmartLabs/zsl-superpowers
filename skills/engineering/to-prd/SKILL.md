@@ -19,10 +19,9 @@ Check with the user that these modules match their expectations. Check with the 
 
 3. **Write each story at value altitude; push the testable detail into acceptance criteria.** A user story is a slice of *user value* — who, what capability, why — and the story line must stay there: no endpoints, no status codes, no state names, no implementation. Every concrete, testable assertion moves *down* into the story's acceptance criteria, where technical detail belongs. For each story, write:
    - The `As an <actor>, I want <capability>, so that <benefit>` line — value only, no technical detail.
-   - An `acceptance: automatable` sub-bullet asserting the story can be pinned by tests.
    - One or more `AC<n>: <assertion>` sub-bullets — the **acceptance criteria**. Each states *what public-interface behaviour* a test would assert — an API result, a state transition, a rendered value, an emitted event (e.g. "POST /login with valid creds returns 200 + sets `session` cookie; with invalid creds returns 401"). The acceptance criteria are the contract `/verify-coverage`'s Tier B generates tests against, so be concrete: name the endpoint/state/event, not the implementation. When one capability needs several distinct assertions, give it several ACs — do **not** fracture it into multiple stories just to give each one a single observable (that is exactly what made earlier PRDs read like a flat list of acceptance criteria).
 
-   **Refuse to draft a story with no automatable acceptance criterion.** Visual/UX stories ("feels welcoming", "looks polished"), pure human-judgement stories ("legal signs off", "design reviews"), and real-external-system stories ("DNS propagates globally") cannot be pinned by an assertion. If the user wants one, push back: either reframe it with an automatable acceptance criterion (e.g. "feels welcoming" → AC "first-render Lighthouse score ≥ 90"), split it into a separate PRD that goes through a manual path (not `/tdd-parallel`), or drop it. Do not write `acceptance: manual-attestation` — that lane has been removed from this pipeline. A PRD that mixes automatable and non-automatable stories will be refused by `/tdd-parallel`'s pre-flight.
+   **Refuse to draft a story with no automatable acceptance criterion.** Visual/UX stories ("feels welcoming", "looks polished"), pure human-judgement stories ("legal signs off", "design reviews"), and real-external-system stories ("DNS propagates globally") cannot be pinned by an assertion. If the user wants one, push back: either reframe it with an automatable acceptance criterion (e.g. "feels welcoming" → AC "first-render Lighthouse score ≥ 90"), split it into a separate PRD that goes through a manual path (not `/tdd-parallel`), or drop it. A story with no automatable acceptance criterion will be refused by `/tdd-parallel`'s pre-flight.
 
 4. Write the PRD using the template below, then publish it to the project issue tracker. Apply both the `ready-for-agent` triage label (no additional triage needed — you just wrote it) and the `backlog` label (so it shows up on the project board).
 
@@ -38,24 +37,22 @@ The solution to the problem, from the user's perspective.
 
 ## User Stories
 
-A LONG, numbered list of user stories. Each story is written at **value altitude** — who/what/why, no technical detail — and carries an `acceptance: automatable` tag plus one or more **acceptance criteria** (`AC<n>:`), the concrete testable assertions that `/tdd-parallel` and `/verify-coverage` consume:
+A LONG, numbered list of user stories. Each story is written at **value altitude** — who/what/why, no technical detail — and carries one or more **acceptance criteria** (`AC<n>:`), the concrete testable assertions that `/tdd-parallel` and `/verify-coverage` consume:
 
 ```
 1. As an <actor>, I want <capability>, so that <benefit>.
-   - acceptance: automatable
    - AC1: <a public-interface behaviour a test would assert>
    - AC2: <another, if the capability needs more than one assertion>
 ```
 
 <user-story-example>
 1. As a mobile bank customer, I want to see the balances on my accounts, so that I can make better informed decisions about my spending.
-   - acceptance: automatable
    - AC1: GET /accounts returns 200 with a JSON list whose every element has a numeric `balance` field.
    - AC2: the home-screen account card renders that balance formatted as currency.
    - AC3: an account with no transactions still renders, showing a 0.00 balance.
 </user-story-example>
 
-This list of user stories should be extremely extensive and cover all aspects of the feature. Keep the *story line* free of endpoints, status codes, and state names — those live in the acceptance criteria beneath it. **Every** story must carry the `acceptance: automatable` tag and at least one `AC<n>:` acceptance criterion; a story missing either blocks `/tdd-parallel`. The acceptance criteria are the contract Tier B generates tests against — be specific.
+This list of user stories should be extremely extensive and cover all aspects of the feature. Keep the *story line* free of endpoints, status codes, and state names — those live in the acceptance criteria beneath it. **Every** story must carry at least one `AC<n>:` acceptance criterion; a story missing it blocks `/tdd-parallel`. The acceptance criteria are the contract Tier B generates tests against — be specific.
 
 ## Implementation Decisions
 

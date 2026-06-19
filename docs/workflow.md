@@ -154,7 +154,7 @@ flowchart TB
 ```
 
 [`/zsl:tdd-parallel`](tdd-parallel.md) `<PRD>`
-:   The full-auto pipeline from a PRD to a pushed integration PR. It fans out the unblocked **`[AFK]`** `ready-for-agent` children into parallel `/zsl:tdd --no-ship` sub-agents in worktrees, merges every slice branch onto the PRD branch in wave order with `--no-ff`, then runs two automated integration steps: **4a** `/zsl:code-review --auto` against the merged tip, **4b** `/zsl:verify-coverage --auto` to prove every user story has a test. Gaps found at 4b are filed as `ready-for-agent` and re-fanouted — the loop iterates until `gap=0` or a circuit breaker fires (`--max-coverage-rounds`, default 3). On clean coverage, **4c** delegates the commit to `/zsl:commit`, pushes, and opens **one** consolidated PR. Pre-flight (1d) refuses up front only if *no* slice is runnable or an in-scope story isn't `acceptance: automatable`. PR-style repos only. See the [deep-dive](tdd-parallel.md).
+:   The full-auto pipeline from a PRD to a pushed integration PR. It fans out the unblocked **`[AFK]`** `ready-for-agent` children into parallel `/zsl:tdd --no-ship` sub-agents in worktrees, merges every slice branch onto the PRD branch in wave order with `--no-ff`, then runs two automated integration steps: **4a** `/zsl:code-review --auto` against the merged tip, **4b** `/zsl:verify-coverage --auto` to prove every user story has a test. Gaps found at 4b are filed as `ready-for-agent` and re-fanouted — the loop iterates until `gap=0` or a circuit breaker fires (`--max-coverage-rounds`, default 3). On clean coverage, **4c** delegates the commit to `/zsl:commit`, pushes, and opens **one** consolidated PR. Pre-flight (1d) refuses up front only if *no* slice is runnable or an in-scope story lacks an `AC<n>:` acceptance criterion. PR-style repos only. See the [deep-dive](tdd-parallel.md).
 
 [`/zsl:tdd`](skills/tdd.md) `<child>`
 :   Single-issue red-green-refactor. Refuses if you point it at a container. Runs [`/zsl:code-review`](skills/code-review.md) automatically between Refactor and Ship (step 5). **On local-markdown trackers you can run it with no argument** — it scans `.scratch/`, resolves each open issue's `## Blocked by` against the `issues/_done/` archive, and lets you pick from the unblocked ones.
@@ -196,7 +196,7 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    story["one PRD user story<br/>(carries acceptance: automatable<br/>+ AC criteria)"] --> q{"covered by a passing<br/>behavioral test today?"}
+    story["one PRD user story<br/>(carries AC criteria)"] --> q{"covered by a passing<br/>behavioral test today?"}
     q -->|"yes"| ta["`**Tier A**<br/>map story → existing test`"]:::good
     q -->|"no"| tb["`**Tier B**<br/>generate test from AC criteria<br/>· mutation-prove it goes RED<br/>· run it`"]:::ok
     tb -->|"passes"| tba["covered<br/>(test added to suite)"]:::good

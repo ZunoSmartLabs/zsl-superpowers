@@ -67,13 +67,14 @@ Show counts and a one-line summary per issue. Let the maintainer pick.
 
 1. **Gather context.** Read the full issue (body, comments, labels, reporter, dates). Parse any prior triage notes so you don't re-ask resolved questions. Explore the codebase using the project's domain glossary, respecting ADRs in the area. Read `.out-of-scope/*.md` and surface any prior rejection that resembles this issue.
 
+   **Guard against a pull-request reference (GitHub trackers only).** Resolve the reference per `docs/agents/issue-tracker.md` for this repo's tracker — don't assume GitHub. **Only when the configured tracker is GitHub:** a bare number can resolve to a **PR** (issues and PRs share one number space), so if the fetched object's URL contains `/pull/`, confirm the user meant that reference before proceeding. Local-markdown and GitLab trackers don't have this collision.
+
    **PRD tag check.** If the issue is a PRD (has a `## User Stories` section) OR is a child of one (resolve the parent via `## Parent` link or sub-issue relationship), validate the parent PRD's user-story tags before moving the issue to `ready-for-agent`:
 
-   - Every story must have an `acceptance: automatable` sub-bullet AND at least one `AC<n>:` acceptance-criterion sub-bullet.
-   - Any story tagged `acceptance: manual-attestation` (or any value other than `automatable`) is invalid — that lane has been removed from this pipeline.
-   - Any story missing the tag or carrying no `AC<n>:` criterion is invalid. A legacy `observable:` sub-bullet (pre-AC-split PRDs) counts as one acceptance criterion for back-compat.
+   - Every story must have at least one `AC<n>:` acceptance-criterion sub-bullet.
+   - Any story carrying no `AC<n>:` criterion is invalid. A legacy `observable:` sub-bullet (pre-AC-split PRDs) counts as one acceptance criterion for back-compat; a legacy `acceptance:` tag, if present, is ignored.
 
-   On failure, refuse to advance to `ready-for-agent` and tell the maintainer which stories are missing or mis-tagged. Recommended fix: edit the PRD directly to add the missing tag/criteria per `/to-prd`'s story format. For legacy PRDs (written before tags were required), the maintainer can re-run `/to-prd` on the existing conversation or hand-edit. `needs-info`, `ready-for-human`, `wontfix`, and `tracking` transitions are still allowed on untagged PRDs — only the agent-handoff path requires tags, because `/tdd-parallel` will refuse on them.
+   On failure, refuse to advance to `ready-for-agent` and tell the maintainer which stories are missing a criterion. Recommended fix: edit the PRD directly to add the missing `AC<n>:` criteria per `/to-prd`'s story format. For legacy PRDs (written before acceptance criteria were required), the maintainer can re-run `/to-prd` on the existing conversation or hand-edit. `needs-info`, `ready-for-human`, `wontfix`, and `tracking` transitions are still allowed on criterion-less PRDs — only the agent-handoff path requires criteria, because `/tdd-parallel` will refuse on them.
 
 2. **Recommend.** Tell the maintainer your category and state recommendation with reasoning, plus a brief codebase summary relevant to the issue. Wait for direction.
 
@@ -93,7 +94,7 @@ Show counts and a one-line summary per issue. Let the maintainer pick.
 6. **Sync the project board (if configured).** If `docs/agents/project-board.md` exists, after the label change above, also update the issue's project item Status:
 
    1. Read the project node ID, Status field ID, and the canonical-state → option-ID mapping from `docs/agents/project-board.md`.
-   2. Look up the issue's project item:
+   2. Resolve the GitHub issue number `N`. With a **GitHub** tracker it's the issue you're triaging. With a **hybrid** tracker (`docs/agents/issue-tracker.md` is the local-markdown-plus-mirror variant), the unit of work is a `.scratch/` file — read its `github:` frontmatter to get the mirror issue number `N`; if the file has no `github:` value it was never mirrored, so log *"no GitHub mirror; skipping Status update"* and continue. Then look up the project item:
       ```bash
       gh api graphql -f query='query { repository(owner:"<owner>", name:"<repo>") { issue(number:N) { projectItems(first:20) { nodes { id project { id } } } } } }'
       ```

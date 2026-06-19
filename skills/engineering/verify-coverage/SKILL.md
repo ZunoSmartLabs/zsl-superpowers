@@ -40,9 +40,8 @@ classification, HITL human-attestation, and a matrix-confirmation
 review — have all moved upstream:
 
 - **Classification** moved to `/to-prd`: every story carries
-  `acceptance: automatable` + one or more `AC<n>:` acceptance-criteria
-  sub-bullets written at PRD-authoring time. This skill reads them
-  instead of judging.
+  one or more `AC<n>:` acceptance-criteria sub-bullets written at
+  PRD-authoring time. This skill reads them instead of judging.
 - **HITL human-attestation** is gone. Non-automatable stories
   (visual/UX, "feels welcoming", real external systems) are refused at
   `/to-prd` time — they don't enter this pipeline.
@@ -97,16 +96,14 @@ Refuse with a clear message if any fails:
   section. No argument → present a numbered picker of issues in the
   `tracking` state. If the resolved issue has no `## User Stories`
   section it is not a PRD — refuse and say so.
-- **Every user story has an `acceptance: automatable` tag and at least
-  one `AC<n>:` acceptance-criterion sub-bullet.** Any story tagged
-  anything other than `automatable` (e.g. `manual-attestation`) is
-  invalid — that lane has been removed; the PRD must be reworked in
-  `/to-prd` or split. Any story missing the tag or carrying no `AC<n>:`
-  criterion is invalid. Refuse with the offending story numbers and a
-  pointer to `/to-prd`'s story format. **Back-compat:** a legacy
-  `observable:` sub-bullet (PRDs authored before the AC split) counts
-  as a single acceptance criterion — accept it in place of an `AC<n>:`
-  bullet.
+- **Every user story has at least one `AC<n>:` acceptance-criterion
+  sub-bullet.** Any story carrying no `AC<n>:` criterion is invalid —
+  the PRD must be reworked in `/to-prd` or split. Refuse with the
+  offending story numbers and a pointer to `/to-prd`'s story format.
+  **Back-compat:** a legacy `observable:` sub-bullet (PRDs authored
+  before the AC split) counts as a single acceptance criterion — accept
+  it in place of an `AC<n>:` bullet; a legacy `acceptance:` tag, if
+  present, is ignored.
 - The working tree is on the branch carrying the integrated work (the
   PRD/integration branch for a `/tdd-parallel` run, or wherever the
   shipped slices live). Refuse if dirty (`git status --porcelain`
@@ -130,10 +127,9 @@ behaviour) that `## Out of Scope` excludes is marked `out-of-scope` now
 and never verified — record the PRD line that excludes it as the
 evidence.
 
-The pre-flight already validated that every story carries
-`acceptance: automatable` and at least one `AC<n>:` criterion, so there
-is no classification step at runtime — every in-scope story goes
-through Tier A then Tier B.
+The pre-flight already validated that every story carries at least one
+`AC<n>:` criterion, so there is no classification step at runtime —
+every in-scope story goes through Tier A then Tier B.
 
 ### 2. Build the story → slice map
 
@@ -317,8 +313,8 @@ A reference to the PRD issue on the issue tracker.
 ## What to build
 
 The PRD user story this gap leaves uncovered, quoted verbatim
-(including its `acceptance:` tag and `AC<n>:` acceptance criteria),
-plus a one-line statement of the observed gap (Tier B test RED against
+(including its `AC<n>:` acceptance criteria), plus a one-line
+statement of the observed gap (Tier B test RED against
 the integrated branch).
 
 ## Acceptance criteria
@@ -412,8 +408,8 @@ Do not chain — this skill ends here.
   directly without a triage hop because the gap is fully specified by
   its quarantined test.)
 - Verifying anything against a PRD that has no `## User Stories`
-  section, or whose stories aren't 100% `automatable` — refuse in
-  pre-flight.
+  section, or whose stories lack an `AC<n>:` acceptance criterion —
+  refuse in pre-flight.
 
 ## Constraints
 

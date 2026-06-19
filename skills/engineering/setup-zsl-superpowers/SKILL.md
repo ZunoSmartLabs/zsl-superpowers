@@ -1,6 +1,6 @@
 ---
 name: setup-zsl-superpowers
-description: Sets up an `## Agent skills` block in AGENTS.md/CLAUDE.md and `docs/agents/` so the engineering skills know this repo's issue tracker (GitHub or local markdown), triage label vocabulary, domain doc layout, ship style (PR vs direct push), and — optionally — the remote claude.ai environment the overnight agent loop schedules into. Run before first use of `to-issues`, `to-prd`, `triage`, `diagnose`, `tdd`, `improve-codebase-architecture`, or `zoom-out` — or if those skills appear to be missing context about the issue tracker, triage labels, domain docs, ship style, or remote agent environment.
+description: Sets up an `## Agent skills` block in AGENTS.md/CLAUDE.md and `docs/agents/` so the engineering skills know this repo's issue tracker (GitHub, local markdown, or a hybrid local-markdown-plus-GitHub-mirror), triage label vocabulary, domain doc layout, ship style (PR vs direct push), and — optionally — the remote claude.ai environment the overnight agent loop schedules into. Run before first use of `to-issues`, `to-prd`, `triage`, `diagnose`, `tdd`, `improve-codebase-architecture`, or `zoom-out` — or if those skills appear to be missing context about the issue tracker, triage labels, domain docs, ship style, or remote agent environment.
 disable-model-invocation: true
 ---
 
@@ -45,7 +45,10 @@ Default posture: these skills were designed for GitHub. If a `git remote` points
 - **GitHub** — issues live in the repo's GitHub Issues (uses the `gh` CLI)
 - **GitLab** — issues live in the repo's GitLab Issues (uses the [`glab`](https://gitlab.com/gitlab-org/cli) CLI)
 - **Local markdown** — issues live as files under `.scratch/<NNN>-<feature-slug>/` in this repo (`<NNN>` is an auto-assigned 3-digit feature number; good for solo projects or repos without a remote)
+- **Hybrid (local markdown + GitHub mirror)** — issues live in `.scratch/` as the source of truth, but each is mirrored to a thin linked GitHub issue so it can appear on a **project board** (Section E). Pick this when you want `.scratch/` ergonomics *and* a board — a board can only track GitHub-native objects, so plain local-markdown issues can't appear on one (see the coupling note below). Uses the [issue-tracker-hybrid.md](./issue-tracker-hybrid.md) seed.
 - **Other** (Jira, Linear, etc.) — ask the user to describe the workflow in one paragraph; the skill will record it as freeform prose
+
+> **Tracker ↔ board coupling.** A GitHub Projects v2 board (Section E) tracks items by their GitHub node ID. **GitHub** and **GitLab**(*) trackers have native issues to put on a board; **Local markdown** issues are files with no node ID, so they **cannot** appear on a board directly. If the user wants both local-markdown and a board, that's exactly the **Hybrid** option — don't quietly skip Section E, offer the hybrid. (*GitLab boards are out of scope here; Section E is GitHub Projects v2.)
 
 **Section B — Triage label vocabulary.**
 
@@ -84,6 +87,8 @@ Default: pull request, unless the user specifies otherwise.
 
 > Explainer: If you're using GitHub Projects v2 to track your issues on a board — or want to start — the `triage`, `to-issues`, and `tdd` skills can update a card's `Status` column whenever they change the issue's lifecycle (e.g. triaged to `ready-for-agent` → Status `Ready`; `tdd` starts work → `In progress`; PR opened → `In review`). Without this, the board stays static and you have to drag cards across columns manually. The skill can wire up either an existing board or create a fresh one. Skip this section if you don't want a project board, or if you'd rather wire the sync up via GitHub Actions yourself.
 
+> **Requires a GitHub-native tracker.** A board tracks items by GitHub node ID, so this section only applies when Section A chose **GitHub** or **Hybrid (local markdown + GitHub mirror)**. If Section A chose plain **Local markdown**, there are no GitHub objects to track — don't silently skip the board the user asked for; go back and offer the **Hybrid** tracker, which mirrors each `.scratch/` issue to a GitHub issue precisely so it can land on a board. In hybrid mode the board tracks the **mirror issue**, and the skills resolve that issue's number from the `.scratch/` file's `github:` frontmatter before each Status update.
+
 If the user opts in, walk them through:
 
 1. **Identify or create the project.** Ask whether an existing Projects v2 board should be wired up, or whether to create a new one.
@@ -106,32 +111,44 @@ If the user opts in, walk them through:
 
 3. **Customise Status options if needed.** New projects ship with `Todo` / `In Progress` / `Done`. These skills work best with five canonical options — `Backlog`, `Ready`, `In progress`, `In review`, `Done` — because they map cleanly onto the triage and tdd lifecycle. Compare the option list from step 2 against the canonical five. If any are missing, ask the user which approach they'd prefer:
 
-   - **Replace** the Status options with the canonical five (recommended for new boards, or older boards with no cards yet). Run the mutation:
-     ```bash
-     gh api graphql -f query='
-       mutation($projectId: ID!, $fieldId: ID!) {
-         updateProjectV2Field(input: {
-           projectId: $projectId
-           fieldId: $fieldId
-           singleSelectOptions: [
-             {name: "Backlog",     color: GRAY,   description: ""}
-             {name: "Ready",       color: BLUE,   description: ""}
-             {name: "In progress", color: YELLOW, description: ""}
-             {name: "In review",   color: PURPLE, description: ""}
-             {name: "Done",        color: GREEN,  description: ""}
-           ]
-         }) {
-           projectV2Field {
-             ... on ProjectV2SingleSelectField {
-               id
-               options { id name }
-             }
-           }
-         }
-       }
-     ' -f projectId=<PVT_…> -F fieldId=<PVTSSF_…>
-     ```
-     Re-run `gh project field-list` to capture the new option IDs. Note: `updateProjectV2Field` replaces the option set wholesale; any cards assigned to a removed option (e.g. `Todo`) become unassigned and need manual remapping. Don't run this on a board with live cards without warning the user first.
+   - **Replace** the Status options with the canonical five (recommended for new boards, or older boards with no cards yet).
+
+     > **Deterministic gate.** The `updateProjectV2Field` mutation has exactly one correct shape and the obvious prose drifts — the current GitHub GraphQL schema **rejects** a `projectId` argument on `UpdateProjectV2FieldInput` (`InputObject 'UpdateProjectV2FieldInput' doesn't accept argument 'projectId'`), so a hand-typed mutation that includes it fails mid-setup. Resolve and run the bundled script, which carries the correct mutation (it prints `optionId optionName` per option so you can capture the new IDs without a second `field-list`):
+     >
+     > ```bash
+     > SSO=$({ ls "$PWD"/skills/*/setup-zsl-superpowers/scripts/set-status-options.sh 2>/dev/null
+     >         ls "$HOME/.claude/skills/setup-zsl-superpowers/scripts/set-status-options.sh" 2>/dev/null
+     >         ls -d "$HOME"/.claude/plugins/cache/zsl-superpowers/zsl/*/skills/*/setup-zsl-superpowers/scripts/set-status-options.sh 2>/dev/null | sort -Vr; } | head -1)
+     > if [ -n "$SSO" ]; then
+     >   bash "$SSO" <PVTSSF_…>      # the Status field ID from step 2
+     > else
+     >   echo "zsl-gate: set-status-options.sh unresolved — run the mutation by hand per the Fallback below"
+     > fi
+     > ```
+     >
+     > **Fallback** (if `$SSO` is empty): run the mutation directly — note **no `projectId`**, only `fieldId`:
+     > ```bash
+     > gh api graphql -f query='
+     >   mutation($fieldId: ID!) {
+     >     updateProjectV2Field(input: {
+     >       fieldId: $fieldId
+     >       singleSelectOptions: [
+     >         {name: "Backlog",     color: GRAY,   description: ""}
+     >         {name: "Ready",       color: BLUE,   description: ""}
+     >         {name: "In progress", color: YELLOW, description: ""}
+     >         {name: "In review",   color: PURPLE, description: ""}
+     >         {name: "Done",        color: GREEN,  description: ""}
+     >       ]
+     >     }) {
+     >       projectV2Field {
+     >         ... on ProjectV2SingleSelectField { id options { id name } }
+     >       }
+     >     }
+     >   }
+     > ' -F fieldId=<PVTSSF_…>
+     > ```
+
+     Either way, capture the new option IDs (the script prints them; the fallback returns them in the response, or re-run `gh project field-list`). Note: `updateProjectV2Field` replaces the option set wholesale; any cards assigned to a removed option (e.g. `Todo`) become unassigned and need manual remapping. Don't run this on a board with live cards without warning the user first.
    - **Map** existing options onto the canonical states (recommended when the board already has live cards). Confirm a mapping with the user — e.g. `Todo → Backlog`, `In Progress → In progress` — and record it in `docs/agents/project-board.md` so the skills emit the right option IDs without mutating the field.
 
 4. **Map canonical states to Status options.** Default mapping (override per user preference, or per the mapping agreed in step 3):
@@ -297,6 +314,7 @@ Then write the docs files using the seed templates in this skill folder as a sta
 - [issue-tracker-github.md](./issue-tracker-github.md) — GitHub issue tracker
 - [issue-tracker-gitlab.md](./issue-tracker-gitlab.md) — GitLab issue tracker
 - [issue-tracker-local.md](./issue-tracker-local.md) — local-markdown issue tracker
+- [issue-tracker-hybrid.md](./issue-tracker-hybrid.md) — hybrid local-markdown source-of-truth + GitHub mirror (use when Section A chose Hybrid; fill the repo `<owner>/<repo>` and confirm the `.scratch/` is the source of truth)
 - [triage-labels.md](./triage-labels.md) — label mapping
 - [domain.md](./domain.md) — domain doc consumer rules + layout
 - [ship-style-pr.md](./ship-style-pr.md) — pull-request workflow

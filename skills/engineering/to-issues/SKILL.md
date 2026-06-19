@@ -15,6 +15,8 @@ The issue tracker and triage label vocabulary should have been provided to you �
 
 Work from whatever is already in the conversation context. If the user passes an issue reference (issue number, URL, or path) as an argument, fetch it from the issue tracker and read its full body and comments.
 
+> **Guard against a pull-request reference (GitHub trackers only).** Resolve the reference the way `docs/agents/issue-tracker.md` prescribes for *this* repo's tracker — don't assume GitHub. The collision this guards against is GitHub-specific: GitHub shares one number space across issues and PRs, so a bare number (or `gh issue view <N>`) can resolve to a **PR** — often a closed/merged one — not a plan. Apply the guard **only when the configured tracker is GitHub**: if the fetched object's URL contains `/pull/` or its state is `MERGED`/`CLOSED`, stop and ask whether the user really meant that reference (a shipped release PR has nothing to break down). For a local-markdown tracker a number is a feature/issue path (no PR collision); for GitLab, issues and MRs have separate number spaces — neither needs this guard.
+
 ### 2. Explore the codebase (optional)
 
 If you have not already explored the codebase, do so to understand the current state of the code. Issue titles and descriptions should use the project's domain glossary vocabulary, and respect ADRs in the area you're touching.
@@ -56,7 +58,7 @@ Present the proposed breakdown as a numbered list. For each slice, show:
 - **Title**: as drafted in step 3 (with the `[TYPE] wave[letter] — description` format)
 - **Type**: HITL / AFK
 - **Blocked by**: which other slices (if any) must complete first
-- **User stories covered**: which user stories this addresses (if the source material has them). Whatever the user approves here is persisted verbatim into the issue body's `## User stories covered` section in step 5 — it is not just a quiz aid; `/verify-coverage` reads it back as its Tier A oracle. **Each covered story carries its parent PRD's `acceptance:` tag and its `AC<n>:` acceptance criteria verbatim** so the slice body is self-contained: the agent picking up the slice sees the story's testable contract without needing to re-fetch the PRD, and `/verify-coverage` Tier B has those acceptance criteria as its test-generation hint at slice-resolution time.
+- **User stories covered**: which user stories this addresses (if the source material has them). Whatever the user approves here is persisted verbatim into the issue body's `## User stories covered` section in step 5 — it is not just a quiz aid; `/verify-coverage` reads it back as its Tier A oracle. **Each covered story carries its parent PRD's `AC<n>:` acceptance criteria verbatim** so the slice body is self-contained: the agent picking up the slice sees the story's testable contract without needing to re-fetch the PRD, and `/verify-coverage` Tier B has those acceptance criteria as its test-generation hint at slice-resolution time.
 
 Ask the user:
 
@@ -91,8 +93,8 @@ A concise description of this vertical slice. Describe the end-to-end behavior, 
 ## User stories covered
 
 The PRD user story numbers this slice addresses, each with its short
-text **and the parent's `acceptance:` tag and `AC<n>:` acceptance
-criteria carried over verbatim**. The persisted form of the quiz
+text **and the parent's `AC<n>:` acceptance criteria carried over
+verbatim**. The persisted form of the quiz
 mapping from step 4.
 
 **This section is MANDATORY on every PRD-derived slice** (the only
@@ -115,7 +117,6 @@ Example:
 
 ```
 - 7 — User can reset password via email
-  - acceptance: automatable
   - AC1: POST /password-reset with a valid email enqueues a job that
     sends a single email containing a one-time link.
   - AC2: the link redeems exactly once and sets a new password; a

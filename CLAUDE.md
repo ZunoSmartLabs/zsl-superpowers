@@ -65,3 +65,27 @@ Some skills delegate a *secretly-deterministic* step (one with exactly one corre
 2. **Resolve, never hard-code a path.** `${CLAUDE_PLUGIN_ROOT}` does not expand inside SKILL.md Bash (Claude Code bug), so each callout resolves the script across all three environments with the same priority search and `| head -1`: `$PWD/skills/*/<name>/scripts/<file>` (this repo/dev) → `$HOME/.claude/skills/<name>/scripts/<file>` (remote symlink / personal install) → newest `$HOME/.claude/plugins/cache/zsl-superpowers/zsl/*/skills/*/<name>/scripts/<file>` (local plugin, `sort -Vr`).
 3. **Always preserve a prose fallback.** If the resolver finds nothing it prints a `zsl-gate: … unresolved` line; the SKILL.md must keep the original prose under an explicit **Fallback** heading so the step still works by model judgment. A gate that silently does nothing is a bug.
 4. **Every script has tests, including a fails-the-prose-way case.** Python scripts: `scripts/tests/test_*.py` run by `pytest` (and add the script to `make lint`'s `basedpyright` line). Shell scripts: a `scripts/tests/test_*.sh` runner added to `make test`. Each must include at least one input the old prose way gets wrong (e.g. a 1025-char description, a clean tree on a detached HEAD, a `outcome: scheduled` vs `pending` slip).
+
+## Agent skills
+
+Per-repo configuration for the ZSL engineering skills lives in `docs/agents/`.
+
+### Issue tracker
+
+Hybrid: `.scratch/` markdown is the source of truth, each issue mirrored to a linked GitHub issue so it can appear on the project board. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Six canonical roles, default strings; written to the file's `Status:` line and pushed to the mirror issue's GitHub label. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Ship style
+
+Pull request. See `docs/agents/ship-style.md`.
+
+### Project board
+
+`zsl-superpowers` — https://github.com/orgs/ZunoSmartLabs/projects/11. See `docs/agents/project-board.md`.
