@@ -3,7 +3,7 @@
 lint:
 	uvx ruff check .
 	uvx basedpyright skills/productivity/timesheet/scripts/digest_sessions.py \
-		skills/productivity/write-a-skill/scripts/check-description-length.py
+		skills/productivity/writing-great-skills/scripts/check-description-length.py
 
 format:
 	uvx ruff format .

@@ -69,7 +69,7 @@ flowchart TB
         o2["handoff<br/><i>session compaction</i>"]
         o3["timesheet<br/><i>standup notes</i>"]
         o4["caveman<br/><i>compressed mode</i>"]
-        o5["write-a-skill<br/><i>meta</i>"]
+        o5["writing-great-skills<br/><i>meta</i>"]
     end
     cross -.-> loop
     overnight -.->|"runs the Build→Ship→Track<br/>stretch unattended"| loop
@@ -371,7 +371,7 @@ For the full per-skill descriptions and decision tree, see the
 | Cross-cut | [zoom-out](skills/zoom-out.md) | Broader context on unfamiliar code |
 | Off-loop | [prototype](skills/prototype.md) | Throwaway exploration |
 | Off-loop | [handoff](skills/handoff.md) | Compact the current session into a tmp-dir handoff doc |
-| Off-loop | [timesheet](skills/timesheet.md), [caveman](skills/caveman.md), [write-a-skill](skills/write-a-skill.md) | Productivity helpers |
+| Off-loop | [timesheet](skills/timesheet.md), [caveman](skills/caveman.md), [writing-great-skills](skills/writing-great-skills.md) | Productivity helpers |
 
 ## See also
 

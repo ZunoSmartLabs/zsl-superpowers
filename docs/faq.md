@@ -101,7 +101,7 @@ metadata under their own infrastructure logging.
 
 Yes. Skills are independent. If you only want the productivity ones
 ([`grill-me`](skills/grill-me.md), [`timesheet`](skills/timesheet.md),
-[`caveman`](skills/caveman.md), [`write-a-skill`](skills/write-a-skill.md)),
+[`caveman`](skills/caveman.md), [`writing-great-skills`](skills/writing-great-skills.md)),
 ignore the engineering skills — nothing forces you to run `setup-zsl-superpowers`.
 
 The engineering skills do depend on each other, though: `/zsl:tdd-parallel`

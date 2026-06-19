@@ -64,7 +64,6 @@ flowchart TB
     other --> handoff["/zsl:handoff<br/><i>compact session → next agent</i>"]:::misc
     other --> timesheet["/zsl:timesheet<br/><i>standup notes</i>"]:::misc
     other --> caveman["/zsl:caveman<br/><i>token-compressed replies</i>"]:::misc
-    other --> write_a_skill["/zsl:write-a-skill<br/><i>author a new skill</i>"]:::misc
 
     classDef plan fill:#dbeafe,stroke:#2563eb,color:#1e293b;
     classDef breakdown fill:#e0e7ff,stroke:#4f46e5,color:#1e293b;
@@ -148,7 +147,7 @@ The overnight loop — schedule dedicated remote sessions, run them unattended, 
 | [handoff](handoff.md) | Compact the current conversation into a handoff doc in OS temp dir; redacts secrets, references existing artifacts instead of duplicating them, suggests skills for the next session. |
 | [timesheet](timesheet.md) | Recent Claude Code session histories → copy/paste standup bullets, grouped by project. |
 | [caveman](caveman.md) | Ultra-compressed reply mode (~75% token cut). |
-| [write-a-skill](write-a-skill.md) | Author a new skill with proper progressive disclosure. |
+| [writing-great-skills](writing-great-skills.md) | Principles + vocabulary reference for authoring great skills: progressive disclosure, sharp descriptions/triggers, deterministic-gate scripts. Replaces the old `write-a-skill` process skill. |
 | [setup-zsl-superpowers](setup-zsl-superpowers.md) | One-time per-repo scaffold. Run before any of the engineering loop skills. |
 | [edit-article](edit-article.md) | Restructure and tighten article drafts. (Misc — rarely reached for.) |
 | [setup-pre-commit](setup-pre-commit.md) | Husky + lint-staged + Prettier + type-check + tests. (Misc.) |

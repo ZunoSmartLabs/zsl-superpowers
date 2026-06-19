@@ -239,9 +239,10 @@ same prose it always used, so nothing breaks if you're on an older install.
   validator runs the mechanical pre-flight gates (clean tree, HEAD not detached,
   required `docs/agents/*.md` exist, `.worktrees/` gitignored). The
   "ship-style says PR-style" *content* read stays model-driven.
-- [`/zsl:write-a-skill`](skills/write-a-skill.md) — a `check-description-length.py`
+- `/zsl:write-a-skill` — a `check-description-length.py`
   gate counts the hard 1024-char description cap instead of eyeballing it (an
   over-cap description is silently truncated, dropping its `Use when …` trigger).
+  (The skill was renamed to [`/zsl:writing-great-skills`](skills/writing-great-skills.md) in 2.0.0.)
 - [`/zsl:afk-fanout`](skills/afk-fanout.md) — a `write-afk-entry.sh` serializer
   owns the initial `afk-runs` ledger entry + manifest row to the exact schema
   shared with [`/zsl:afk-worker`](skills/afk-worker.md) and

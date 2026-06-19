@@ -25,12 +25,13 @@ entry is still manual, and `mkdocs build --strict` fails on an unlisted page.
 The plugin includes a skill for this:
 
 ```
-/zsl:write-a-skill
+/zsl:writing-great-skills
 ```
 
-It walks you through name, bucket, frontmatter, trigger phrases, and bundled
-resources. Use it — it knows the conventions better than this page can write
-them down.
+It's the principles + vocabulary reference for authoring a skill — name, bucket,
+frontmatter, sharp descriptions/triggers, progressive disclosure, and when to
+bundle a deterministic-gate script. Use it — it knows the conventions better than
+this page can write them down.
 
 Manually, the shape is:
 
