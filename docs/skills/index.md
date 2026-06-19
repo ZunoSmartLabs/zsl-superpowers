@@ -35,6 +35,7 @@ flowchart TB
     start --> health
     start --> other
 
+    plan --> decision_mapping["/zsl:decision-mapping<br/><i>mature a fuzzy idea → decision map</i>"]:::plan
     plan --> grill_me["/zsl:grill-me<br/>or<br/>/zsl:grill-with-docs<br/><i>(updates CONTEXT.md + ADRs)</i>"]:::plan
     plan --> to_prd["/zsl:to-prd<br/><i>synthesise the chat → PRD</i>"]:::plan
 
@@ -86,6 +87,7 @@ matters for picking a skill.
 
 | Skill | What it does |
 |---|---|
+| [decision-mapping](decision-mapping.md) | Turn a loose, multi-session idea into a sequenced map of decisions + ticket-sized slices, so it matures before a PRD. Writes the map to `.scratch/decision-maps/`; composes `grilling`/`domain-modeling`/`prototype`, then hands off to `to-prd`. |
 | [grill-with-docs](grill-with-docs.md) | Interview-driven planning. Sharpens terminology against `CONTEXT.md` and ADRs inline — the highest-leverage skill in the plugin. |
 | [grill-me](grill-me.md) | Interview-only variant (no doc updates). Use for non-code planning. |
 | [to-prd](to-prd.md) | Synthesise the current conversation into a PRD on the tracker. No interview — just packaging. Each story is written at value altitude with testable assertions in `AC<n>:` acceptance criteria; refuses non-automatable stories. Every story carries at least one `AC<n>:` acceptance criterion. |

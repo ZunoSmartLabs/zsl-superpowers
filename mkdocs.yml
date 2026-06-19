@@ -79,6 +79,7 @@ nav:
   - Skills:
       - Overview: skills/index.md
       - Plan:
+          - skills/decision-mapping.md
           - skills/grill-with-docs.md
           - skills/grill-me.md
           - skills/to-prd.md

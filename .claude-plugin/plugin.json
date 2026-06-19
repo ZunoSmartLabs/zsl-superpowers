@@ -8,6 +8,7 @@
   },
   "skills": [
     "./skills/engineering/codebase-design",
+    "./skills/engineering/decision-mapping",
     "./skills/engineering/diagnose",
     "./skills/engineering/domain-modeling",
     "./skills/engineering/grill-with-docs",

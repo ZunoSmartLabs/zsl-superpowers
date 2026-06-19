@@ -17,6 +17,7 @@ The skills compose into one end-to-end loop. Most days you only touch a few of t
 
 ### Plan
 
+- **[`/decision-mapping`](./skills/engineering/decision-mapping/SKILL.md)** — for a loose, multi-session idea that isn't a PRD yet: mature it into a sequenced map of decisions and ticket-sized slices under `.scratch/decision-maps/`, then hand off to `/to-prd`. Composes the `grilling`/`domain-modeling` engines and `/prototype`.
 - **[`/grill-me`](./skills/productivity/grill-me/SKILL.md)** or **[`/grill-with-docs`](./skills/engineering/grill-with-docs/SKILL.md)** — interview yourself to surface what you're actually building. `grill-with-docs` also updates `CONTEXT.md` and ADRs inline.
 - **[`/to-prd`](./skills/engineering/to-prd/SKILL.md)** — synthesise that conversation into a PRD on the issue tracker.
 
@@ -223,6 +224,7 @@ Software engineering fundamentals matter more than ever. These skills are my bes
 
 Skills we use daily for code work.
 
+- **[decision-mapping](./skills/engineering/decision-mapping/SKILL.md)** — Turn a loose, multi-session idea into a sequenced map of decisions + ticket-sized slices so it matures before a PRD. Writes maps to `.scratch/decision-maps/`; composes `grilling`/`domain-modeling`/`prototype` and hands off to `to-prd`. Local and interactive (not AFK-wired).
 - **[diagnose](./skills/engineering/diagnose/SKILL.md)** — Disciplined diagnosis loop for hard bugs and performance regressions: reproduce → minimise → hypothesise → instrument → fix → regression-test.
 - **[grill-with-docs](./skills/engineering/grill-with-docs/SKILL.md)** — Grilling session that challenges your plan against the existing domain model, sharpens terminology, and updates `CONTEXT.md` and ADRs inline.
 - **[triage](./skills/engineering/triage/SKILL.md)** — Triage issues through a state machine of triage roles.

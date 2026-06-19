@@ -50,3 +50,11 @@ places.
 
 - #16 ([AFK] 3 — Extract domain-modeling) — references `domain-modeling`.
 - #17 ([AFK] 4a — Extract grilling) — references `grilling`.
+
+## Verification
+
+Ran on the feature branch — all observables PASS, `make lint test docs` exit 0.
+
+- Story 12: `skills/engineering/decision-mapping/SKILL.md` exists, `disable-model-invocation: true`; references `grilling`, `domain-modeling`, `prototype`, and `to-prd`; grep for `grill-with-docs` → no hits (never references it) → PASS.
+- Story 13: writes maps to `.scratch/decision-maps/`; grep for `domain-modelling` (double-L) → no hits; declares being AFK-wired an explicit non-goal → PASS.
+- Five-place sync: plugin.json, top README (Plan workflow section + Reference Engineering), engineering bucket README, docs/skills/index.md Plan role table + a `decision_mapping` node in the **Plan** branch of the decision tree, mkdocs.yml Plan nav.
