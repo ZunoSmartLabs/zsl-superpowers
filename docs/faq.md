@@ -169,7 +169,7 @@ rule set is wrong for your codebase, override it in your project's
 `/zsl:improve-codebase-architecture` for this codebase; we use a
 feature-folder layout intentionally"*) and Claude will honour it.
 
-The supporting files inside each affected skill (e.g. `LANGUAGE.md`,
+The supporting files inside each affected skill (e.g. `DEEPENING.md`,
 `CONTEXT-FORMAT.md`, `tests.md`) have been aligned with the bundled
 vocabulary where it sharpens the skill's process — see the
 [0.11.0 changelog entry](changelog.md) for the per-skill detail.

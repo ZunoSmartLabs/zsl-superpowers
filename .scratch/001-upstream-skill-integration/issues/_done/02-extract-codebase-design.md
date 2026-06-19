@@ -56,3 +56,12 @@ decision-tree node, no user-command listing.
 ## Blocked by
 
 - #11 ([AFK] 1 — Establish invocation taxonomy)
+
+## Verification
+
+Ran on the feature branch — all observables PASS, `make lint test docs` exit 0.
+
+- Story 4: `skills/engineering/codebase-design/SKILL.md` exists, frontmatter has no `disable-model-invocation` flag, body defines module/interface/depth/seam/adapter + deletion-test + "Two adapters = real" → PASS.
+- Story 5: none of `improve-codebase-architecture/{LANGUAGE,INTERFACE-DESIGN}.md` or `tdd/{deep-modules,interface-design}.md` exist; `grep -rnE '\]\((…)(LANGUAGE|INTERFACE-DESIGN|deep-modules|interface-design)\.md\)'` over skills/ docs/ README.md → no surviving links.
+- Story 6: `improve-codebase-architecture/SKILL.md` and `tdd/SKILL.md` both reference `codebase-design`; the inline deep-module glossary body was removed from ICA → PASS.
+- Sync (model-invoked lane): registered in `plugin.json`; listed in the new "Shared / model-invoked" subsection of `docs/skills/index.md`; `skills/codebase-design.md` added to `not_in_nav`; absent from top/bucket README, role tables, decision tree → PASS.

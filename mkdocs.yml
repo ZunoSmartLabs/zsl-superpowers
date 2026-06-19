@@ -51,6 +51,7 @@ hooks:
 # kept out of the nav; this suppresses the --strict "not in nav" error.
 not_in_nav: |
   adr/*
+  skills/codebase-design.md
 
 # docs/agents/ is this repo's own per-repo agent config (written by
 # /setup-zsl-superpowers — issue tracker, triage labels, domain, ship style,

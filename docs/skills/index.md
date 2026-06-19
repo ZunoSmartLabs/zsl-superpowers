@@ -154,6 +154,18 @@ The overnight loop — schedule dedicated remote sessions, run them unattended, 
 | [setup-pre-commit](setup-pre-commit.md) | Husky + lint-staged + Prettier + type-check + tests. (Misc.) |
 | [steampipe](steampipe.md) | AWS infra query reference. Auto-triggered only — not user-invocable. (Misc.) |
 
+## Shared / model-invoked
+
+These skills are **model-invoked** — they hold reusable design vocabulary and
+protocols that other skills compose, rather than commands you invoke off a list.
+You won't normally type them; they auto-activate when the task fits, or another
+skill pulls them in. They're deliberately absent from the decision tree and the
+role tables above. See [the invocation model](../invocation.md) for the split.
+
+| Skill | What it owns |
+|---|---|
+| [codebase-design](codebase-design.md) | The deep-module design language — module/interface/depth/seam/adapter, the deletion test, the one-adapter-hypothetical / two-adapters-real refinement, interface-for-testability, and the "design it twice" parallel sub-agent pattern. Composed by `improve-codebase-architecture` and `tdd`. |
+
 ## See also
 
 - [The loop](../workflow.md) — how the skills compose into one workflow
