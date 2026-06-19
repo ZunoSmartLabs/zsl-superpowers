@@ -160,6 +160,7 @@ role tables above. See [the invocation model](../invocation.md) for the split.
 | Skill | What it owns |
 |---|---|
 | [codebase-design](codebase-design.md) | The deep-module design language — module/interface/depth/seam/adapter, the deletion test, the one-adapter-hypothetical / two-adapters-real refinement, interface-for-testability, and the "design it twice" parallel sub-agent pattern. Composed by `improve-codebase-architecture` and `tdd`. |
+| [domain-modeling](domain-modeling.md) | The domain-doc reasoning home — the `CONTEXT.md` Ubiquitous Language format, the ADR format, and the bundled Domain-Driven Design book-rules. Composed by `grill-with-docs` and `improve-codebase-architecture`. |
 
 ## See also
 

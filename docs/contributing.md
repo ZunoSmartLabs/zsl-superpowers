@@ -119,7 +119,7 @@ The current skill→book mapping table lives in
 [`vendor/agent-rules-books/README.md`](https://github.com/ZunoSmartLabs/zsl-superpowers/blob/main/vendor/agent-rules-books/README.md).
 Per-skill supporting files (e.g. `DEEPENING.md` in
 `improve-codebase-architecture/`, `CONTEXT-FORMAT.md` in
-`grill-with-docs/`, `tests.md`/`mocking.md`/`refactoring.md` in `tdd/`)
+`domain-modeling/`, `tests.md`/`mocking.md`/`refactoring.md` in `tdd/`)
 sit *outside* the fences and **are** hand-editable — they exist to
 align skill-specific vocabulary and process with the bundled rules.
 

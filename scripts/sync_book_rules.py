@@ -54,7 +54,7 @@ MAPPING: dict[str, list[BookEmbed]] = {
             "Release It!", "Michael T. Nygard",
         ),
     ],
-    "engineering/grill-with-docs": [
+    "engineering/domain-modeling": [
         BookEmbed(
             "domain-driven-design-distilled", "domain-driven-design-distilled.mini.md",
             "Domain-Driven Design Distilled", "Vaughn Vernon",

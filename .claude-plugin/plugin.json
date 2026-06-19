@@ -9,6 +9,7 @@
   "skills": [
     "./skills/engineering/codebase-design",
     "./skills/engineering/diagnose",
+    "./skills/engineering/domain-modeling",
     "./skills/engineering/grill-with-docs",
     "./skills/engineering/human-itl",
     "./skills/engineering/improve-codebase-architecture",
