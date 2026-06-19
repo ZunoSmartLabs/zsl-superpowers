@@ -46,3 +46,11 @@ model-invoked" subsection).
 
 - #16 ([AFK] 3 — Extract domain-modeling) — shares `grill-with-docs/SKILL.md`;
   serialized to avoid integration conflicts.
+
+## Verification
+
+Ran on the feature branch — all observables PASS, `make lint test docs` exit 0.
+
+- Story 10: `skills/productivity/grilling/SKILL.md` exists (model-invoked, no `disable-model-invocation` flag) and contains the status markers (`[ ]`/`[→]`/`[✓]`), the example design tree, the reprint rules, and the mermaid `stateDiagram-v2` status-lifecycle → PASS.
+- Story 11: `grill-me/SKILL.md` and `grill-with-docs/SKILL.md` both reference `grilling`; neither retains its own copy of the example tree / status-lifecycle block (grep for the example tree and the mermaid diagram → absent in both) → PASS.
+- Model-invoked sync: plugin.json + "Shared / model-invoked" subsection row + `not_in_nav: skills/grilling.md`; absent from READMEs / role tables / decision tree (the "grilling session" phrase in README is prose, not a catalog entry).
