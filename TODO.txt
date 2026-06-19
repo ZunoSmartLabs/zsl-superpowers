@@ -1,0 +1,74 @@
+feature:
+when we run /zsl:to-issues with no extra parameters
+then we should get a list of all issues in the system
+and the list should auto filter to show what is runnable
+in the current .scratch folder. ie, only show PRDs that
+are ready for conversion to issues.
+
+feature:
+pre-seed a Makefile with good defaults, such as linting and
+nice help text.
+
+feature:
+create a merge PR skill that waits for a clean PR workflow,
+then merges the PR and deletes the branch. This is a common
+workflow that we want to automate.
+
+feature:
+bring the md-to-html skill into this repo under productivty
+bring in the email writing skill as well so we have a zsl-style voice maybe?
+
+feature:
+instead of .scratch/<feature>/issues call it .scratch/<feature>/tasks
+
+feature:
+ship-style = PR is only for code changes. anything in .scratch should be
+pushed directly to main.
+
+feature:
+this is an opinionated methodology, so the setup-zsl-superpowers should
+not ask too many questions. The local issue tracking should only offer
+local .scratch issue tracking. Remote boards are really the only things
+that should be configurable. The statemachine must be fixed as well.
+This shouldn't be configurable.
+
+feature:
+when doing updates that require code migrations, like done -> _done
+this should be done via scripts, not prose.
+
+feature:
+there should be a markdown linting setup skill that that includes the
+markdown table formatting standards we use for the worldvision project.
+This should probably be part of the setup-zsl-skills that setup
+good Makefile defaults to start every project with.
+
+feature:
+the docs/agents folder contains the various instruction files. These shoudl
+go to .zsl/ and not the docs.
+
+feature:
+all afk-remote skills should start with afk-xxx
+
+feature:
+we should also store the version of the zsl-skills the repo is expecting.
+if the version is updated, then we should offer to run the migration script.
+
+feature:
+update the /docs to reflect the changes from a PRD.
+
+feature:
+introduce the concept of epics to enable features that span multiple PRDs,
+even across multiple repos. This would be a way to track larger initiatives
+that are broken down into smaller PRDs.
+
+feature:
+challenge on the PRD concept name. Is PRD really the correct name?
+
+feature:
+/zsl:commit should push to main if it's a documenton change that is being made
+on the main branch. If it's a code change, it should create a PR. This is an opinionated
+workflow that we want to enforce.
+
+feature:
+/zsl:tdd-parallel and /zsl:tdd should be moving the associated remote ticket from To Do
+to In Progress when the skill is run. This is a nice way to keep the remote board in sync with the local work.
