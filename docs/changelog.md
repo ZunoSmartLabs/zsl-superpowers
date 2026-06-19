@@ -4,6 +4,54 @@ For the full commit history, see
 [github.com/ZunoSmartLabs/zsl-superpowers/commits/main](https://github.com/ZunoSmartLabs/zsl-superpowers/commits/main).
 This page summarises the user-facing changes per plugin version.
 
+## 1.4.0
+
+### PRD user stories split into value-level stories + `AC` acceptance criteria
+
+PRDs written by `/zsl:to-prd` used to pin each user story to a single
+`observable:` sub-bullet — a concrete, technical, public-interface
+assertion. In practice that collapsed two altitudes into one line: the
+"stories" read like fine-grained acceptance criteria and leaked
+implementation detail (endpoints, status codes, state names), because a
+story could only carry *one* observable, so any capability needing
+several assertions got fractured into several "stories."
+
+`/zsl:to-prd` now writes user stories at **value altitude** — who, what
+capability, why, with no technical detail in the story line — and pushes
+every testable assertion *down* into one or more **acceptance criteria**
+(`AC1:`, `AC2:`, …) beneath it. A story keeps its `acceptance:
+automatable` tag and now carries at least one `AC<n>:` criterion. The
+acceptance criteria are the contract `/zsl:verify-coverage`'s Tier B
+generates tests against — so a story can hold as many concrete
+assertions as it needs without being split, and the story line itself
+reads like a story again.
+
+The change runs the length of the pipeline, which reads these
+sub-bullets as a lockstep contract:
+
+- **`/zsl:to-prd`** drafts the two-level shape and refuses any story
+  with no automatable acceptance criterion.
+- **`/zsl:to-issues`** propagates the parent story's `acceptance:` tag
+  and `AC<n>:` criteria into each slice's `## User stories covered`
+  verbatim.
+- **`/zsl:verify-coverage`** gates on `acceptance: automatable` + at
+  least one `AC<n>:` criterion, and Tier B generates tests from the
+  story's acceptance criteria (a story is covered when *every*
+  criterion has a passing, non-vacuous test).
+- **`/zsl:tdd-parallel`** pre-flight 1d and **`/zsl:triage`** enforce
+  the same gate before handing work to an agent.
+
+#### Upgrading from 1.3
+
+In-flight PRDs authored before this release carry `observable:`
+sub-bullets, not `AC<n>:` criteria. They keep working: every gate and
+the Tier B test-generation hint accept a legacy `observable:` line as a
+single acceptance criterion, so nothing breaks on upgrade. To get the
+cleaner two-level shape on an existing PRD, hand-convert each
+`observable:` line into one or more `AC<n>:` bullets, or re-run
+`/zsl:to-prd` over the original conversation. New PRDs get the `AC`
+shape automatically.
+
 ## 1.3.1
 
 ### `/triage`: wrap local-markdown comments at 100 chars to satisfy markdownlint

@@ -69,11 +69,11 @@ Show counts and a one-line summary per issue. Let the maintainer pick.
 
    **PRD tag check.** If the issue is a PRD (has a `## User Stories` section) OR is a child of one (resolve the parent via `## Parent` link or sub-issue relationship), validate the parent PRD's user-story tags before moving the issue to `ready-for-agent`:
 
-   - Every story must have an `acceptance: automatable` sub-bullet AND an `observable: <description>` sub-bullet.
+   - Every story must have an `acceptance: automatable` sub-bullet AND at least one `AC<n>:` acceptance-criterion sub-bullet.
    - Any story tagged `acceptance: manual-attestation` (or any value other than `automatable`) is invalid — that lane has been removed from this pipeline.
-   - Any story missing either sub-bullet is invalid.
+   - Any story missing the tag or carrying no `AC<n>:` criterion is invalid. A legacy `observable:` sub-bullet (pre-AC-split PRDs) counts as one acceptance criterion for back-compat.
 
-   On failure, refuse to advance to `ready-for-agent` and tell the maintainer which stories are missing or mis-tagged. Recommended fix: edit the PRD directly to add the sub-bullets per `/to-prd`'s format. For legacy PRDs (written before tags were required), the maintainer can re-run `/to-prd` on the existing conversation or hand-edit. `needs-info`, `ready-for-human`, `wontfix`, and `tracking` transitions are still allowed on untagged PRDs — only the agent-handoff path requires tags, because `/tdd-parallel` will refuse on them.
+   On failure, refuse to advance to `ready-for-agent` and tell the maintainer which stories are missing or mis-tagged. Recommended fix: edit the PRD directly to add the missing tag/criteria per `/to-prd`'s story format. For legacy PRDs (written before tags were required), the maintainer can re-run `/to-prd` on the existing conversation or hand-edit. `needs-info`, `ready-for-human`, `wontfix`, and `tracking` transitions are still allowed on untagged PRDs — only the agent-handoff path requires tags, because `/tdd-parallel` will refuse on them.
 
 2. **Recommend.** Tell the maintainer your category and state recommendation with reasoning, plus a brief codebase summary relevant to the issue. Wait for direction.
 

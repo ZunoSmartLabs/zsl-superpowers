@@ -90,13 +90,13 @@ matters for picking a skill.
 |---|---|
 | [grill-with-docs](grill-with-docs.md) | Interview-driven planning. Sharpens terminology against `CONTEXT.md` and ADRs inline — the highest-leverage skill in the plugin. |
 | [grill-me](grill-me.md) | Interview-only variant (no doc updates). Use for non-code planning. |
-| [to-prd](to-prd.md) | Synthesise the current conversation into a PRD on the tracker. No interview — just packaging. Refuses non-automatable user stories; every story carries `acceptance: automatable` + `observable: <description>` sub-bullets. |
+| [to-prd](to-prd.md) | Synthesise the current conversation into a PRD on the tracker. No interview — just packaging. Each story is written at value altitude with testable assertions in `AC<n>:` acceptance criteria; refuses non-automatable stories. Every story carries `acceptance: automatable` + at least one acceptance criterion. |
 
 ### Break down
 
 | Skill | What it does |
 |---|---|
-| [to-issues](to-issues.md) | Break the PRD into vertical-slice sub-issues with `[AFK\|HITL] <wave><letter>` titles and `Blocked by` graphs. Propagates parent PRD `acceptance:` / `observable:` tags into each slice body. Auto-relabels the parent to `tracking`. |
+| [to-issues](to-issues.md) | Break the PRD into vertical-slice sub-issues with `[AFK\|HITL] <wave><letter>` titles and `Blocked by` graphs. Propagates the parent PRD's `acceptance:` tag and `AC<n>:` acceptance criteria into each slice body. Auto-relabels the parent to `tracking`. |
 | [triage](triage.md) | Walk each child through the [state machine](../concepts/state-machine.md). Entry point for inbound issues too. |
 
 ### Build
@@ -112,7 +112,7 @@ matters for picking a skill.
 
 | Skill | What it does |
 |---|---|
-| [verify-coverage](verify-coverage.md) | Prove every PRD user story is covered by a passing, non-vacuous behavioral test (Tier A maps to existing tests; Tier B generates one from the story's `observable:` tag and mutation-proves it). Auto-files gaps as sub-issues (`ready-for-agent` in `--auto` mode, `needs-triage` otherwise) and writes a receipt. Almost always chained by `/tdd-parallel` step 4b in `--auto` mode (where the orchestrator's auto-fix loop iterates on filed gaps); direct invocation is for auditing PRDs whose slices shipped elsewhere. |
+| [verify-coverage](verify-coverage.md) | Prove every PRD user story is covered by a passing, non-vacuous behavioral test (Tier A maps to existing tests; Tier B generates one from the story's `AC<n>:` acceptance criteria and mutation-proves it). Auto-files gaps as sub-issues (`ready-for-agent` in `--auto` mode, `needs-triage` otherwise) and writes a receipt. Almost always chained by `/tdd-parallel` step 4b in `--auto` mode (where the orchestrator's auto-fix loop iterates on filed gaps); direct invocation is for auditing PRDs whose slices shipped elsewhere. |
 
 ### Ship
 

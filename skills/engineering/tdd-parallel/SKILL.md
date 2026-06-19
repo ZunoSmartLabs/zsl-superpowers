@@ -132,7 +132,7 @@ This is a lightweight pass whose only job is to size `runnable`/`deferred` and s
 Refuse with a clear message if either of these fails:
 
 - **`runnable` is empty** — every slice is deferred (gated behind an open `[HITL]`, or still in triage). There is nothing to do this run. List the open `[HITL]` issue numbers + titles and tell the user to clear them via `/human-itl <parent>` first, then re-invoke. This is the **only** `[HITL]`-related refusal — the presence of *some* open `[HITL]` slices alongside runnable ones is expected and triggers a partial run, not a refusal.
-- **An in-scope user story is not automatable.** Scope this check to the stories the `runnable` slices cover — their `## User stories covered` sections (per `/to-issues`). Every such story must carry `acceptance: automatable` AND an `observable: <description>` sub-bullet in the exact format `/to-prd` writes. Any in-scope story tagged anything other than `automatable` (e.g. `manual-attestation`, removed from this pipeline), or missing either sub-bullet, is invalid — refuse with the offending story numbers and a pointer to `/to-prd`'s tag format (typically the PRD pre-dates the tag requirement, or a non-automatable story was added by hand). Stories covered **only** by `deferred` slices need not satisfy this gate *this run* — they're checked when a later run makes them in-scope.
+- **An in-scope user story is not automatable.** Scope this check to the stories the `runnable` slices cover — their `## User stories covered` sections (per `/to-issues`). Every such story must carry `acceptance: automatable` AND at least one `AC<n>:` acceptance-criterion sub-bullet in the exact format `/to-prd` writes. Any in-scope story tagged anything other than `automatable` (e.g. `manual-attestation`, removed from this pipeline), or carrying no `AC<n>:` criterion, is invalid — refuse with the offending story numbers and a pointer to `/to-prd`'s story format (typically the PRD pre-dates the requirement, or a non-automatable story was added by hand). A legacy `observable:` sub-bullet counts as one acceptance criterion for back-compat. Stories covered **only** by `deferred` slices need not satisfy this gate *this run* — they're checked when a later run makes them in-scope.
 
 These checks fail fast and surface the exact thing to fix. Once 1d passes, the auto-loop is committed: it will run through to PR push (full or `[partial]`) or a circuit-breaker halt, with no further human prompts in the happy path.
 
@@ -330,7 +330,7 @@ Parse the terminal block's `matrix:` line and the receipt's
 Track in orchestrator state across rounds:
 
 - `coverage_round` — incremented each time 4b runs. Cap is `--max-coverage-rounds` (default 3). On exhaustion → halt: `coverage-rounds-exhausted`.
-- `gap_retry_count[<story-N>]` — incremented each time a gap is filed for story N (across rounds). If any story reaches 2 → halt: `coverage-per-story-exhausted`. Means Tier B keeps generating a test the remediation can't satisfy — usually a wrong-observable judgement or a misspecified story, needs a human eye.
+- `gap_retry_count[<story-N>]` — incremented each time a gap is filed for story N (across rounds). If any story reaches 2 → halt: `coverage-per-story-exhausted`. Means Tier B keeps generating a test the remediation can't satisfy — usually a wrong-acceptance-criterion judgement or a misspecified story, needs a human eye.
 - `no_progress_check` — if round N+1's gap set (by story numbers) equals round N's gap set → halt: `coverage-no-progress`. The loop isn't converging.
 
 **Loop iteration mechanics:**
@@ -345,7 +345,7 @@ When looping back to step 2:
 - 4a re-runs `/code-review --auto` on the now-bigger PRD branch tip. The reviewer sees the full diff (original slices + gap fixes); it'll mostly no-op on rounds 2+ because the new code is small and already reviewed by per-slice `/tdd`.
 - 4b re-runs verify-coverage, this time hopefully with `gap=0`.
 
-Halts in 4b leave the PRD branch with the latest verified state (gaps filed, quarantined tests committed, all original + remediation slices merged). The user takes over: read the matrix in the latest `## Coverage receipt — verify-coverage` comment, decide whether to fix by hand, edit the offending stories' `observable:` lines and re-invoke, or close specific gap issues as bogus and re-invoke.
+Halts in 4b leave the PRD branch with the latest verified state (gaps filed, quarantined tests committed, all original + remediation slices merged). The user takes over: read the matrix in the latest `## Coverage receipt — verify-coverage` comment, decide whether to fix by hand, edit the offending stories' `AC<n>:` acceptance criteria and re-invoke, or close specific gap issues as bogus and re-invoke.
 
 #### 4c. Ship the integration PR
 
@@ -477,7 +477,7 @@ Seven failure paths halt the run, all with the same shape: print a hybrid RCA, l
 - **Coverage verification failure** (4b): `/verify-coverage --auto` itself halted internally (pre-flight refusal, mutation-check failure, tracker error). All slices for the round are merged but the receipt wasn't written.
 - **Coverage circuit-breaker halt** (4b): one of three breakers fired during the auto-fix loop:
   - `coverage-rounds-exhausted` — hit `--max-coverage-rounds` without converging to `gap=0`.
-  - `coverage-per-story-exhausted` — a single story produced a gap in 2+ rounds; Tier B's test is wrong or the story's `observable:` is misspecified.
+  - `coverage-per-story-exhausted` — a single story produced a gap in 2+ rounds; Tier B's test is wrong or the story's acceptance criteria are misspecified.
   - `coverage-no-progress` — round N+1's gap set equals round N's; loop isn't converging.
   - `coverage-mode mismatch` / `coverage-tree drift` — invariant-violation halts; should not happen in normal operation.
 
@@ -533,7 +533,7 @@ Every halt produces a structured RCA followed by an LLM-generated **Possible int
 - Integration tip sha (the PRD branch HEAD; original slices + any gap fixes from prior rounds are merged).
 - Coverage round in which verify-coverage halted (1-indexed).
 - Verify-coverage's terminal output verbatim (or summary if long): the halt reason, the matrix counts up to that point, and any partial receipt path.
-- Suggested next action: run `/verify-coverage <parent>` manually against the PRD branch to inspect the failure outside the orchestrator; fix the root cause (commonly: a story whose `observable:` line is too vague to generate a non-vacuous test against, a Tier B mutation that can't be reverted cleanly because the working tree was dirty, or a tracker-side failure to file the gap issue), then re-run `/tdd-parallel <parent>` — it picks up where it left off (slices already merged, gap issues already filed from prior rounds).
+- Suggested next action: run `/verify-coverage <parent>` manually against the PRD branch to inspect the failure outside the orchestrator; fix the root cause (commonly: a story whose acceptance criteria are too vague to generate a non-vacuous test against, a Tier B mutation that can't be reverted cleanly because the working tree was dirty, or a tracker-side failure to file the gap issue), then re-run `/tdd-parallel <parent>` — it picks up where it left off (slices already merged, gap issues already filed from prior rounds).
 
 **Coverage circuit-breaker halt (4b):**
 
@@ -541,11 +541,11 @@ Every halt produces a structured RCA followed by an LLM-generated **Possible int
 - Which breaker fired: `coverage-rounds-exhausted` / `coverage-per-story-exhausted` / `coverage-no-progress` / `coverage-mode mismatch` / `coverage-tree drift`.
 - Round counter and `--max-coverage-rounds` cap.
 - Per-round gap set (by story numbers): round 1 → {…}, round 2 → {…}, …
-- For `coverage-per-story-exhausted`: the offending story number, its `observable:` line verbatim, and the paths of both rounds' quarantined tests (so the user can compare what Tier B generated each time).
+- For `coverage-per-story-exhausted`: the offending story number, its `AC<n>:` acceptance criteria verbatim, and the paths of both rounds' quarantined tests (so the user can compare what Tier B generated each time).
 - Filed gap issue numbers (still open, awaiting human disposition).
 - Suggested next action depends on the breaker:
   - `coverage-rounds-exhausted` or `coverage-no-progress`: read the residual matrix in the latest `## Coverage receipt — verify-coverage` comment, fix by hand, then either push manually or re-invoke with a higher `--max-coverage-rounds`.
-  - `coverage-per-story-exhausted`: usually the story's `observable:` is misspecified — edit the PRD's story to pin a better observable, then re-invoke. Alternatively close the bogus gap issues and re-invoke.
+  - `coverage-per-story-exhausted`: usually the story's acceptance criteria are misspecified — edit the PRD's story to pin better acceptance criteria, then re-invoke. Alternatively close the bogus gap issues and re-invoke.
   - `coverage-mode mismatch` / `coverage-tree drift`: bug — open an issue with the receipt and orchestrator logs; do not just retry.
 
 ## Cleanup

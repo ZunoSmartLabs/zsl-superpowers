@@ -56,7 +56,7 @@ Present the proposed breakdown as a numbered list. For each slice, show:
 - **Title**: as drafted in step 3 (with the `[TYPE] wave[letter] — description` format)
 - **Type**: HITL / AFK
 - **Blocked by**: which other slices (if any) must complete first
-- **User stories covered**: which user stories this addresses (if the source material has them). Whatever the user approves here is persisted verbatim into the issue body's `## User stories covered` section in step 5 — it is not just a quiz aid; `/verify-coverage` reads it back as its Tier A oracle. **Each covered story carries its parent PRD's `acceptance:` and `observable:` sub-bullets verbatim** so the slice body is self-contained: the agent picking up the slice sees the story's testable contract without needing to re-fetch the PRD, and `/verify-coverage` Tier B has the `observable:` line as its test-generation hint at slice-resolution time.
+- **User stories covered**: which user stories this addresses (if the source material has them). Whatever the user approves here is persisted verbatim into the issue body's `## User stories covered` section in step 5 — it is not just a quiz aid; `/verify-coverage` reads it back as its Tier A oracle. **Each covered story carries its parent PRD's `acceptance:` tag and its `AC<n>:` acceptance criteria verbatim** so the slice body is self-contained: the agent picking up the slice sees the story's testable contract without needing to re-fetch the PRD, and `/verify-coverage` Tier B has those acceptance criteria as its test-generation hint at slice-resolution time.
 
 Ask the user:
 
@@ -91,9 +91,9 @@ A concise description of this vertical slice. Describe the end-to-end behavior, 
 ## User stories covered
 
 The PRD user story numbers this slice addresses, each with its short
-text **and the parent's `acceptance:` / `observable:` sub-bullets
-carried over verbatim**. The persisted form of the quiz mapping from
-step 4.
+text **and the parent's `acceptance:` tag and `AC<n>:` acceptance
+criteria carried over verbatim**. The persisted form of the quiz
+mapping from step 4.
 
 **This section is MANDATORY on every PRD-derived slice** (the only
 omission is a freeform plan with no user stories — see below). It is
@@ -101,7 +101,8 @@ load-bearing in two places that both read it back from the issue body,
 not from the quiz:
 
 - `/verify-coverage` consumes it as its Tier A story→slice map, and
-  Tier B reads the `observable:` line as the test-generation hint.
+  Tier B reads the `AC<n>:` acceptance criteria as the test-generation
+  hint.
 - `/tdd-parallel` **partial runs** read it to tell a *deferred* story
   (covered only by a slice still gated behind an open `[HITL]`) apart
   from a real *gap*. A slicing run that silently drops this section
@@ -115,9 +116,10 @@ Example:
 ```
 - 7 — User can reset password via email
   - acceptance: automatable
-  - observable: POST /password-reset with a valid email enqueues a job
-    that sends a single email containing a one-time link; the link
-    redeems exactly once and sets a new password.
+  - AC1: POST /password-reset with a valid email enqueues a job that
+    sends a single email containing a one-time link.
+  - AC2: the link redeems exactly once and sets a new password; a
+    second redemption of the same link returns 410.
 ```
 
 Write `None — enabling/infrastructure slice` for a slice that delivers

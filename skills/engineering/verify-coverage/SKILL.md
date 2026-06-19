@@ -40,9 +40,9 @@ classification, HITL human-attestation, and a matrix-confirmation
 review — have all moved upstream:
 
 - **Classification** moved to `/to-prd`: every story carries
-  `acceptance: automatable` + `observable: <description>` sub-bullets
-  written at PRD-authoring time. This skill reads them instead of
-  judging.
+  `acceptance: automatable` + one or more `AC<n>:` acceptance-criteria
+  sub-bullets written at PRD-authoring time. This skill reads them
+  instead of judging.
 - **HITL human-attestation** is gone. Non-automatable stories
   (visual/UX, "feels welcoming", real external systems) are refused at
   `/to-prd` time — they don't enter this pipeline.
@@ -97,12 +97,16 @@ Refuse with a clear message if any fails:
   section. No argument → present a numbered picker of issues in the
   `tracking` state. If the resolved issue has no `## User Stories`
   section it is not a PRD — refuse and say so.
-- **Every user story has both `acceptance: automatable` and
-  `observable: <description>` sub-bullets.** Any story tagged anything
-  other than `automatable` (e.g. `manual-attestation`) is invalid —
-  that lane has been removed; the PRD must be reworked in `/to-prd` or
-  split. Any story missing either sub-bullet is invalid. Refuse with
-  the offending story numbers and a pointer to `/to-prd`'s tag format.
+- **Every user story has an `acceptance: automatable` tag and at least
+  one `AC<n>:` acceptance-criterion sub-bullet.** Any story tagged
+  anything other than `automatable` (e.g. `manual-attestation`) is
+  invalid — that lane has been removed; the PRD must be reworked in
+  `/to-prd` or split. Any story missing the tag or carrying no `AC<n>:`
+  criterion is invalid. Refuse with the offending story numbers and a
+  pointer to `/to-prd`'s story format. **Back-compat:** a legacy
+  `observable:` sub-bullet (PRDs authored before the AC split) counts
+  as a single acceptance criterion — accept it in place of an `AC<n>:`
+  bullet.
 - The working tree is on the branch carrying the integrated work (the
   PRD/integration branch for a `/tdd-parallel` run, or wherever the
   shipped slices live). Refuse if dirty (`git status --porcelain`
@@ -119,16 +123,17 @@ area. See `engineering/tdd/tests.md` for what a behavioural test is and
 ### 1. Build the story inventory
 
 Parse the PRD's `## User Stories` into a numbered list, verbatim. For
-each story, capture its `observable:` sub-bullet — Tier B uses it as
-the test-generation hint. Parse `## Out of Scope`: any story (or
+each story, capture its `AC<n>:` acceptance criteria (or, on a legacy
+PRD, its single `observable:` line treated as one criterion) — Tier B
+uses them as the test-generation hint. Parse `## Out of Scope`: any story (or
 behaviour) that `## Out of Scope` excludes is marked `out-of-scope` now
 and never verified — record the PRD line that excludes it as the
 evidence.
 
 The pre-flight already validated that every story carries
-`acceptance: automatable` and an `observable:` line, so there is no
-classification step at runtime — every in-scope story goes through
-Tier A then Tier B.
+`acceptance: automatable` and at least one `AC<n>:` criterion, so there
+is no classification step at runtime — every in-scope story goes
+through Tier A then Tier B.
 
 ### 2. Build the story → slice map
 
@@ -175,10 +180,11 @@ remaining in-scope, not-deferred stories go through Tier A then Tier B.
 
 For each such story, search the test suite for the behavioural
 test(s) that exercise it (the story → slice map narrows where to look;
-the glossary aligns naming; the `observable:` line names the
+the glossary aligns naming; the story's `AC<n>:` criteria name the
 behaviour). A story is **covered** only when:
 
-- a mapped test **passes** when run now, **and**
+- mapped test(s) covering its acceptance criteria **pass** when run
+  now, **and**
 - reading the test body confirms it exercises *this story's*
   behaviour through a public interface — not a name coincidence, not
   an implementation-detail assertion (`tests.md` rules apply).
@@ -194,27 +200,32 @@ Skip this step entirely under `--no-generate` (such stories →
 
 For each story Tier A did not satisfy:
 
-1. **Write one acceptance test** expressing the story's observable
-   behaviour through the public interface. The `observable:` line
-   from the PRD is the contract — turn it into an assertion against
-   the public interface. Behaviour, not implementation — it must read
-   like the story (`tdd/SKILL.md` philosophy).
+1. **Write acceptance test(s) covering the story's acceptance
+   criteria** through the public interface. The story's `AC<n>:`
+   lines are the contract — turn each into an assertion against the
+   public interface (one test may cover several closely-related
+   criteria, or one test per criterion where they're independent).
+   Behaviour, not implementation — it must read like the story
+   (`tdd/SKILL.md` philosophy).
 2. **Prove it is non-vacuous by mutation.** A test that passes
    against broken code proves nothing. Perturb the implementing code
    path (force a wrong return / comment out the effect), run the
    test, and confirm it goes **RED**. Then revert the perturbation
    exactly (the pre-flight clean-tree check makes this safe). A test
    that stays GREEN under perturbation is vacuous — discard it and
-   re-derive against a different observable (re-read the
-   `observable:` line — it should pin the behaviour precisely).
+   re-derive against the criterion it should pin (re-read the
+   `AC<n>:` line — it should pin the behaviour precisely).
 3. **Run it against the real integrated code:**
-   - GREEN + proven non-vacuous → story **covered**. The generated
-     test is a durable regression artifact — keep it.
+   - GREEN + proven non-vacuous → the criterion is exercised. A story
+     is **covered** when *every* one of its acceptance criteria has a
+     passing, non-vacuous test. The generated tests are durable
+     regression artifacts — keep them.
    - RED → genuine **gap**. Keep the failing test as the receipt; it
      is dispositioned in step 7.
 
-Generate one test, prove it, run it, move on — never batch-write
-Tier B tests (same anti-horizontal-slicing reason as `tdd/SKILL.md`).
+Work one story at a time — write its test(s), prove each non-vacuous,
+run them, move on; never batch-write Tier B tests across stories (same
+anti-horizontal-slicing reason as `tdd/SKILL.md`).
 
 ### 5. Coverage matrix
 
@@ -241,7 +252,7 @@ row (e.g. accept a gap as out-of-scope, or reclassify).
 
 **`--auto` mode**: skip the confirmation; proceed directly to step 6.
 The human review surface moves downstream to `/triage` (for filed gap
-issues) — if Tier B misjudged an observable and filed a bogus gap, the
+issues) — if Tier B misjudged an acceptance criterion and filed a bogus gap, the
 triage step is where it's caught and dropped.
 
 ### 6. Disposition the failing Tier B tests
@@ -306,9 +317,9 @@ A reference to the PRD issue on the issue tracker.
 ## What to build
 
 The PRD user story this gap leaves uncovered, quoted verbatim
-(including its `acceptance:` and `observable:` sub-bullets), plus a
-one-line statement of the observed gap (Tier B test RED against the
-integrated branch).
+(including its `acceptance:` tag and `AC<n>:` acceptance criteria),
+plus a one-line statement of the observed gap (Tier B test RED against
+the integrated branch).
 
 ## Acceptance criteria
 
@@ -416,7 +427,7 @@ Do not chain — this skill ends here.
   the human review surface moves to `/triage` (for filed gaps);
   `/tdd-parallel`'s circuit breakers (round limit, per-story retry
   limit, no-progress halt) cap the worst case of a misjudged
-  observable looping.
+  acceptance criterion looping.
 
 <!-- BEGIN bundled-book-rules -->
 

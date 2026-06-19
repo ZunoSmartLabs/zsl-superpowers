@@ -192,13 +192,13 @@ flowchart TB
 ## Verify
 
 [`/zsl:verify-coverage`](skills/verify-coverage.md) `<PRD>`
-:   Check every PRD `## User Stories` entry against the *implemented code via tests*, not prose. Tier A maps each story to an existing passing behavioral test; Tier B generates one for the rest from the story's `observable:` tag, proves it non-vacuous by mutation, and runs it. Quarantines failing tests, auto-files genuine gaps as sub-issues, and writes a coverage receipt against the verified sha. Almost always chained automatically by `/zsl:tdd-parallel` step 4b (gaps filed as `ready-for-agent`, orchestrator loops on them); direct invocation is for auditing PRDs whose slices shipped elsewhere. There's no human-attestation lane — non-automatable stories are refused at `/zsl:to-prd` time, so visual/UX/external work splits into a separate PRD that doesn't go through `/zsl:tdd-parallel`.
+:   Check every PRD `## User Stories` entry against the *implemented code via tests*, not prose. Tier A maps each story to an existing passing behavioral test; Tier B generates one for the rest from the story's `AC<n>:` acceptance criteria, proves it non-vacuous by mutation, and runs it. Quarantines failing tests, auto-files genuine gaps as sub-issues, and writes a coverage receipt against the verified sha. Almost always chained automatically by `/zsl:tdd-parallel` step 4b (gaps filed as `ready-for-agent`, orchestrator loops on them); direct invocation is for auditing PRDs whose slices shipped elsewhere. There's no human-attestation lane — non-automatable stories are refused at `/zsl:to-prd` time, so visual/UX/external work splits into a separate PRD that doesn't go through `/zsl:tdd-parallel`.
 
 ```mermaid
 flowchart TB
-    story["one PRD user story<br/>(carries acceptance: automatable<br/>+ observable: tags)"] --> q{"covered by a passing<br/>behavioral test today?"}
+    story["one PRD user story<br/>(carries acceptance: automatable<br/>+ AC criteria)"] --> q{"covered by a passing<br/>behavioral test today?"}
     q -->|"yes"| ta["`**Tier A**<br/>map story → existing test`"]:::good
-    q -->|"no"| tb["`**Tier B**<br/>generate test from observable:<br/>· mutation-prove it goes RED<br/>· run it`"]:::ok
+    q -->|"no"| tb["`**Tier B**<br/>generate test from AC criteria<br/>· mutation-prove it goes RED<br/>· run it`"]:::ok
     tb -->|"passes"| tba["covered<br/>(test added to suite)"]:::good
     tb -->|"fails"| gap["`**Gap**<br/>auto-filed as ready-for-agent<br/>sub-issue · tdd-parallel loops`"]:::bad
 
