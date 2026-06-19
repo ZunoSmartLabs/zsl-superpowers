@@ -15,7 +15,7 @@ skill's page.
 If you're new here, follow the decision tree:
 
 ```mermaid
-flowchart TB
+flowchart LR
     start{"What are you trying to do?"}
     plan["`**Plan a new feature**`"]
     breakdown["`**Break a plan into work**`"]
