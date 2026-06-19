@@ -4,6 +4,81 @@ For the full commit history, see
 [github.com/ZunoSmartLabs/zsl-superpowers/commits/main](https://github.com/ZunoSmartLabs/zsl-superpowers/commits/main).
 This page summarises the user-facing changes per plugin version.
 
+## 2.0.0
+
+Adopt a lightweight **User-invoked / Model-invoked** skill taxonomy, use it to
+deduplicate shared guidance into composable skills, add three new user-invoked
+skills to the loop, and remove/rename three commands. Net skill inventory:
+**32 skills** (six added, `write-a-skill` renamed, two removed). The split is
+documented in [the invocation model](invocation.md) and recorded in
+[ADR 0001](https://github.com/ZunoSmartLabs/zsl-superpowers/blob/main/docs/adr/0001-user-invoked-model-invoked-taxonomy.md).
+
+### The taxonomy
+
+Every skill is now either **user-invoked** (only runs when typed — the
+orchestrators, flagged `disable-model-invocation: true`) or **model-invoked**
+(can also auto-fire when the task fits). The rule: a user-invoked skill may invoke
+model-invoked skills, but never another user-invoked skill. Model-invoked-only
+skills get a lighter sync treatment (registered in `plugin.json` + a "Shared /
+model-invoked" doc subsection, omitted from the decision tree and command lists) —
+a sixth lane in the `CLAUDE.md` skill-sync contract.
+
+### Six new skills
+
+Three **model-invoked** skills extract guidance that used to be duplicated inline
+and drift across skills:
+
+- **`codebase-design`** — the deep-module design language (module / interface /
+  depth / seam / adapter, the deletion test, the one-adapter-hypothetical /
+  two-adapters-real refinement, interface-for-testability, "design it twice").
+  Composed by `improve-codebase-architecture` and `tdd`, which no longer carry
+  their own copies.
+- **`domain-modeling`** — the `CONTEXT.md` Ubiquitous Language format, the ADR
+  format, and the bundled Domain-Driven Design book-rules. Composed by
+  `grill-with-docs` and `improve-codebase-architecture`.
+- **`grilling`** — the design-tree interview protocol (status markers, example
+  tree, reprint rules, status-lifecycle diagram). Composed by `grill-me` and
+  `grill-with-docs`, now thin composers over it.
+
+Three **user-invoked** skills join the loop:
+
+- **`decision-mapping`** *(Plan)* — turn a loose, multi-session idea into a
+  sequenced map of decisions + ticket-sized slices under `.scratch/decision-maps/`
+  before it becomes a PRD; composes `grilling`/`domain-modeling`/`prototype`, hands
+  off to `to-prd`. Local and interactive (not AFK-wired).
+- **`teach-me-the-codebase`** — on-the-fly conversational tutor for an unfamiliar
+  repo; reads `CONTEXT.md`/ADRs/`CLAUDE.md`/code and teaches the domain,
+  architecture, and conventions. Zero persisted artefacts; hands doc gaps to
+  `grill-with-docs`; optional `md-to-html` cheat-sheet on demand.
+- **`ask-zsl`** — a thin interactive router that points you at the right skill
+  mid-session, deferring each skill's description to its own page. Paired with the
+  "Which skill do I want?" decision tree.
+
+### Removals and renames
+
+- **`write-a-skill` → `writing-great-skills`.** The old process skill is replaced
+  by a principles + vocabulary reference (`SKILL.md` + `GLOSSARY.md`). The
+  description-length deterministic gate (`check-description-length.py` + its tests)
+  travels with it; the `make lint`/`make test` targets are repointed.
+- **`caveman` removed.** The ultra-compressed reply mode is gone from every surface.
+- **`zoom-out` removed.** The higher-level-framing skill is gone from every surface.
+
+#### Upgrading from 1.4
+
+These are breaking command changes — three public slash commands changed:
+
+- **`/caveman` is gone.** It no longer resolves. There's no replacement; drop it
+  from any scripts, aliases, or muscle memory.
+- **`/zoom-out` is gone.** It no longer resolves. For higher-level framing of
+  unfamiliar code, reach for `/teach-me-the-codebase` (interactive onboarding) or
+  `/improve-codebase-architecture` (architectural deepening) instead.
+- **`/write-a-skill` is now `/writing-great-skills`.** Same deterministic
+  description-length gate, new name and a sharper principles/vocabulary framing.
+  Update any references; the old command no longer resolves.
+
+No data migration is needed — these are command surfaces, not stored state. After
+updating, restart Claude Code so the new skill inventory loads.
+
 ## 1.5.0
 
 ### Dropped the `acceptance: automatable` tag from PRD user stories

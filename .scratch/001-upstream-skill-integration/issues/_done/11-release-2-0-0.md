@@ -77,3 +77,15 @@ get the entire gate green so the release is landable.
 ## Blocked by
 
 - #20 ([AFK] 6 — Add ask-zsl router) — and transitively every other slice.
+
+## Verification
+
+Ran on the feature branch — all observables PASS, `make lint test docs` exit 0.
+
+- Story 22: `plugin.json` `skills` array lists `codebase-design`, `domain-modeling`, `grilling`, `decision-mapping`, `teach-me-the-codebase`, `ask-zsl`, `writing-great-skills` and omits `caveman`, `zoom-out`, `write-a-skill` (32 entries total) → PASS.
+- Story 23: `plugin.json` `version` = `2.0.0` and `marketplace.json` `.plugins[0].version` = `2.0.0` → PASS.
+- Story 24: `docs/changelog.md` has a top `## 2.0.0` section (release.yml's awk extraction is non-empty) naming the six added skills, the three removals/renames, and an `#### Upgrading from 1.4` sub-block covering `caveman`, `zoom-out`, and `write-a-skill → writing-great-skills` → PASS.
+- Story 25: each added user-invoked skill (decision-mapping, teach-me-the-codebase, ask-zsl, writing-great-skills) appears in top README + bucket README + role table + mkdocs nav (RBTN); removed skills gone from all four; the three model-invoked skills appear only in `plugin.json` + the "Shared / model-invoked" subsection (+ `not_in_nav` so the page builds) → PASS.
+- Story 26: the "Which skill do I want?" mermaid tree drops `caveman`/`zoom-out`/`write-a-skill`, adds `decision-mapping` (Plan) and `teach-me-the-codebase`, and has no node for any model-invoked skill → PASS.
+- Story 27: `make lint`, `make test`, `make docs` all exit 0 → PASS.
+- Cross-PRD re-checks: all EIGHT orchestrators carry `disable-model-invocation: true` (commit, commit-push-pr, afk-fanout, tdd-parallel, decision-mapping, teach-me-the-codebase, ask-zsl, writing-great-skills); architecture.md skill count updated 28 → 32.
