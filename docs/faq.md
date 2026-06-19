@@ -246,9 +246,9 @@ A few things to check:
 - The skill might have `disable-model-invocation: true`. Those are
   user-invocable only — call them explicitly with `/zsl:<name>`.
   ([`grill-with-docs`](skills/grill-with-docs.md),
-  [`tdd-parallel`](skills/tdd-parallel.md),
-  [`setup-zsl-superpowers`](skills/setup-zsl-superpowers.md), and
-  [`zoom-out`](skills/zoom-out.md) are all user-invocable only by design.)
+  [`tdd-parallel`](skills/tdd-parallel.md), and
+  [`setup-zsl-superpowers`](skills/setup-zsl-superpowers.md) are all
+  user-invocable only by design.)
 - The trigger phrases are listed verbatim on each skill's page (and in its
   `SKILL.md` frontmatter `description:` field). If your prompt doesn't match,
   rephrase or invoke explicitly.

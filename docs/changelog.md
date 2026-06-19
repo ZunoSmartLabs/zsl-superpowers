@@ -1258,5 +1258,5 @@ then restart Claude Code. Two things worth knowing:
 - Added the `[AFK]` / `[HITL]` slice prefix and the wave-letter format
   (`<wave><letter>`) to slice titles so dependency graphs read at a glance.
 - Auto-clean residue and sync `main` in `/zsl:tdd-parallel` pre-flight.
-- New skill: [`zoom-out`](skills/zoom-out.md) for higher-level context on
-  unfamiliar code.
+- New skill: `zoom-out` for higher-level context on
+  unfamiliar code. (Removed in 2.0.0.)

@@ -33,7 +33,7 @@ a long conversation into a tmp-dir doc your next session can pick up.
 ## 3. Configure a repo
 
 For the engineering skills (`tdd`, `triage`, `to-prd`, `to-issues`,
-`improve-codebase-architecture`, `diagnose`, `zoom-out`) you need to teach the
+`improve-codebase-architecture`, `diagnose`) you need to teach the
 plugin about *this* repo's setup. From inside the repo, run:
 
 ```

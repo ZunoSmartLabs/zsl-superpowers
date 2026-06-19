@@ -58,7 +58,6 @@ flowchart TB
     inbox --> triage_in["/zsl:triage"]:::cross
 
     health --> ica["/zsl:improve-codebase-architecture<br/><i>every few days</i>"]:::cross
-    health --> zoom["/zsl:zoom-out<br/><i>lost in code</i>"]:::cross
 
     other --> prototype["/zsl:prototype<br/><i>throwaway exploration</i>"]:::misc
     other --> handoff["/zsl:handoff<br/><i>compact session → next agent</i>"]:::misc
@@ -136,7 +135,6 @@ The overnight loop — schedule dedicated remote sessions, run them unattended, 
 | Skill | When to reach for it |
 |---|---|
 | [improve-codebase-architecture](improve-codebase-architecture.md) | Every few days, to find deepening opportunities and fight entropy. Step 4 optionally renders an HTML report mixing Mermaid graphs with hand-built SVG when candidates would land better visually than as a numbered list. |
-| [zoom-out](zoom-out.md) | When you're lost in unfamiliar code and need higher-level framing. |
 
 ### Off-loop and meta
 

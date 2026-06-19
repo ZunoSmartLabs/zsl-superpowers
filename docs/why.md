@@ -95,7 +95,6 @@ radically speed up *entropy*. Codebases get complex faster than ever.
 into every layer of these skills:
 
 - [`/zsl:to-prd`](skills/to-prd.md) quizzes you about which modules you're touching before writing the PRD.
-- [`/zsl:zoom-out`](skills/zoom-out.md) makes the agent explain code in the context of the whole system.
 - [`/zsl:improve-codebase-architecture`](skills/improve-codebase-architecture.md) rescues a codebase that's already a ball of mud — run it every few days.
 
 ## The throughline

@@ -78,7 +78,6 @@ reasoning behind each, see [Why these skills exist](why.md).
 | The agent is way too verbose | [`/zsl:grill-with-docs`](skills/grill-with-docs.md) — builds shared language inline in `CONTEXT.md` and ADRs |
 | The code doesn't work | [`/zsl:tdd`](skills/tdd.md) for red-green-refactor; [`/zsl:diagnose`](skills/diagnose.md) when the bug is real |
 | We built a ball of mud | [`/zsl:improve-codebase-architecture`](skills/improve-codebase-architecture.md) every few days |
-| I'm lost in this code | [`/zsl:zoom-out`](skills/zoom-out.md) |
 | Need to break a PRD into work | [`/zsl:to-prd`](skills/to-prd.md) → [`/zsl:to-issues`](skills/to-issues.md) → [`/zsl:triage`](skills/triage.md) |
 | Multiple slices ready to ship at once | [`/zsl:tdd-parallel`](tdd-parallel.md) — one integration PR, not N |
 | Want PRDs built while you sleep | [`/zsl:afk-fanout`](skills/afk-fanout.md) → overnight remote runs → [`/zsl:morning-review`](skills/morning-review.md) |
