@@ -45,7 +45,7 @@ which folder it sits in.
 | Bucket | What's in it |
 |---|---|
 | `engineering/` | Daily code-work skills — the bulk of the loop. |
-| `productivity/` | Daily non-code workflow tools (`grill-me`, `timesheet`, `caveman`, `handoff`, `writing-great-skills`). |
+| `productivity/` | Daily non-code workflow tools (`grill-me`, `timesheet`, `handoff`, `writing-great-skills`). |
 | `misc/` | Kept around but rarely reached for (`edit-article`, `setup-pre-commit`, `steampipe`). |
 | `remote-agents/` | The overnight loop (`afk-fanout`, `afk-worker`, `morning-review`). |
 

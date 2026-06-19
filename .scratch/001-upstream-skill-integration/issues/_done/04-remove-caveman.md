@@ -33,3 +33,9 @@ named is the changelog (which records its removal).
 ## Blocked by
 
 - #11 ([AFK] 1 — Establish invocation taxonomy)
+
+## Verification
+
+Ran on the feature branch — observable PASS, `make lint test docs` exit 0.
+
+- Story 20: `skills/productivity/caveman/` is absent (git rm). `grep -rn caveman` over the repo excluding `docs/changelog.md`, `.scratch/` (the PRD/issue spec that describes the removal), and `site/` (build output) → no hits. Swept from all parallel surfaces: plugin.json, top README, bucket README, docs/skills/index.md role table + decision-tree node, mkdocs.yml nav, plus docs/architecture.md, docs/workflow.md (mermaid node + table link), docs/faq.md, docs/quickstart.md.
