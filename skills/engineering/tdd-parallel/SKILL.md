@@ -7,7 +7,7 @@ description: Full-auto PRD pipeline. Fans out the unblocked [AFK] sub-tasks of a
 
 Full-auto pipeline from a PRD to a pushed integration PR: fanout → integrate → review → verify → fix → push, with no mid-run human gates in the happy path. Each `/tdd` sub-agent runs `/tdd <num> --no-ship` in its own worktree, committing locally but never pushing. The orchestrator merges every slice branch onto the parent's PRD branch (which doubles as the integration branch) in wave order with `--no-ff`, runs an integration code review, then chains `/verify-coverage --auto` and loops on any gaps it files before opening one consolidated PR.
 
-`[HITL]` slices don't block the whole run — they're *deferred*. The pre-flight runs every slice whose transitive `Blocked by` closure is HITL-free and defers each open `[HITL]` slice plus everything transitively downstream of it. When anything is deferred, the run is **partial**: it ships the runnable slices in a `[partial]` PR that leaves the parent PRD *open*, with a re-entry recipe for landing the remainder after the gate clears via `/human-itl`. A PRD with no open `[HITL]` slices behaves exactly as a full run — closes the parent, no `[partial]` marker. The pre-flight still refuses any PRD whose *in-scope* user stories aren't 100% `acceptance: automatable` (per `/to-prd`'s tag format), and refuses outright only when no slice is runnable at all. Once `/tdd-parallel` starts, it runs through to PR-push or a circuit-breaker halt.
+`[HITL]` slices don't block the whole run — they're *deferred*. The pre-flight runs every slice whose transitive `Blocked by` closure is HITL-free and defers each open `[HITL]` slice plus everything transitively downstream of it. When anything is deferred, the run is **partial**: it ships the runnable slices in a `[partial]` PR that leaves the parent PRD *open*, with a re-entry recipe for landing the remainder after the gate clears via `/human-itl`. A PRD with no open `[HITL]` slices behaves exactly as a full run — closes the parent, no `[partial]` marker. The pre-flight still refuses any PRD whose *in-scope* user stories lack an `AC<n>:` acceptance criterion (per `/to-prd`'s story format), and refuses outright only when no slice is runnable at all. Once `/tdd-parallel` starts, it runs through to PR-push or a circuit-breaker halt.
 
 PR-style repos only — direct-push fanouts merge straight to `main` without consolidation.
 
@@ -132,7 +132,7 @@ This is a lightweight pass whose only job is to size `runnable`/`deferred` and s
 Refuse with a clear message if either of these fails:
 
 - **`runnable` is empty** — every slice is deferred (gated behind an open `[HITL]`, or still in triage). There is nothing to do this run. List the open `[HITL]` issue numbers + titles and tell the user to clear them via `/human-itl <parent>` first, then re-invoke. This is the **only** `[HITL]`-related refusal — the presence of *some* open `[HITL]` slices alongside runnable ones is expected and triggers a partial run, not a refusal.
-- **An in-scope user story is not automatable.** Scope this check to the stories the `runnable` slices cover — their `## User stories covered` sections (per `/to-issues`). Every such story must carry `acceptance: automatable` AND at least one `AC<n>:` acceptance-criterion sub-bullet in the exact format `/to-prd` writes. Any in-scope story tagged anything other than `automatable` (e.g. `manual-attestation`, removed from this pipeline), or carrying no `AC<n>:` criterion, is invalid — refuse with the offending story numbers and a pointer to `/to-prd`'s story format (typically the PRD pre-dates the requirement, or a non-automatable story was added by hand). A legacy `observable:` sub-bullet counts as one acceptance criterion for back-compat. Stories covered **only** by `deferred` slices need not satisfy this gate *this run* — they're checked when a later run makes them in-scope.
+- **An in-scope user story is not automatable.** Scope this check to the stories the `runnable` slices cover — their `## User stories covered` sections (per `/to-issues`). Every such story must carry at least one `AC<n>:` acceptance-criterion sub-bullet in the exact format `/to-prd` writes — that criterion is what makes the story expressible as a test. Any in-scope story carrying no `AC<n>:` criterion is invalid — refuse with the offending story numbers and a pointer to `/to-prd`'s story format (typically the PRD pre-dates the requirement, or a non-automatable story was added by hand). A legacy `observable:` sub-bullet counts as one acceptance criterion for back-compat; a legacy `acceptance:` tag, if present, is ignored. Stories covered **only** by `deferred` slices need not satisfy this gate *this run* — they're checked when a later run makes them in-scope.
 
 These checks fail fast and surface the exact thing to fix. Once 1d passes, the auto-loop is committed: it will run through to PR push (full or `[partial]`) or a circuit-breaker halt, with no further human prompts in the happy path.
 
@@ -303,7 +303,7 @@ If `/code-review --auto` halts (lint or tests fail after applying review commits
 
 Auto-chain `/zsl:verify-coverage --auto <parent>` against the
 integrated tip. Verify-coverage runs Tier A then Tier B for every
-in-scope user story (the PRD's `acceptance: automatable` tags
+in-scope user story (the per-story `AC<n>:` criteria
 guaranteed at 1d mean there is no classification step), commits any
 quarantined Tier-B-RED tests via `/commit`, files any gaps as
 `ready-for-agent` sub-issues of the PRD, writes a coverage receipt,
@@ -469,7 +469,7 @@ The orchestrator session can now be closed. Slice worktrees and branches remain 
 
 Seven failure paths halt the run, all with the same shape: print a hybrid RCA, leave state inspectable, stop. The orchestrator does not attempt resume — the user takes over from the halted state.
 
-- **Pre-flight refusal** (1d): the parent isn't a PRD, an *in-scope* story is untagged/non-automatable, or **no slice is runnable** (every slice is deferred behind an open `[HITL]` or still in triage). Open `[HITL]` slices *alongside* runnable ones no longer refuse — they trigger a partial run. Refuses up front, before any branch work — no state to inspect.
+- **Pre-flight refusal** (1d): the parent isn't a PRD, an *in-scope* story carries no `AC<n>:` criterion, or **no slice is runnable** (every slice is deferred behind an open `[HITL]` or still in triage). Open `[HITL]` slices *alongside* runnable ones no longer refuse — they trigger a partial run. Refuses up front, before any branch work — no state to inspect.
 - **Agent failure** (3d): a sub-agent errored, refused, or returned without a mergeable branch.
 - **Unresolvable merge conflict** (3e): `git merge --no-ff` conflicted and the orchestrator's auto-resolve attempt couldn't produce a clean, lint+test-passing merge. The merge is left in its conflicted state on the PRD branch.
 - **Zero-progress** (3a): no slices unblock and the fanout isn't complete.

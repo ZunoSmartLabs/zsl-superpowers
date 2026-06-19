@@ -46,6 +46,19 @@ plugins:
 hooks:
   - scripts/mkdocs_hooks/skill_pages.py
 
+# ADRs are contributor records about the plugin's own architecture, not
+# user-facing site content. They live in docs/adr/ but are intentionally
+# kept out of the nav; this suppresses the --strict "not in nav" error.
+not_in_nav: |
+  adr/*
+
+# docs/agents/ is this repo's own per-repo agent config (written by
+# /setup-zsl-superpowers — issue tracker, triage labels, domain, ship style,
+# project board). It is consumed by the engineering skills, not published as
+# site content, so it's excluded from the build entirely.
+exclude_docs: |
+  agents/
+
 nav:
   - Home: index.md
   - Why these skills exist: why.md

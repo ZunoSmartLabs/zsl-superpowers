@@ -12,6 +12,7 @@ format:
 # Python scripts via pytest; shell scripts via their own assertion runners.
 test:
 	uvx --with pytest pytest skills -q
+	bash skills/engineering/setup-zsl-superpowers/scripts/tests/test_set_status_options.sh
 	bash skills/engineering/tdd-parallel/scripts/tests/test_preflight.sh
 	bash skills/remote-agents/afk-fanout/scripts/tests/test_write_afk_entry.sh
 	bash skills/remote-agents/afk-fanout/scripts/tests/test_resolve_origin_url.sh
