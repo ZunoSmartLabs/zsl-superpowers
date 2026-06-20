@@ -1,12 +1,11 @@
 ---
 name: commit
-description: Plan and create git commits autonomously for changes made in this session (no per-commit approval prompt). Cross-session dirty files — files modified outside this conversation's tool calls — get confirmed before inclusion. Explicit file lists only, never `git add -A`. No Claude attribution lines. Use when user wants to commit, says "/commit", or asks to land changes.
-disable-model-invocation: true
+description: Plan and create git commits autonomously for changes made in this session (no per-commit approval prompt). Cross-session dirty files — files modified outside this conversation's tool calls — get confirmed before inclusion. Explicit file lists only, never `git add -A`. No Claude attribution lines. Use when the user wants to commit, says "/commit", or asks to land changes — and composable by any skill that needs to land changes (e.g. commit-push-pr, tdd-parallel).
 ---
 
 # Commit Changes
 
-Fully autonomous for changes made in this session. The user invoked `/commit` — *that* is the approval. Don't pause to ask "Shall I proceed?"
+Fully autonomous for changes made in this session. Whoever summoned this skill — the user typing `/commit`, or another skill composing it as its commit step — *that* is the approval. Don't pause to ask "Shall I proceed?"
 
 The only legitimate reason to stop and ask is **cross-session ambiguity**: dirty files in the tree that this conversation didn't produce.
 
