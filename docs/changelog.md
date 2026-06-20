@@ -4,6 +4,36 @@ For the full commit history, see
 [github.com/ZunoSmartLabs/zsl-superpowers/commits/main](https://github.com/ZunoSmartLabs/zsl-superpowers/commits/main).
 This page summarises the user-facing changes per plugin version.
 
+## 2.1.0
+
+Sharpen the **`/commit`** skill in two ways.
+
+**Model-invocable.** `/commit` no longer carries `disable-model-invocation: true`,
+so it can fire on a task match as well as on an explicit `/commit` — and, more
+importantly, orchestrators that already delegate to it (`commit-push-pr`,
+`tdd-parallel`) can now compose it legitimately. Under the taxonomy's composition
+rule (a user-invoked skill may call a model-invoked one, never another
+orchestrator) that delegation was previously a latent violation; this resolves it.
+
+**Opinionated branch routing.** On PR-ship-style repos, `/commit` now decides
+where a commit lands instead of refusing on `main`:
+
+- a commit whose files are **all documentation** (`docs/**`, narrative `*.md`) or
+  under **`.scratch/`** commits straight to `main`;
+- a commit that **touches code** — source, scripts, a `SKILL.md`, or a sync/build
+  manifest (`plugin.json`, `marketplace.json`, `mkdocs.yml`, `Makefile`) — is moved
+  onto a feature branch the skill **creates itself**, then commits there;
+- a **mixed** docs+code commit counts as code and goes to the branch whole.
+
+### Upgrading from 2.0
+
+- `/commit` can now auto-fire when Claude judges the task calls for committing —
+  it is no longer summon-only. If you relied on it never triggering on its own,
+  invoke it only explicitly and review the staged set as before.
+- On `main`, `/commit` no longer refuses code changes — it silently creates a
+  feature branch and commits there. Documentation and `.scratch/` changes still
+  land directly on `main`. The branch name follows the usual prefix convention.
+
 ## 2.0.0
 
 Adopt a lightweight **User-invoked / Model-invoked** skill taxonomy, use it to
