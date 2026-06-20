@@ -65,10 +65,5 @@ feature:
 challenge on the PRD concept name. Is PRD really the correct name?
 
 feature:
-/zsl:commit should push to main if it's a documenton change that is being made
-on the main branch. If it's a code change, it should create a PR. This is an opinionated
-workflow that we want to enforce.
-
-feature:
 /zsl:tdd-parallel and /zsl:tdd should be moving the associated remote ticket from To Do
 to In Progress when the skill is run. This is a nice way to keep the remote board in sync with the local work.
