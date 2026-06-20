@@ -33,10 +33,13 @@ directly — it must **not** call `grill-with-docs`, which is itself user-invoke
 
 Two payoffs:
 
-- **Predictable orchestrators.** Flagging `commit`, `commit-push-pr`,
-  `afk-fanout`, `tdd-parallel` and the other pure orchestrators with
+- **Predictable orchestrators.** Flagging `commit-push-pr`, `afk-fanout`,
+  `tdd-parallel` and the other pure orchestrators with
   `disable-model-invocation: true` guarantees they only run when typed — no
-  surprise auto-fire mid-task.
+  surprise auto-fire mid-task. (`commit` is the exception: it stays
+  model-invoked so those orchestrators can compose it as their commit step —
+  a user-invoked skill may call a model-invoked one, but not another
+  orchestrator.)
 - **Deduplicated knowledge.** Shared reference material (the deep-module
   vocabulary, the ADR/CONTEXT formats, the grilling loop) lives in *one*
   model-invoked skill (`codebase-design`, `domain-modeling`, `grilling`) that
