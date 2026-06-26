@@ -17,6 +17,8 @@ A deep module (as opposed to a shallow module) is one which encapsulates a lot o
 
 Check with the user that these modules match their expectations. Check with the user which modules they want tests written for.
 
+From those modules, draw a **high-level architecture diagram in ASCII** for the top of the PRD. Show the major components (the modules from this step plus the external systems they talk to) as labelled boxes, and the primary data/control flow between them as arrows. Keep it to the dozen-or-so boxes that orient a reader — it's a map, not a wiring diagram, so omit incidental helpers and leave per-module internals to the Implementation Decisions section. Fence it in a plain ``` block so it survives copy/paste into the issue tracker.
+
 3. **Write each story at value altitude; push the testable detail into acceptance criteria.** A user story is a slice of *user value* — who, what capability, why — and the story line must stay there: no endpoints, no status codes, no state names, no implementation. Every concrete, testable assertion moves *down* into the story's acceptance criteria, where technical detail belongs. For each story, write:
    - The `As an <actor>, I want <capability>, so that <benefit>` line — value only, no technical detail.
    - One or more `AC<n>: <assertion>` sub-bullets — the **acceptance criteria**. Each states *what public-interface behaviour* a test would assert — an API result, a state transition, a rendered value, an emitted event (e.g. "POST /login with valid creds returns 200 + sets `session` cookie; with invalid creds returns 401"). The acceptance criteria are the contract `/verify-coverage`'s Tier B generates tests against, so be concrete: name the endpoint/state/event, not the implementation. When one capability needs several distinct assertions, give it several ACs — do **not** fracture it into multiple stories just to give each one a single observable (that is exactly what made earlier PRDs read like a flat list of acceptance criteria).
@@ -26,6 +28,28 @@ Check with the user that these modules match their expectations. Check with the 
 4. Write the PRD using the template below, then publish it to the project issue tracker. Apply both the `ready-for-agent` triage label (no additional triage needed — you just wrote it) and the `backlog` label (so it shows up on the project board).
 
 <prd-template>
+
+## Architecture Overview
+
+A high-level ASCII architecture diagram, fenced in a plain ``` block, that orients the reader before they read a word of prose. Boxes are the major components/modules; arrows are the primary data and control flow between them and the external systems they touch.
+
+<architecture-example>
+```
+        ┌──────────────┐        ┌──────────────────┐
+        │  Mobile App  │──────▶│   API Gateway    │
+        └──────────────┘   GET  └────────┬─────────┘
+                                          │
+                          ┌───────────────┼───────────────┐
+                          ▼               ▼               ▼
+                  ┌──────────────┐ ┌────────────┐ ┌──────────────┐
+                  │ Auth Service │ │  Accounts  │ │ Transactions │
+                  └──────────────┘ └─────┬──────┘ └──────┬───────┘
+                                         ▼               ▼
+                                   ┌───────────────────────────┐
+                                   │      Postgres (ledger)     │
+                                   └───────────────────────────┘
+```
+</architecture-example>
 
 ## Problem Statement
 

@@ -4,6 +4,19 @@ For the full commit history, see
 [github.com/ZunoSmartLabs/zsl-superpowers/commits/main](https://github.com/ZunoSmartLabs/zsl-superpowers/commits/main).
 This page summarises the user-facing changes per plugin version.
 
+## 2.2.0
+
+Every PRD now **opens with a high-level architecture diagram in ASCII.**
+
+`/to-prd` gained a new first section — **Architecture Overview** — above the
+Problem Statement. After sketching the major modules (existing process step 2),
+the skill now draws them as a labelled ASCII box-and-arrow map of the major
+components and the external systems they talk to, fenced in a plain ``` block so
+it survives copy/paste into the issue tracker. It's a map, not a wiring diagram:
+the dozen-or-so boxes that orient a reader, with per-module internals left to the
+Implementation Decisions section. No migration steps — existing PRDs are
+unaffected; only newly generated ones carry the diagram.
+
 ## 2.1.0
 
 Sharpen the **`/commit`** skill in two ways.
