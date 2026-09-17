@@ -18,8 +18,14 @@ Projects are assigned to customers from a per-user JSON file (default
     {"self": "ZunoSmart Labs",
      "customers": {"Spark": {"paths": ["spark-asset-iq"], "domains": ["spark.co.nz"]}}}
 
-`paths` follow the --only/--exclude matching rules; `domains` (and optional
-`titles`) are echoed back so the caller can bucket meetings the same way.
+`paths` follow the --only/--exclude matching rules; everything else in the
+file (`domains`, `titles`, `harvest`, a top-level `calendar`) is echoed back
+untouched for the caller to bucket meetings and propose Harvest entries.
+
+Each project also carries `blocks`: contiguous runs of active buckets in local
+time, split wherever the gap exceeds BLOCK_GAP_MINUTES. A session that spans a
+day can hide an eight-hour gap between its first and last event; the blocks
+show where the work actually sat.
 """
 
 from __future__ import annotations
@@ -44,6 +50,7 @@ NOISE_PATH_FRAGMENTS = ("ClaudeProbe", "CodexBar")
 
 ACTIVE_BUCKET_MINUTES = 5
 BASH_CMD_TRUNCATE = 1500
+BLOCK_GAP_MINUTES = 30
 CUSTOMERS_FILE = Path.home() / ".claude" / "timesheet-customers.json"
 UNASSIGNED = "Unassigned"
 
@@ -171,6 +178,20 @@ def process_session(path: Path, window_start: datetime, window_end: datetime) ->
         "files_touched": [{"path": p, "via": tool} for p, tool in summary["files_touched"].items()],
         "bash_commands": summary["bash_commands"],
     }
+
+
+def active_blocks(buckets: set[int]) -> list[dict]:
+    """Contiguous local-time runs of active buckets, split at gaps over BLOCK_GAP_MINUTES."""
+    step = ACTIVE_BUCKET_MINUTES * 60
+    limit = BLOCK_GAP_MINUTES // ACTIVE_BUCKET_MINUTES
+    runs: list[list[int]] = []
+    for b in sorted(buckets):
+        if runs and b - runs[-1][-1] <= limit:
+            runs[-1].append(b)
+        else:
+            runs.append([b])
+    fmt = lambda b: datetime.fromtimestamp(b * step).astimezone().strftime("%Y-%m-%d %H:%M")  # noqa: E731
+    return [{"start": fmt(r[0]), "end": fmt(r[-1] + 1), "minutes": len(r) * ACTIVE_BUCKET_MINUTES} for r in runs]
 
 
 def merge_nested_projects(project_records: list[dict]) -> list[dict]:
@@ -342,6 +363,7 @@ def strip_internal(digest: dict) -> dict:
         {
             **p,
             "duration_label": fmt_duration(p["active_minutes"]),
+            "blocks": active_blocks(set().union(*(s["_buckets"] for s in p["sessions"]))),
             "sessions": [{k: v for k, v in s.items() if k != "_buckets"} for s in p["sessions"]],
         }
         for p in digest["projects"]

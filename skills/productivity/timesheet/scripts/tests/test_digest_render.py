@@ -126,3 +126,34 @@ def test_strip_internal_labels_customers():
     d["customers"] = [{"name": "Spark", "active_minutes": 90}]
     out = ds.strip_internal(d)
     assert out["customers"][0]["duration_label"] == "1.5h"
+
+
+def test_active_blocks_fails_the_prose_way():
+    # One session's first and last events are nine hours apart, but the work sat
+    # in two runs with an eight-hour hole. Reading started_at/ended_at as the
+    # working window over-bills by eight hours; the blocks split at the gap.
+    old_tz = os.environ.get("TZ")
+    os.environ["TZ"] = "UTC"
+    time.tzset()
+    try:
+        base = int(time.mktime((2026, 9, 16, 0, 0, 0, 0, 0, 0))) // 300  # 2026-09-16 00:00 UTC
+        buckets = {base + i for i in range(0, 11)} | {base + 104, base + 105} | {base + 108}
+        blocks = ds.active_blocks(buckets)
+    finally:
+        if old_tz is None:
+            os.environ.pop("TZ", None)
+        else:
+            os.environ["TZ"] = old_tz
+        time.tzset()
+    assert [(b["start"][11:], b["end"][11:], b["minutes"]) for b in blocks] == [
+        ("00:00", "00:55", 55),
+        ("08:40", "09:05", 15),  # the 10-minute gap at 106-107 stays inside one block
+    ]
+
+
+def test_strip_internal_adds_blocks_per_project():
+    d = _digest(10)
+    d["projects"][0]["sessions"] = [{"_buckets": {5_000_000, 5_000_001}}]
+    out = ds.strip_internal(d)
+    assert out["projects"][0]["blocks"][0]["minutes"] == 10
+    assert "_buckets" not in out["projects"][0]["sessions"][0]
