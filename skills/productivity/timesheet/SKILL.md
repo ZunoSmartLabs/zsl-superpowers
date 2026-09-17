@@ -24,7 +24,7 @@ Use `python3 "$DIGEST" …` for every invocation below.
 
 - **`duration_label`** from integer `active_minutes`: `< 60` → `"{minutes}m"`; else `h = minutes/60` → `"{int}h"` when whole, else `"{h:.1f}h"` (270 → `4.5h`, 90 → `1.5h`, 180 → `3h`, 45 → `45m`).
 - **`window_header`**: `window_start`/`window_end` in **local** time as `"_{start:%Y-%m-%d %H:%M} → {end:%H:%M} {TZ}_"`. **`window_phrase`**: `"last {n} hour{s}"`, singular only when `n == 1`.
-- **`blocks`**: sort a project's active 5-minute buckets and split wherever two neighbours are more than 30 minutes apart; each run is one block from its first bucket's start to its last bucket's end.
+- **`blocks`**: sort a project's active 5-minute buckets and split wherever two neighbours are more than 30 minutes apart or the customer changes; each run is one block from its first bucket's start to its last bucket's end. A bucket's customer is the project's until a user prompt mentions another customer's `prompts` keyword, which holds until the next keyword or a gap.
 
 ## Required workflow
 
@@ -34,7 +34,7 @@ Use `python3 "$DIGEST" …` for every invocation below.
 
 2. **Resolve the customers file** (see step 3's note) so every project has a customer before anything renders.
 
-3. **Extract sessions.** `python3 "$DIGEST" [--exclude PATTERN] [--only PATTERN] [--merge-nested]` prints JSON. Top level: `window_start`/`window_end` (ISO, UTC), `window_header`, `window_phrase`, `customers[]` (name, `duration_label`, already ordered) and `customer_config` (the user's map, echoed). Per project: `customer`, `duration_label`, `blocks[]` (local `start`/`end`/`minutes`) and `sessions[]`, each with `user_prompts`, `files_touched`, `bash_commands` (deduped). **Copy every `duration_label`, `window_header`, `window_phrase` and block boundary verbatim.**
+3. **Extract sessions.** `python3 "$DIGEST" [--exclude PATTERN] [--only PATTERN] [--merge-nested]` prints JSON. Top level: `window_start`/`window_end` (ISO, UTC), `window_header`, `window_phrase`, `customers[]` (name, `duration_label`, already ordered) and `customer_config` (the user's map, echoed). Per project: `customer`, `duration_label`, `blocks[]` (local `start`/`end`/`minutes`/`customer`) and `sessions[]`, each with `user_prompts`, `files_touched`, `bash_commands` (deduped). **Copy every `duration_label`, `window_header`, `window_phrase` and block boundary verbatim.**
 
    `customers` is `null` when `~/.claude/timesheet-customers.json` does not exist. Then, once, propose the file from the day's projects (one entry per customer with `paths`, `domains`, `titles`, `harvest`; the user's own company as `self`; their `calendar` id), write it on their yes, and re-run. A project whose `customer` is `null` gets one question — which customer? — and an added `paths` pattern. Never keep the map in memory alone: the file is what makes the grouping repeatable.
 
@@ -61,11 +61,11 @@ Apply in order:
 - **Collapse WIP sequences.** Commits that all advance one outcome ("wip", "fix typo", "Add foo") become one bullet with the outcome subject.
 - **Dedupe within a project.** Identical subjects appear once.
 - **Tense.** Keep the commit messages' imperative ("Add X", "Remove Y").
-- **Meetings are outcomes.** One bullet per meeting, in start order: `**<title>** — <counterparties by organisation> · <the decision or next step> · [notes](https://notes.granola.ai/d/<meeting id>)`. The link is the Granola meeting's id from `list_meetings`; it opens for the user and anyone the note is shared with, and is omitted for calendar-only meetings. A Granola summary supplies the outcome; a calendar-only meeting gets its attendees' organisations and, failing anything better, its title. Summaries only — never quote transcripts, credentials, or personal contact details. A window with meetings but no commits still renders.
+- **Calendar entries are outcomes.** One bullet per meeting or calendar event, in start order: `**<title>** — <counterparties by organisation> · <the decision or next step> · [notes](https://notes.granola.ai/d/<meeting id>)`. The link is the Granola meeting's id from `list_meetings`; it opens for the user and anyone the note is shared with, and is omitted for calendar-only meetings. A Granola summary supplies the outcome; a calendar-only meeting gets its attendees' organisations and, failing anything better, its title. Summaries only — never quote transcripts, credentials, or personal contact details. A window with meetings but no commits still renders.
 - **Group by customer.** Every repo and meeting sits under a `## <Customer>` heading. Repos carry `customer` from the JSON; a meeting belongs to the customer whose `domains` match its participants' email domains or whose `titles` match its title, else to `self`. Customer order is the JSON's `customers[]` order: unassigned first, then by active time, the user's own company last.
 - **Close with "How the day went".** After the outcome sections, a `## How the day went` section: three to six bullets in clock order, each opening with a bold time range and thread name, telling what was investigated, decided, or built — including work that produced no commit, which is exactly what the outcome bullets drop. Two sentences per bullet at most.
 
-Output format: title line `# Timesheet — <window_phrase>`, second line `window_header`, then one `## <Customer>` block per customer holding its repos (`### <name> · <duration_label>`, active time descending) and its `### Meetings · <count>` (omit when none), then a single `## How the day went` for the whole window. `window_phrase`, `window_header` and every `duration_label` are copied verbatim, never recomputed:
+Output format: title line `# Timesheet — <window_phrase>`, second line `window_header`, then one `## <Customer>` block per customer holding its repos (`### <name> · <duration_label>`, active time descending) and its `### Calendar · <count>` (omit when none), then a single `## How the day went` for the whole window. `window_phrase`, `window_header` and every `duration_label` are copied verbatim, never recomputed:
 
 ```
 # Timesheet — last 12 hours
@@ -77,7 +77,7 @@ _2026-05-09 12:00 → 00:00 NZST_
 - Migrate Cognito user/identity pools to ap-southeast-6
 - Polish READMEs with cross-references and updated seed-data layout
 
-### Meetings · 1
+### Calendar · 1
 - **AssetIQ platform review** — Cloudflare, Spark · Cloudflare to send a platform blueprint; next step is a working AI demo for Spark leadership · [notes](https://notes.granola.ai/d/08bd16bb-f53c-4996-80d8-624a5cc9e260)
 
 ## ZunoSmart Labs
@@ -92,7 +92,7 @@ _2026-05-09 12:00 → 00:00 NZST_
 
 ## Harvest rules
 
-- **One row per project block, one row per meeting, no exceptions.** A project's `blocks[]` become rows on its customer's `harvest.project` and `harvest.task`; each accepted meeting becomes a row on its customer's project, using `harvest.meetings_task` when set. There is no minimum: a ten-minute block is a ten-minute row. Round block edges to the enclosing five minutes; never merge across a meeting or across customers.
+- **One row per project block, one row per meeting, no exceptions.** A project's `blocks[]` become rows on the **block's** `customer` (not the project's — a block re-attributed by a `prompts` keyword bills the other customer) using that customer's `harvest.project` and `harvest.task`; each accepted meeting becomes a row on its customer's project, using `harvest.meetings_task` when set. There is no minimum: a ten-minute block is a ten-minute row. Round block edges to the enclosing five minutes; never merge across a meeting or across customers.
 - **A missing home is a suggestion, not a dropped row.** When a customer has no `harvest` mapping, or `list_projects` / `list_project_assignments` cannot find the mapped project or task, keep the row in the table with the project column reading `needs project`, and under the table suggest exactly what to add in Harvest — client, project name, task — offering to create it with `create_project` / `add_task_to_project` on a yes, then write the mapping into the customers file. Unknown does not mean unbilled.
 - **Ambiguity is a question in the table, not a hold.** Two calendar events that overlap, or a meeting whose customer is unclear, still get their rows; the notes column names the question and the user answers it before the yes.
 - **Calendar wins on duration.** A meeting's row spans the calendar event. With no calendar event, one hour from the Granola start, flagged as assumed.
@@ -108,5 +108,5 @@ _2026-05-09 12:00 → 00:00 NZST_
 - `--only PATTERN` / `--exclude PATTERN` — bare patterns match basename (case-insensitive substring); patterns containing `/` match the full cwd. Repeatable; `--exclude` is ignored when `--only` is set.
 - `--merge-nested` — fold projects nested under another project's cwd into the parent. Monorepos only: a repo cloned inside a plain customers folder would be renamed after the folder.
 - `--include-noise` — keep ClaudeProbe / CodexBar health-check sessions. Implicit with `--only`.
-- `--customers PATH` — customer map JSON; default `~/.claude/timesheet-customers.json`. `{"self": "<my company>", "calendar": "<calendar id>", "customers": {"<name>": {"paths": [...], "domains": [...], "titles": [...], "harvest": {"project": "<name>", "task": "<name>", "meetings_task": "<name>"}}}}`; `paths` use the `--only` matching rules, first matching entry wins, so list specific repos before an org-wide catch-all, and write them with a `/` (`zunosmartlabs/spark-asset-iq`) so the repo's worktrees and `.scratch` sessions inherit the customer.
+- `--customers PATH` — customer map JSON; default `~/.claude/timesheet-customers.json`. `{"self": "<my company>", "calendar": "<calendar id>", "customers": {"<name>": {"paths": [...], "prompts": [...], "domains": [...], "titles": [...], "harvest": {"project": "<name>", "task": "<name>", "meetings_task": "<name>"}}}}`; `prompts` are case-insensitive substrings of a user prompt that move the following minutes to that customer inside another customer's repo; `paths` use the `--only` matching rules, first matching entry wins, so list specific repos before an org-wide catch-all, and write them with a `/` (`zunosmartlabs/spark-asset-iq`) so the repo's worktrees and `.scratch` sessions inherit the customer.
 - `--projects-dir PATH` — alternative to `~/.claude/projects` (rare).

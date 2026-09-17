@@ -77,15 +77,16 @@ def test_strip_internal_single_hour_header():
     assert out["projects"][0]["duration_label"] == "1h"
 
 
-def _project(cwd: str, buckets: set[int]) -> dict:
-    return {"cwd": cwd, "active_minutes": len(buckets) * 5, "sessions": [{"_buckets": buckets}]}
+def _project(cwd: str, buckets: set[int], marks: list | None = None) -> dict:
+    return {"cwd": cwd, "active_minutes": len(buckets) * 5, "sessions": [{"_buckets": buckets, "_marks": marks or []}]}
 
 
 _CONFIG = {
     "self": "ZunoSmart Labs",
     "customers": {
         "Spark": {"paths": ["spark-asset-iq"], "domains": ["spark.co.nz"]},
-        "Thundergrid": {"paths": ["thundergrid149/"]},
+        "Thundergrid": {"paths": ["thundergrid149/"], "prompts": ["thundergrid"]},
+        "SeenSafety": {"paths": ["tgmedia-customers/seensafety"], "prompts": ["seensafety"]},
         "ZunoSmart Labs": {"paths": ["zunosmartlabs/"]},
     },
 }
@@ -109,8 +110,9 @@ def test_assign_customers_orders_unassigned_first_and_self_last():
     ]
     roll_up = ds.assign_customers(projects, _CONFIG)
     assert roll_up is not None
-    assert [c["name"] for c in roll_up] == ["Unassigned", "Spark", "Thundergrid", "ZunoSmart Labs"]
-    assert projects[2]["customer"] is None
+    # By minutes: Spark 15, SeenSafety 10, Thundergrid 5; self last regardless of its 30.
+    assert [c["name"] for c in roll_up] == ["Spark", "SeenSafety", "Thundergrid", "ZunoSmart Labs"]
+    assert projects[2]["customer"] == "SeenSafety"
     # Self has the most minutes but still sorts last; minutes are unioned per customer.
     assert roll_up[-1] == {"name": "ZunoSmart Labs", "active_minutes": 30}
 
@@ -118,7 +120,8 @@ def test_assign_customers_orders_unassigned_first_and_self_last():
 def test_assign_customers_off_without_a_config():
     projects = [_project("/code/anything", {1})]
     assert ds.assign_customers(projects, None) is None
-    assert "customer" not in projects[0]
+    assert projects[0]["customer"] is None
+    assert projects[0]["blocks"][0]["minutes"] == 5 and projects[0]["blocks"][0]["customer"] is None
 
 
 def test_strip_internal_labels_customers():
@@ -128,7 +131,7 @@ def test_strip_internal_labels_customers():
     assert out["customers"][0]["duration_label"] == "1.5h"
 
 
-def test_active_blocks_fails_the_prose_way():
+def test_blocks_split_at_gaps_fails_the_prose_way():
     # One session's first and last events are nine hours apart, but the work sat
     # in two runs with an eight-hour hole. Reading started_at/ended_at as the
     # working window over-bills by eight hours; the blocks split at the gap.
@@ -138,7 +141,7 @@ def test_active_blocks_fails_the_prose_way():
     try:
         base = int(time.mktime((2026, 9, 16, 0, 0, 0, 0, 0, 0))) // 300  # 2026-09-16 00:00 UTC
         buckets = {base + i for i in range(0, 11)} | {base + 104, base + 105} | {base + 108}
-        blocks = ds.active_blocks(buckets)
+        blocks = ds.blocks_from([(b, "SeenSafety") for b in sorted(buckets)])
     finally:
         if old_tz is None:
             os.environ.pop("TZ", None)
@@ -151,9 +154,27 @@ def test_active_blocks_fails_the_prose_way():
     ]
 
 
-def test_strip_internal_adds_blocks_per_project():
+def test_prompt_keywords_reattribute_time_fails_the_prose_way():
+    # Ten minutes of Thundergrid work done from the SeenSafety checkout. Billing
+    # by checkout path puts all 50 minutes on SeenSafety; the prompt that names
+    # Thundergrid moves its minutes, and the next SeenSafety prompt moves back.
+    marks = [(100, "clone the repo"), (105, "apply the same method to the Thundergrid accounts"), (107, "what about steampipe across the seensafety accounts?"), (108, "/init")]
+    projects = [_project("/code/gitlab.com/tgmedia-customers/seensafety-aws-architecture", set(range(100, 110)), marks)]
+    roll_up = ds.assign_customers(projects, _CONFIG)
+    assert [(b["minutes"], b["customer"]) for b in projects[0]["blocks"]] == [(25, "SeenSafety"), (10, "Thundergrid"), (15, "SeenSafety")]
+    assert roll_up is not None
+    assert {c["name"]: c["active_minutes"] for c in roll_up} == {"SeenSafety": 40, "Thundergrid": 10}
+
+
+def test_prompt_attribution_resets_after_a_gap():
+    marks = [(100, "the Thundergrid routers")]
+    projects = [_project("/code/gitlab.com/tgmedia-customers/seensafety-aws-architecture", {100, 101, 120, 121}, marks)]
+    ds.assign_customers(projects, _CONFIG)
+    assert [b["customer"] for b in projects[0]["blocks"]] == ["Thundergrid", "SeenSafety"]
+
+
+def test_strip_internal_drops_private_session_keys():
     d = _digest(10)
-    d["projects"][0]["sessions"] = [{"_buckets": {5_000_000, 5_000_001}}]
+    d["projects"][0]["sessions"] = [{"_buckets": {5_000_000}, "_marks": [(5_000_000, "hi")], "user_prompts": ["hi"]}]
     out = ds.strip_internal(d)
-    assert out["projects"][0]["blocks"][0]["minutes"] == 10
-    assert "_buckets" not in out["projects"][0]["sessions"][0]
+    assert out["projects"][0]["sessions"][0] == {"user_prompts": ["hi"]}

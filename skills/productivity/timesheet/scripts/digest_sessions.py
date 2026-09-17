@@ -23,9 +23,13 @@ file (`domains`, `titles`, `harvest`, a top-level `calendar`) is echoed back
 untouched for the caller to bucket meetings and propose Harvest entries.
 
 Each project also carries `blocks`: contiguous runs of active buckets in local
-time, split wherever the gap exceeds BLOCK_GAP_MINUTES. A session that spans a
-day can hide an eight-hour gap between its first and last event; the blocks
-show where the work actually sat.
+time, split wherever the gap exceeds BLOCK_GAP_MINUTES or the customer changes.
+A session that spans a day can hide an eight-hour gap between its first and
+last event; the blocks show where the work actually sat. A customer's optional
+`prompts` keywords re-attribute time inside a repo: from a user prompt that
+mentions one, the minutes belong to that customer until another customer's
+keyword or a gap, so ten minutes of Thundergrid work done from the SeenSafety
+checkout land on Thundergrid.
 """
 
 from __future__ import annotations
@@ -112,6 +116,7 @@ def process_session(path: Path, window_start: datetime, window_end: datetime) ->
         "_bash_seen": set(),
     }
     buckets: set[int] = set()
+    marks: list[tuple[int, str]] = []
     in_window_count = 0
     earliest: datetime | None = None
     latest: datetime | None = None
@@ -152,6 +157,7 @@ def process_session(path: Path, window_start: datetime, window_end: datetime) ->
                     prompt = extract_user_prompt(msg)
                     if prompt:
                         user_prompts.append(prompt)
+                        marks.append((bucket_id(ts), prompt))
                 elif etype == "assistant":
                     content = msg.get("content")
                     if isinstance(content, list):
@@ -174,24 +180,56 @@ def process_session(path: Path, window_start: datetime, window_end: datetime) ->
         "event_count": in_window_count,
         "active_minutes": len(buckets) * ACTIVE_BUCKET_MINUTES,
         "_buckets": buckets,
+        "_marks": marks,
         "user_prompts": user_prompts,
         "files_touched": [{"path": p, "via": tool} for p, tool in summary["files_touched"].items()],
         "bash_commands": summary["bash_commands"],
     }
 
 
-def active_blocks(buckets: set[int]) -> list[dict]:
-    """Contiguous local-time runs of active buckets, split at gaps over BLOCK_GAP_MINUTES."""
-    step = ACTIVE_BUCKET_MINUTES * 60
+def _fmt_bucket(b: int) -> str:
+    return datetime.fromtimestamp(b * ACTIVE_BUCKET_MINUTES * 60).astimezone().strftime("%Y-%m-%d %H:%M")
+
+
+def attribute_buckets(project: dict, entries: dict) -> list[tuple[int, str | None]]:
+    """Each active bucket with the customer it belongs to, in time order.
+
+    Attribution starts as the project's path customer. A user prompt that
+    mentions one of a customer's `prompts` keywords switches the minutes from
+    that bucket on to that customer, until another customer's keyword or a gap
+    over BLOCK_GAP_MINUTES resets to the default.
+    """
+    default = project.get("customer")
     limit = BLOCK_GAP_MINUTES // ACTIVE_BUCKET_MINUTES
-    runs: list[list[int]] = []
-    for b in sorted(buckets):
-        if runs and b - runs[-1][-1] <= limit:
-            runs[-1].append(b)
+    keyed = {c: [k.lower() for k in spec.get("prompts", [])] for c, spec in entries.items()}
+    marks = sorted(m for sess in project["sessions"] for m in sess["_marks"])
+    out: list[tuple[int, str | None]] = []
+    current, prev, mi = default, None, 0
+    for b in sorted(set().union(*(sess["_buckets"] for sess in project["sessions"]))):
+        if prev is not None and b - prev > limit:
+            current = default
+        while mi < len(marks) and marks[mi][0] <= b:
+            text = marks[mi][1].lower()
+            current = next((c for c, keys in keyed.items() if any(k in text for k in keys)), current)
+            mi += 1
+        out.append((b, current))
+        prev = b
+    return out
+
+
+def blocks_from(attributed: list[tuple[int, str | None]]) -> list[dict]:
+    """Contiguous runs of buckets, split at gaps over BLOCK_GAP_MINUTES or a customer change."""
+    limit = BLOCK_GAP_MINUTES // ACTIVE_BUCKET_MINUTES
+    runs: list[list[tuple[int, str | None]]] = []
+    for b, c in attributed:
+        if runs and b - runs[-1][-1][0] <= limit and runs[-1][-1][1] == c:
+            runs[-1].append((b, c))
         else:
-            runs.append([b])
-    fmt = lambda b: datetime.fromtimestamp(b * step).astimezone().strftime("%Y-%m-%d %H:%M")  # noqa: E731
-    return [{"start": fmt(r[0]), "end": fmt(r[-1] + 1), "minutes": len(r) * ACTIVE_BUCKET_MINUTES} for r in runs]
+            runs.append([(b, c)])
+    return [
+        {"start": _fmt_bucket(r[0][0]), "end": _fmt_bucket(r[-1][0] + 1), "minutes": len(r) * ACTIVE_BUCKET_MINUTES, "customer": r[0][1]}
+        for r in runs
+    ]
 
 
 def merge_nested_projects(project_records: list[dict]) -> list[dict]:
@@ -245,25 +283,27 @@ def load_customers(path: Path) -> dict | None:
 
 
 def assign_customers(project_records: list[dict], config: dict | None) -> list[dict] | None:
-    """Stamp each project with its customer and return the customer roll-up.
+    """Stamp each project with its customer and blocks; return the customer roll-up.
 
-    First matching entry in file order wins; a project no entry claims is
-    UNASSIGNED, listed first so it gets noticed. The user's own company
-    (`self`) is listed last. Active minutes are unioned across a customer's
-    projects, never summed.
+    First matching `paths` entry in file order wins; a project no entry claims is
+    UNASSIGNED, listed first so it gets noticed. Blocks carry per-bucket
+    attribution (see attribute_buckets), and the roll-up unions attributed
+    buckets per customer, so minutes are never summed twice. The user's own
+    company (`self`) is listed last. Without a config the blocks still come out,
+    with no customer on them, and the roll-up is None.
     """
+    entries = (config or {}).get("customers") or {}
+    own = (config or {}).get("self")
+    pools: dict[str, set[int]] = {}
+    for p in project_records:
+        p["customer"] = next((c for c, spec in entries.items() if project_matches(p["cwd"], spec.get("paths", []))), None)
+        attributed = attribute_buckets(p, entries)
+        p["blocks"] = blocks_from(attributed)
+        for b, c in attributed:
+            pools.setdefault(c or UNASSIGNED, set()).add(b)
     if config is None:
         return None
-    entries = config.get("customers") or {}
-    own = config.get("self")
-    buckets: dict[str, set[int]] = {}
-    for p in project_records:
-        name = next((c for c, spec in entries.items() if project_matches(p["cwd"], spec.get("paths", []))), None)
-        p["customer"] = name
-        pool = buckets.setdefault(name or UNASSIGNED, set())
-        for s in p["sessions"]:
-            pool |= s["_buckets"]
-    records = [{"name": n, "active_minutes": len(b) * ACTIVE_BUCKET_MINUTES} for n, b in buckets.items()]
+    records = [{"name": n, "active_minutes": len(b) * ACTIVE_BUCKET_MINUTES} for n, b in pools.items()]
     rank = lambda r: (r["name"] == own, r["name"] != UNASSIGNED, -r["active_minutes"])  # noqa: E731
     return sorted(records, key=rank)
 
@@ -363,8 +403,7 @@ def strip_internal(digest: dict) -> dict:
         {
             **p,
             "duration_label": fmt_duration(p["active_minutes"]),
-            "blocks": active_blocks(set().union(*(s["_buckets"] for s in p["sessions"]))),
-            "sessions": [{k: v for k, v in s.items() if k != "_buckets"} for s in p["sessions"]],
+            "sessions": [{k: v for k, v in s.items() if k not in ("_buckets", "_marks")} for s in p["sessions"]],
         }
         for p in digest["projects"]
     ]
