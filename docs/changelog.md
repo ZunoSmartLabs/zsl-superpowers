@@ -4,6 +4,19 @@ For the full commit history, see
 [github.com/ZunoSmartLabs/zsl-superpowers/commits/main](https://github.com/ZunoSmartLabs/zsl-superpowers/commits/main).
 This page summarises the user-facing changes per plugin version.
 
+## 2.3.0
+
+`/timesheet` now **folds Granola meetings into the timesheet.**
+
+After extracting the Claude Code sessions, the skill lists the Granola meetings
+that fell inside the same window (through the Granola MCP connector, when the
+session has it), pulls their summaries, and renders them as a final
+`### Meetings · <count>` section — one bullet per meeting naming the
+counterparties by organisation and the decision or next step. Meetings count as
+outcomes, so a day of calls with no commits still produces a timesheet. Without
+the connector the step is skipped silently; nothing else changes. No migration
+steps.
+
 ## 2.2.0
 
 Every PRD now **opens with a high-level architecture diagram in ASCII.**

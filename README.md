@@ -250,7 +250,7 @@ General workflow tools, not code-specific.
 
 - **[grill-me](./skills/productivity/grill-me/SKILL.md)** — Get relentlessly interviewed about a plan or design until every branch of the decision tree is resolved.
 - **[handoff](./skills/productivity/handoff/SKILL.md)** — Compact the current conversation into a handoff document so a fresh agent (or session) can continue cleanly. Saves to the OS temp dir, redacts secrets, references existing artifacts instead of duplicating them.
-- **[timesheet](./skills/productivity/timesheet/SKILL.md)** — Summarize recent Claude Code session histories into timesheet-ready outcome bullets, grouped by project.
+- **[timesheet](./skills/productivity/timesheet/SKILL.md)** — Summarize recent Claude Code session histories, plus Granola meetings from the same window, into timesheet-ready outcome bullets grouped by project.
 - **[writing-great-skills](./skills/productivity/writing-great-skills/SKILL.md)** — Principles and vocabulary for authoring great skills: progressive disclosure, sharp descriptions/triggers, when to bundle deterministic-gate scripts. Replaces the old `write-a-skill` process skill.
 
 ### Misc

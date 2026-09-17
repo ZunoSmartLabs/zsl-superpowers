@@ -14,7 +14,7 @@ The HTTPS certificate is issued automatically by Let's Encrypt; this is a standa
 
 The `zsl` plugin you install via `/plugin install zsl@zsl-superpowers` runs entirely inside your local Claude Code session. The skills do not phone home, do not collect telemetry, and do not transmit any data to ZunoSmartLabs. They operate on the files in your repo and the conversation in your Claude Code session — both of which stay between you and Anthropic per your existing Claude Code agreement.
 
-The [`timesheet`](skills/timesheet.md) skill reads your local Claude Code session histories from `~/.claude/projects/` to summarise recent work. That data never leaves your machine; the skill writes nothing back to those files.
+The [`timesheet`](skills/timesheet.md) skill reads your local Claude Code session histories from `~/.claude/projects/` to summarise recent work. That data never leaves your machine; the skill writes nothing back to those files. If your Claude Code session has the Granola connector, the skill also reads meeting summaries for the same window through it — your own connector, under Granola's terms — and writes nothing back to Granola either. Without the connector that step is skipped.
 
 ## Source code
 
@@ -28,4 +28,4 @@ If this policy changes materially, we'll bump the "Last updated" date below and 
 
 Questions about privacy or the plugin's behaviour: open an issue at [github.com/ZunoSmartLabs/zsl-superpowers/issues](https://github.com/ZunoSmartLabs/zsl-superpowers/issues).
 
-_Last updated: 9 May 2026._
+_Last updated: 18 September 2026._
