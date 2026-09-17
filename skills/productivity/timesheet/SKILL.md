@@ -1,11 +1,11 @@
 ---
 name: timesheet
-description: Summarize recent Claude Code sessions, Granola meetings and calendar events into timesheet bullets grouped by customer, then propose and log the matching Harvest time entries. Use when the user asks "what did I do today", wants a timesheet entry, daily standup notes, a summary of recent Claude Code sessions, or to log their day in Harvest.
+description: Summarize recent Claude Code sessions, Granola meetings, calendar events and sent email into timesheet bullets grouped by customer, then propose and log the matching Harvest time entries. Use when the user asks "what did I do today", wants a timesheet entry, daily standup notes, a summary of recent Claude Code sessions, or to log their day in Harvest.
 ---
 
 # Timesheet
 
-Build a copy/paste-ready Markdown summary of work over a recent window (default 12 hours) — Claude Code sessions grouped by customer, the meetings that fell inside the window, a short narrative of the day — and, where Harvest is connected, the time entries that record it. The script extracts raw session data; **Claude synthesizes the bullets** by reading the bash commands, user prompts, and files touched directly — no command parsing lives in the script.
+Build a copy/paste-ready Markdown summary of work over a recent window (default 12 hours) — Claude Code sessions grouped by customer, the meetings, calendar events and sent email that fell inside the window, a short narrative of the day — and, where Harvest is connected, the time entries that record it. The script extracts raw session data; **Claude synthesizes the bullets** by reading the bash commands, user prompts, and files touched directly — no command parsing lives in the script.
 
 ## Resolve the script (deterministic gate)
 
@@ -42,11 +42,13 @@ Use `python3 "$DIGEST" …` for every invocation below.
 
 5. **Fetch the calendar.** If the Google Calendar MCP tools exist (`mcp__claude_ai_Google_Calendar__list_events`), call it with `calendarId` = `customer_config.calendar` (primary when unset), `startTime`/`endTime` = the same window, `orderBy: "startTime"`. Calendar events are the source of truth for **when** and **how long**: they give Granola meetings their end time, add meetings Granola never saw (in-person, uncaptured), and mark context. Drop events the user declined (`self` attendee with `responseStatus: declined`); all-day and free (`transparency: transparent`) events are context for the narrative, never time entries.
 
-   No Granola or Calendar tools → skip that step silently; never ask the user to connect them.
+6. **Fetch sent mail.** If the Gmail MCP tools exist (`mcp__claude_ai_Gmail__search_threads`), query `in:sent after:<start date> before:<day after end date>` — Gmail's date filters are whole days in the account's timezone — with `view: "THREAD_VIEW_MINIMAL"`, then keep only messages whose `labelIds` include `SENT` and whose `date` falls inside `window_start`/`window_end`. A sent email is a timestamped fact about who the user was working for at that minute; its subject and recipients are all the timesheet needs. Never fetch or quote bodies.
 
-6. **Synthesize the timesheet.** Write outcome bullets per the rules below and print with the standard header.
+   No Granola, Calendar or Gmail tools → skip that step silently; never ask the user to connect them.
 
-7. **Propose Harvest entries.** If the Harvest MCP tools exist (`mcp__harvest__list_projects`, `mcp__harvest__list_project_assignments`, `mcp__harvest__list_time_entries`, `mcp__harvest__log_time`), build the entries per the Harvest rules below, check `list_time_entries` for the window's dates so nothing already logged is proposed twice, and print the table under the timesheet. **Never call `log_time` before the user has said yes to the table**; on yes, log each row with `spent_at`, `started_time`/`ended_time`, `project_id`, `task_id` and `notes`, then confirm the ids. No Harvest tools → end with *"Copy this to your clipboard?"* and on yes `printf '%s' "<bullets>" | pbcopy` (macOS) / `wl-copy` / `xclip -selection clipboard` / `clip` (Windows).
+7. **Synthesize the timesheet.** Write outcome bullets per the rules below and print with the standard header.
+
+8. **Propose Harvest entries.** If the Harvest MCP tools exist (`mcp__harvest__list_projects`, `mcp__harvest__list_project_assignments`, `mcp__harvest__list_time_entries`, `mcp__harvest__log_time`), build the entries per the Harvest rules below, check `list_time_entries` for the window's dates so nothing already logged is proposed twice, and print the table under the timesheet. **Never call `log_time` before the user has said yes to the table**; on yes, log each row with `spent_at`, `started_time`/`ended_time`, `project_id`, `task_id` and `notes`, then confirm the ids. No Harvest tools → end with *"Copy this to your clipboard?"* and on yes `printf '%s' "<bullets>" | pbcopy` (macOS) / `wl-copy` / `xclip -selection clipboard` / `clip` (Windows).
 
 When the request names projects ("timesheet for spark-asset-iq, last 4 hours"), pass them as `--only` and skip the picker.
 
@@ -61,11 +63,12 @@ Apply in order:
 - **Collapse WIP sequences.** Commits that all advance one outcome ("wip", "fix typo", "Add foo") become one bullet with the outcome subject.
 - **Dedupe within a project.** Identical subjects appear once.
 - **Tense.** Keep the commit messages' imperative ("Add X", "Remove Y").
+- **Sent email is evidence.** Under each customer, after Calendar, a `### Email · <count>` section with one line per sent message in time order: `HH:MM **<subject>** → <recipient organisations>`. Attribute by the recipients' email domains against `domains`, else `self`. Subjects and organisations only, never bodies or snippets.
 - **Calendar entries are outcomes.** One bullet per meeting or calendar event, in start order: `**<title>** — <counterparties by organisation> · <the decision or next step> · [notes](https://notes.granola.ai/d/<meeting id>)`. The link is the Granola meeting's id from `list_meetings`; it opens for the user and anyone the note is shared with, and is omitted for calendar-only meetings. A Granola summary supplies the outcome; a calendar-only meeting gets its attendees' organisations and, failing anything better, its title. Summaries only — never quote transcripts, credentials, or personal contact details. A window with meetings but no commits still renders.
 - **Group by customer.** Every repo and meeting sits under a `## <Customer>` heading. Repos carry `customer` from the JSON; a meeting belongs to the customer whose `domains` match its participants' email domains or whose `titles` match its title, else to `self`. Customer order is the JSON's `customers[]` order: unassigned first, then by active time, the user's own company last.
 - **Close with "How the day went".** After the outcome sections, a `## How the day went` section: three to six bullets in clock order, each opening with a bold time range and thread name, telling what was investigated, decided, or built — including work that produced no commit, which is exactly what the outcome bullets drop. Two sentences per bullet at most.
 
-Output format: title line `# Timesheet — <window_phrase>`, second line `window_header`, then one `## <Customer>` block per customer holding its repos (`### <name> · <duration_label>`, active time descending) and its `### Calendar · <count>` (omit when none), then a single `## How the day went` for the whole window. `window_phrase`, `window_header` and every `duration_label` are copied verbatim, never recomputed:
+Output format: title line `# Timesheet — <window_phrase>`, second line `window_header`, then one `## <Customer>` block per customer holding its repos (`### <name> · <duration_label>`, active time descending) its `### Calendar · <count>` and its `### Email · <count>` (each omitted when none), then a single `## How the day went` for the whole window. `window_phrase`, `window_header` and every `duration_label` are copied verbatim, never recomputed:
 
 ```
 # Timesheet — last 12 hours
@@ -93,6 +96,7 @@ _2026-05-09 12:00 → 00:00 NZST_
 ## Harvest rules
 
 - **One row per project block, one row per meeting, no exceptions.** A project's `blocks[]` become rows on the **block's** `customer` (not the project's — a block re-attributed by a `prompts` keyword bills the other customer) using that customer's `harvest.project` and `harvest.task`; each accepted meeting becomes a row on its customer's project, using `harvest.meetings_task` when set. There is no minimum: a ten-minute block is a ten-minute row. Round block edges to the enclosing five minutes; never merge across a meeting or across customers.
+- **Email lands in the row that contains it, or makes one.** A sent email whose time falls inside a row on the same customer adds a line `HH:MM email: <subject> → <organisation>` to that row's notes. An email outside every row becomes its own ten-minute row ending at the send time, rounded to the enclosing five minutes, on the recipient customer's project and task; emails to the same customer within 30 minutes of each other share one row from the first to the last.
 - **A missing home is a suggestion, not a dropped row.** When a customer has no `harvest` mapping, or `list_projects` / `list_project_assignments` cannot find the mapped project or task, keep the row in the table with the project column reading `needs project`, and under the table suggest exactly what to add in Harvest — client, project name, task — offering to create it with `create_project` / `add_task_to_project` on a yes, then write the mapping into the customers file. Unknown does not mean unbilled.
 - **Ambiguity is a question in the table, not a hold.** Two calendar events that overlap, or a meeting whose customer is unclear, still get their rows; the notes column names the question and the user answers it before the yes.
 - **Calendar wins on duration.** A meeting's row spans the calendar event. With no calendar event, one hour from the Granola start, flagged as assumed.

@@ -25,6 +25,11 @@ proposed time entries logged on your yes.**
   events. Meetings and events render under their customer as `### Calendar · <count>`,
   each linking to its Granola note, and count as outcomes, so a day of calls with no
   commits still renders.
+- **Sent email.** With the Gmail connector the skill lists the messages you sent
+  inside the window — subject, time and recipient organisations only, never
+  bodies — renders them per customer as `### Email · <count>`, adds each to the
+  notes of the Harvest row that contains it, and gives an email in otherwise
+  unaccounted time a ten-minute row of its own.
 - **Activity blocks.** Each project's JSON carries `blocks`: contiguous runs of
   active time in local clock time, split at gaps over 30 minutes or when the
   customer changes. A customer's `prompts` keywords re-attribute minutes inside
