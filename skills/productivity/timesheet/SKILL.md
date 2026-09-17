@@ -61,7 +61,7 @@ Apply in order:
 - **Collapse WIP sequences.** Commits that all advance one outcome ("wip", "fix typo", "Add foo") become one bullet with the outcome subject.
 - **Dedupe within a project.** Identical subjects appear once.
 - **Tense.** Keep the commit messages' imperative ("Add X", "Remove Y").
-- **Meetings are outcomes.** One bullet per meeting, in start order: `**<title>** — <counterparties by organisation> · <the decision or next step>`. A Granola summary supplies the outcome; a calendar-only meeting gets its attendees' organisations and, failing anything better, its title. Summaries only — never quote transcripts, credentials, or personal contact details. A window with meetings but no commits still renders.
+- **Meetings are outcomes.** One bullet per meeting, in start order: `**<title>** — <counterparties by organisation> · <the decision or next step> · [notes](https://notes.granola.ai/d/<meeting id>)`. The link is the Granola meeting's id from `list_meetings`; it opens for the user and anyone the note is shared with, and is omitted for calendar-only meetings. A Granola summary supplies the outcome; a calendar-only meeting gets its attendees' organisations and, failing anything better, its title. Summaries only — never quote transcripts, credentials, or personal contact details. A window with meetings but no commits still renders.
 - **Group by customer.** Every repo and meeting sits under a `## <Customer>` heading. Repos carry `customer` from the JSON; a meeting belongs to the customer whose `domains` match its participants' email domains or whose `titles` match its title, else to `self`. Customer order is the JSON's `customers[]` order: unassigned first, then by active time, the user's own company last.
 - **Close with "How the day went".** After the outcome sections, a `## How the day went` section: three to six bullets in clock order, each opening with a bold time range and thread name, telling what was investigated, decided, or built — including work that produced no commit, which is exactly what the outcome bullets drop. Two sentences per bullet at most.
 
@@ -78,7 +78,7 @@ _2026-05-09 12:00 → 00:00 NZST_
 - Polish READMEs with cross-references and updated seed-data layout
 
 ### Meetings · 1
-- **AssetIQ platform review** — Cloudflare, Spark · Cloudflare to send a platform blueprint; next step is a working AI demo for Spark leadership
+- **AssetIQ platform review** — Cloudflare, Spark · Cloudflare to send a platform blueprint; next step is a working AI demo for Spark leadership · [notes](https://notes.granola.ai/d/08bd16bb-f53c-4996-80d8-624a5cc9e260)
 
 ## ZunoSmart Labs
 
@@ -96,7 +96,7 @@ _2026-05-09 12:00 → 00:00 NZST_
 - **A missing home is a suggestion, not a dropped row.** When a customer has no `harvest` mapping, or `list_projects` / `list_project_assignments` cannot find the mapped project or task, keep the row in the table with the project column reading `needs project`, and under the table suggest exactly what to add in Harvest — client, project name, task — offering to create it with `create_project` / `add_task_to_project` on a yes, then write the mapping into the customers file. Unknown does not mean unbilled.
 - **Ambiguity is a question in the table, not a hold.** Two calendar events that overlap, or a meeting whose customer is unclear, still get their rows; the notes column names the question and the user answers it before the yes.
 - **Calendar wins on duration.** A meeting's row spans the calendar event. With no calendar event, one hour from the Granola start, flagged as assumed.
-- **Notes carry the timesheet.** A row's notes are that customer's bullets for the block or the meeting's bullet, followed by the matching "How the day went" lines. No transcripts, no credentials.
+- **Notes carry the timesheet.** A row's notes are that customer's bullets for the block or the meeting's bullet, followed by the matching "How the day went" lines, and for a Granola meeting the plain `https://notes.granola.ai/d/<meeting id>` URL on its own last line so Harvest renders it as a link. No transcripts, no credentials.
 - **Resolve ids, don't guess.** `list_projects` (active) for the project id, `list_project_assignments` with `assignment_type: "tasks"` for the task id; `get_account_settings` tells you whether the account takes `started_time`/`ended_time` (`wants_timestamp_timers`) or only `hours`, and whether notes are required.
 - **Show gaps, don't fill them.** Time with no session, meeting or calendar evidence is listed under the table as unaccounted, for the user to fill.
 - **Table columns:** `#`, project, task, time, hours, notes carry. Then a one-line total split billable / non-billable, taken from each project's `is_billable`.

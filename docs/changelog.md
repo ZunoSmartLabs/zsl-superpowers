@@ -22,8 +22,9 @@ proposed time entries logged on your yes.**
   the window and pulls their summaries; with the Google Calendar connector it
   reads the same window from the calendar named in the map, which supplies real
   durations, catches in-person meetings Granola never saw, and drops declined
-  events. Meetings render under their customer as `### Meetings · <count>` and
-  count as outcomes, so a day of calls with no commits still renders.
+  events. Meetings render under their customer as `### Meetings · <count>`, each
+  linking to its Granola note, and count as outcomes, so a day of calls with no
+  commits still renders.
 - **Activity blocks.** Each project's JSON carries `blocks`: contiguous runs of
   active time in local clock time, split at gaps over 30 minutes. A session whose
   first and last events are nine hours apart no longer reads as nine hours of
