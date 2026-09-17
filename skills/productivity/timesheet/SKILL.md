@@ -99,7 +99,7 @@ _2026-05-09 12:00 → 00:00 NZST_
 - **Notes carry the timesheet.** A row's notes are that customer's bullets for the block or the meeting's bullet, followed by the matching "How the day went" lines, and for a Granola meeting the plain `https://notes.granola.ai/d/<meeting id>` URL on its own last line so Harvest renders it as a link. No transcripts, no credentials.
 - **Resolve ids, don't guess.** `list_projects` (active) for the project id, `list_project_assignments` with `assignment_type: "tasks"` for the task id; `get_account_settings` tells you whether the account takes `started_time`/`ended_time` (`wants_timestamp_timers`) or only `hours`, and whether notes are required.
 - **Show gaps, don't fill them.** Time with no session, meeting or calendar evidence is listed under the table as unaccounted, for the user to fill.
-- **Table columns:** `#`, project, task, time, hours, notes carry. Then a one-line total split billable / non-billable, taken from each project's `is_billable`.
+- **Table columns:** `#`, project, task, time, hours, notes carry. Under it a **summary table**: one line per Harvest project with customer, rows, hours and billable yes/no (from the project's `is_billable`), then a total line with hours, billable hours and non-billable hours, then one line naming the unaccounted gaps.
 
 ## Common flags
 
