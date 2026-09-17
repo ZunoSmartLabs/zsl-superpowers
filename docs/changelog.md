@@ -31,8 +31,12 @@ proposed time entries logged on your yes.**
 - **Harvest.** With the Harvest MCP connector the render ends with a table of
   proposed entries — one per project and block, plus one per meeting, with
   clock-in and clock-out, project, task and notes drawn from that customer's
-  bullets — checked against what is already logged that day. Nothing is written
-  until you say yes.
+  bullets — checked against what is already logged that day. Every block and
+  meeting gets a row, however small; a customer with no Harvest project keeps
+  its row marked `needs project` with a suggestion of what to add in Harvest.
+  Nothing is written until you say yes.
+- **No more "which repos to exclude?" gate.** The skill lists the projects and
+  carries on with all of them; trim afterwards if you want to.
 - **How the day went.** Each render closes with three to six clock-ordered
   bullets telling what was investigated, decided or built, including the work
   that never became a commit.

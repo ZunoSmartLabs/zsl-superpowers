@@ -28,11 +28,11 @@ Use `python3 "$DIGEST" …` for every invocation below.
 
 ## Required workflow
 
-**Never render the final timesheet without first asking which repos to exclude.** Even on "show me the timesheet" — they will likely want to trim repos, and unsolicited renders waste their attention.
+**Include everything.** Every project, meeting and calendar event in the window is in the render and in the Harvest table; nothing is folded into a neighbour for being small, deferred for being unclear, or dropped for lacking a home. The user trims afterwards if they want to.
 
-1. **List candidates.** `python3 "$DIGEST" --list` shows projects with active hours, full path and customer.
+1. **List candidates.** `python3 "$DIGEST" --list` shows projects with active hours, full path and customer. Print it and carry on; exclusions happen only when the user asks for them.
 
-2. **Ask which to exclude.** *"Any of these to exclude before I build the timesheet?"* Wait; render nothing yet.
+2. **Resolve the customers file** (see step 3's note) so every project has a customer before anything renders.
 
 3. **Extract sessions.** `python3 "$DIGEST" [--exclude PATTERN] [--only PATTERN] [--merge-nested]` prints JSON. Top level: `window_start`/`window_end` (ISO, UTC), `window_header`, `window_phrase`, `customers[]` (name, `duration_label`, already ordered) and `customer_config` (the user's map, echoed). Per project: `customer`, `duration_label`, `blocks[]` (local `start`/`end`/`minutes`) and `sessions[]`, each with `user_prompts`, `files_touched`, `bash_commands` (deduped). **Copy every `duration_label`, `window_header`, `window_phrase` and block boundary verbatim.**
 
@@ -48,7 +48,7 @@ Use `python3 "$DIGEST" …` for every invocation below.
 
 7. **Propose Harvest entries.** If the Harvest MCP tools exist (`mcp__harvest__list_projects`, `mcp__harvest__list_project_assignments`, `mcp__harvest__list_time_entries`, `mcp__harvest__log_time`), build the entries per the Harvest rules below, check `list_time_entries` for the window's dates so nothing already logged is proposed twice, and print the table under the timesheet. **Never call `log_time` before the user has said yes to the table**; on yes, log each row with `spent_at`, `started_time`/`ended_time`, `project_id`, `task_id` and `notes`, then confirm the ids. No Harvest tools → end with *"Copy this to your clipboard?"* and on yes `printf '%s' "<bullets>" | pbcopy` (macOS) / `wl-copy` / `xclip -selection clipboard` / `clip` (Windows).
 
-**Skip the list+ask step only when** the request already names the exact projects ("timesheet for spark-asset-iq, last 4 hours"). When in doubt, list and ask.
+When the request names projects ("timesheet for spark-asset-iq, last 4 hours"), pass them as `--only` and skip the picker.
 
 ## Synthesis rules
 
@@ -92,7 +92,9 @@ _2026-05-09 12:00 → 00:00 NZST_
 
 ## Harvest rules
 
-- **One row per project block, one row per meeting.** A project's `blocks[]` become rows on its customer's `harvest.project` and `harvest.task`; each accepted meeting becomes a row on its customer's project, using `harvest.meetings_task` when set. Round block edges to the enclosing five minutes; never merge across a meeting.
+- **One row per project block, one row per meeting, no exceptions.** A project's `blocks[]` become rows on its customer's `harvest.project` and `harvest.task`; each accepted meeting becomes a row on its customer's project, using `harvest.meetings_task` when set. There is no minimum: a ten-minute block is a ten-minute row. Round block edges to the enclosing five minutes; never merge across a meeting or across customers.
+- **A missing home is a suggestion, not a dropped row.** When a customer has no `harvest` mapping, or `list_projects` / `list_project_assignments` cannot find the mapped project or task, keep the row in the table with the project column reading `needs project`, and under the table suggest exactly what to add in Harvest — client, project name, task — offering to create it with `create_project` / `add_task_to_project` on a yes, then write the mapping into the customers file. Unknown does not mean unbilled.
+- **Ambiguity is a question in the table, not a hold.** Two calendar events that overlap, or a meeting whose customer is unclear, still get their rows; the notes column names the question and the user answers it before the yes.
 - **Calendar wins on duration.** A meeting's row spans the calendar event. With no calendar event, one hour from the Granola start, flagged as assumed.
 - **Notes carry the timesheet.** A row's notes are that customer's bullets for the block or the meeting's bullet, followed by the matching "How the day went" lines. No transcripts, no credentials.
 - **Resolve ids, don't guess.** `list_projects` (active) for the project id, `list_project_assignments` with `assignment_type: "tasks"` for the task id; `get_account_settings` tells you whether the account takes `started_time`/`ended_time` (`wants_timestamp_timers`) or only `hours`, and whether notes are required.
