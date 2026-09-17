@@ -6,16 +6,28 @@ This page summarises the user-facing changes per plugin version.
 
 ## 2.3.0
 
-`/timesheet` now **folds Granola meetings into the timesheet.**
+`/timesheet` now **reads as a consultant's day: grouped by customer, with meetings,
+and a narrative close.**
 
-After extracting the Claude Code sessions, the skill lists the Granola meetings
-that fell inside the same window (through the Granola MCP connector, when the
-session has it), pulls their summaries, and renders them as a final
-`### Meetings · <count>` section — one bullet per meeting naming the
-counterparties by organisation and the decision or next step. Meetings count as
-outcomes, so a day of calls with no commits still produces a timesheet. Without
-the connector the step is skipped silently; nothing else changes. No migration
-steps.
+- **Customers.** Every repo and meeting sits under a `## <Customer>` heading. The
+  digest script assigns projects from a per-user map at
+  `~/.claude/timesheet-customers.json` (`paths` per customer, matched with the
+  `--only` rules; `domains` and `titles` bucket the meetings), emits the customer
+  roll-up with pre-rendered duration labels, and shows the customer in `--list`.
+  Without the file the skill proposes one from the day's projects and writes it
+  on your yes. `--customers PATH` points elsewhere.
+- **Granola meetings.** When the session has the Granola MCP connector, the skill
+  lists the meetings inside the same window, pulls their summaries, and renders
+  them under their customer as `### Meetings · <count>` — one bullet per meeting
+  naming the counterparties by organisation and the decision or next step.
+  Meetings count as outcomes, so a day of calls with no commits still renders.
+  Without the connector the step is skipped silently.
+- **How the day went.** Each render closes with three to six clock-ordered
+  bullets telling what was investigated, decided or built, including the work
+  that never became a commit.
+
+No migration steps; the customers file is optional and the old flat render is
+what you get without it.
 
 ## 2.2.0
 

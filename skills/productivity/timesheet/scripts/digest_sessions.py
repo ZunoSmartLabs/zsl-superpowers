@@ -12,10 +12,14 @@ Active hours per project are estimated by counting distinct 5-minute
 buckets that contain at least one event, unioned across the project's
 sessions (overlapping work does not double-count).
 
-Usage:
-    digest_sessions.py [--hours N] [--list] [--only PATTERN]
-                       [--exclude PATTERN] [--merge-nested]
-                       [--include-noise] [--projects-dir PATH]
+Projects are assigned to customers from a per-user JSON file (default
+~/.claude/timesheet-customers.json) so the timesheet can group by client:
+
+    {"self": "ZunoSmart Labs",
+     "customers": {"Spark": {"paths": ["spark-asset-iq"], "domains": ["spark.co.nz"]}}}
+
+`paths` follow the --only/--exclude matching rules; `domains` (and optional
+`titles`) are echoed back so the caller can bucket meetings the same way.
 """
 
 from __future__ import annotations
@@ -40,6 +44,8 @@ NOISE_PATH_FRAGMENTS = ("ClaudeProbe", "CodexBar")
 
 ACTIVE_BUCKET_MINUTES = 5
 BASH_CMD_TRUNCATE = 1500
+CUSTOMERS_FILE = Path.home() / ".claude" / "timesheet-customers.json"
+UNASSIGNED = "Unassigned"
 
 
 def parse_ts(s: str) -> datetime | None:
@@ -49,14 +55,6 @@ def parse_ts(s: str) -> datetime | None:
         return datetime.fromisoformat(s.replace("Z", "+00:00"))
     except (ValueError, TypeError):
         return None
-
-
-def is_subagent_file(path: Path) -> bool:
-    return "subagents" in path.parts
-
-
-def is_noise_path(cwd: str) -> bool:
-    return any(frag in cwd for frag in NOISE_PATH_FRAGMENTS)
 
 
 def decode_cwd_from_dir(name: str) -> str:
@@ -217,6 +215,38 @@ def project_matches(cwd: str, patterns: list[str]) -> bool:
     return False
 
 
+def load_customers(path: Path) -> dict | None:
+    """The per-user customer map, or None when the file is absent (grouping is then off)."""
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def assign_customers(project_records: list[dict], config: dict | None) -> list[dict] | None:
+    """Stamp each project with its customer and return the customer roll-up.
+
+    First matching entry in file order wins; a project no entry claims is
+    UNASSIGNED, listed first so it gets noticed. The user's own company
+    (`self`) is listed last. Active minutes are unioned across a customer's
+    projects, never summed.
+    """
+    if config is None:
+        return None
+    entries = config.get("customers") or {}
+    own = config.get("self")
+    buckets: dict[str, set[int]] = {}
+    for p in project_records:
+        name = next((c for c, spec in entries.items() if project_matches(p["cwd"], spec.get("paths", []))), None)
+        p["customer"] = name
+        pool = buckets.setdefault(name or UNASSIGNED, set())
+        for s in p["sessions"]:
+            pool |= s["_buckets"]
+    records = [{"name": n, "active_minutes": len(b) * ACTIVE_BUCKET_MINUTES} for n, b in buckets.items()]
+    rank = lambda r: (r["name"] == own, r["name"] != UNASSIGNED, -r["active_minutes"])  # noqa: E731
+    return sorted(records, key=rank)
+
+
 def collect(args: argparse.Namespace) -> dict:
     if not args.projects_dir.is_dir():
         print(f"projects dir not found: {args.projects_dir}", file=sys.stderr)
@@ -231,7 +261,7 @@ def collect(args: argparse.Namespace) -> dict:
 
     sessions: list[dict] = []
     for path in args.projects_dir.rglob("*.jsonl"):
-        if is_subagent_file(path):
+        if "subagents" in path.parts:
             continue
         try:
             if path.stat().st_mtime < mtime_floor:
@@ -241,7 +271,7 @@ def collect(args: argparse.Namespace) -> dict:
         digest = process_session(path, window_start, window_end)
         if not digest:
             continue
-        if apply_noise_filter and digest["cwd"] and is_noise_path(digest["cwd"]):
+        if apply_noise_filter and any(f in (digest["cwd"] or "") for f in NOISE_PATH_FRAGMENTS):
             continue
         sessions.append(digest)
 
@@ -283,12 +313,16 @@ def collect(args: argparse.Namespace) -> dict:
     elif args.exclude:
         project_records = [p for p in project_records if not project_matches(p["cwd"], args.exclude)]
 
+    config = load_customers(args.customers)
     return {
         "window_start": window_start.isoformat(),
         "window_end": window_end.isoformat(),
         "hours": args.hours,
         "session_count": sum(len(p["sessions"]) for p in project_records),
         "project_count": len(project_records),
+        "customers_file": str(args.customers),
+        "customer_config": config,
+        "customers": assign_customers(project_records, config),
         "projects": project_records,
     }
 
@@ -302,6 +336,8 @@ def strip_internal(digest: dict) -> dict:
     out = dict(digest)
     out["window_header"] = fmt_window_header(digest)
     out["window_phrase"] = fmt_window_phrase(digest["hours"])
+    if digest["customers"] is not None:
+        out["customers"] = [{**c, "duration_label": fmt_duration(c["active_minutes"])} for c in digest["customers"]]
     out["projects"] = [
         {
             **p,
@@ -353,7 +389,8 @@ def render_list(digest: dict) -> str:
         name = os.path.basename(cwd.rstrip("/")) or cwd
         duration = fmt_duration(project["active_minutes"])
         n = len(project["sessions"])
-        lines.append(f"- **{name}** · {duration} · {n} session{'s' if n != 1 else ''}")
+        customer = f" · {project.get('customer') or UNASSIGNED}" if digest["customers"] is not None else ""
+        lines.append(f"- **{name}** · {duration} · {n} session{'s' if n != 1 else ''}{customer}")
         lines.append(f"  `{cwd}`")
 
     return "\n".join(lines).rstrip() + "\n"
@@ -390,6 +427,12 @@ def main() -> int:
         "--include-noise",
         action="store_true",
         help="Include health-check / probe paths normally filtered out",
+    )
+    parser.add_argument(
+        "--customers",
+        type=Path,
+        default=CUSTOMERS_FILE,
+        help=f"Per-user customer map JSON (default: {CUSTOMERS_FILE}); absent file disables customer grouping",
     )
     parser.add_argument(
         "--projects-dir",

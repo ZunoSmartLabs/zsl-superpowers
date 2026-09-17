@@ -45,6 +45,7 @@ def _digest(active_minutes: int, hours: float = 12.0) -> dict:
         "window_start": "2026-05-09T12:00:00+00:00",
         "window_end": "2026-05-10T00:00:00+00:00",
         "hours": hours,
+        "customers": None,
         "projects": [
             {"cwd": "/code/spark-asset-iq", "active_minutes": active_minutes, "sessions": []}
         ],
@@ -74,3 +75,54 @@ def test_strip_internal_single_hour_header():
     out = ds.strip_internal(_digest(60, hours=1))
     assert out["window_phrase"] == "last 1 hour"
     assert out["projects"][0]["duration_label"] == "1h"
+
+
+def _project(cwd: str, buckets: set[int]) -> dict:
+    return {"cwd": cwd, "active_minutes": len(buckets) * 5, "sessions": [{"_buckets": buckets}]}
+
+
+_CONFIG = {
+    "self": "ZunoSmart Labs",
+    "customers": {
+        "Spark": {"paths": ["spark-asset-iq"], "domains": ["spark.co.nz"]},
+        "Thundergrid": {"paths": ["thundergrid149/"]},
+        "ZunoSmart Labs": {"paths": ["zunosmartlabs/"]},
+    },
+}
+
+
+def test_assign_customers_fails_the_prose_way():
+    # The checkout path says zunosmartlabs, but the customer is Spark: a model
+    # bucketing by the path's org segment gets this wrong. Entry order decides,
+    # so the specific repo must be listed before the catch-all org.
+    projects = [_project("/code/github.com/zunosmartlabs/spark-asset-iq", {1, 2})]
+    ds.assign_customers(projects, _CONFIG)
+    assert projects[0]["customer"] == "Spark"
+
+
+def test_assign_customers_orders_unassigned_first_and_self_last():
+    projects = [
+        _project("/code/github.com/zunosmartlabs/workstation-setup", {1, 2, 3, 4, 5, 6}),
+        _project("/code/github.com/thundergrid149/tg-ops-portal", {7}),
+        _project("/code/gitlab.com/tgmedia-customers/seensafety-aws-architecture", {8, 9}),
+        _project("/code/github.com/zunosmartlabs/spark-asset-iq", {1, 2, 3}),
+    ]
+    roll_up = ds.assign_customers(projects, _CONFIG)
+    assert roll_up is not None
+    assert [c["name"] for c in roll_up] == ["Unassigned", "Spark", "Thundergrid", "ZunoSmart Labs"]
+    assert projects[2]["customer"] is None
+    # Self has the most minutes but still sorts last; minutes are unioned per customer.
+    assert roll_up[-1] == {"name": "ZunoSmart Labs", "active_minutes": 30}
+
+
+def test_assign_customers_off_without_a_config():
+    projects = [_project("/code/anything", {1})]
+    assert ds.assign_customers(projects, None) is None
+    assert "customer" not in projects[0]
+
+
+def test_strip_internal_labels_customers():
+    d = _digest(270)
+    d["customers"] = [{"name": "Spark", "active_minutes": 90}]
+    out = ds.strip_internal(d)
+    assert out["customers"][0]["duration_label"] == "1.5h"
