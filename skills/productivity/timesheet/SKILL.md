@@ -55,8 +55,9 @@ Apply in order:
 - **Dedupe within a project.** Identical subjects appear once.
 - **Tense.** Keep the commit messages' imperative ("Add X", "Remove Y").
 - **Meetings are outcomes.** One bullet per meeting, in start order: `**<title>** — <counterparties by organisation> · <the decision or next step>`. Summaries only — never quote transcripts, credentials, or personal contact details. A window with meetings but no commits still renders.
+- **Close with "How the day went".** After the outcome sections, a `### How the day went` section: three to six bullets in clock order, each opening with a bold time range and thread name, telling what was investigated, decided, or built — including work that produced no commit, which is exactly what the outcome bullets drop. Two sentences per bullet at most.
 
-Output format: repos sorted by active time descending, then a `### Meetings · <count>` section last (omit it when there are none). Title line `## Timesheet — <window_phrase>`, second line `window_header`, per-repo heading `### <name> · <duration_label>` — all copied verbatim, never recomputed:
+Output format: repos sorted by active time descending, then `### Meetings · <count>` (omit when none), then `### How the day went`. Title line `## Timesheet — <window_phrase>`, second line `window_header`, per-repo heading `### <name> · <duration_label>` — all copied verbatim, never recomputed:
 
 ```
 ## Timesheet — last 12 hours
@@ -71,6 +72,10 @@ _2026-05-09 12:00 → 00:00 NZST_
 
 ### Meetings · 1
 - **AssetIQ platform review** — Cloudflare, Spark · Cloudflare to send a platform blueprint; next step is a working AI demo for Spark leadership
+
+### How the day went
+- **09:00 to 12:30, Cognito move.** Migrated both pools to the new region and re-pointed the SPA. The identity pool needed its trust policy rewritten by hand.
+- **14:00, platform review.** Demoed the estate page to Cloudflare; Workers and Durable Objects flagged as a fit for the API layer.
 ```
 
 ## Common flags
