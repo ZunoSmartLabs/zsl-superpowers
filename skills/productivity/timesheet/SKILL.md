@@ -57,7 +57,7 @@ Apply in order:
 - **One bullet per delivered outcome.** Find git commits in `bash_commands` (`git commit -m`, `-am`, heredoc forms — read natively, no regex). The commit subject is the bullet text.
 - **PR opens count too.** `gh pr create --title "..."` → `Opened PR: <title>`.
 - **Drop redundant signals.** `gh pr merge` is implied by the prior open; `git push` is plumbing. Neither gets a bullet.
-- **Drop projects with no outcomes.** Sessions with only edits and no commit / PR are omitted entirely — no "in progress" lines.
+- **Uncommitted work still renders.** A project with no commit or PR keeps its heading and gets one bullet per thread saying what was built, decided or investigated, suffixed `(uncommitted)`. Its time is real and its Harvest row needs notes to carry.
 - **Collapse WIP sequences.** Commits that all advance one outcome ("wip", "fix typo", "Add foo") become one bullet with the outcome subject.
 - **Dedupe within a project.** Identical subjects appear once.
 - **Tense.** Keep the commit messages' imperative ("Add X", "Remove Y").
