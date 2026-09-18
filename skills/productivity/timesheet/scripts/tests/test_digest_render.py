@@ -178,3 +178,14 @@ def test_strip_internal_drops_private_session_keys():
     d["projects"][0]["sessions"] = [{"_buckets": {5_000_000}, "_marks": [(5_000_000, "hi")], "user_prompts": ["hi"]}]
     out = ds.strip_internal(d)
     assert out["projects"][0]["sessions"][0] == {"user_prompts": ["hi"]}
+
+
+def test_pasted_output_never_switches_customer():
+    # A directory listing pasted into the prompt mentions thundergrid149 among
+    # 60 other paths. Keyword matching on it would bill the next 40 minutes to
+    # Thundergrid; only short prompts, the user actually speaking, may switch.
+    pasted = "» ssh lappy 'ls ~/.claude/projects'\n" + "\n".join(f"-Users-x-Code-github-com-org{i}-repo{i}" for i in range(60)) + "\n-Users-x-Code-github-com-thundergrid149-tg-ops-portal"
+    assert len(pasted) > ds.PROMPT_KEYWORD_MAX_CHARS
+    projects = [_project("/code/gitlab.com/tgmedia-customers/seensafety-aws-architecture", set(range(100, 108)), [(102, pasted)])]
+    ds.assign_customers(projects, _CONFIG)
+    assert [b["customer"] for b in projects[0]["blocks"]] == ["SeenSafety"]

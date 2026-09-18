@@ -26,9 +26,9 @@ Each project also carries `blocks`: contiguous runs of active buckets in local
 time, split wherever the gap exceeds BLOCK_GAP_MINUTES or the customer changes.
 A session that spans a day can hide an eight-hour gap between its first and
 last event; the blocks show where the work actually sat. A customer's optional
-`prompts` keywords re-attribute time inside a repo: from a user prompt that
-mentions one, the minutes belong to that customer until another customer's
-keyword or a gap, so ten minutes of Thundergrid work done from the SeenSafety
+`prompts` keywords re-attribute time inside a repo: from a short user prompt
+(pasted output is ignored) that mentions one, the minutes belong to that
+customer until another customer's keyword or a gap, so ten minutes of Thundergrid work done from the SeenSafety
 checkout land on Thundergrid.
 """
 
@@ -55,6 +55,7 @@ NOISE_PATH_FRAGMENTS = ("ClaudeProbe", "CodexBar")
 ACTIVE_BUCKET_MINUTES = 5
 BASH_CMD_TRUNCATE = 1500
 BLOCK_GAP_MINUTES = 30
+PROMPT_KEYWORD_MAX_CHARS = 400  # longer prompts are pasted output, not the user speaking
 CUSTOMERS_FILE = Path.home() / ".claude" / "timesheet-customers.json"
 UNASSIGNED = "Unassigned"
 
@@ -209,8 +210,10 @@ def attribute_buckets(project: dict, entries: dict) -> list[tuple[int, str | Non
         if prev is not None and b - prev > limit:
             current = default
         while mi < len(marks) and marks[mi][0] <= b:
-            text = marks[mi][1].lower()
-            current = next((c for c, keys in keyed.items() if any(k in text for k in keys)), current)
+            text = marks[mi][1]
+            if len(text) <= PROMPT_KEYWORD_MAX_CHARS:
+                text = text.lower()
+                current = next((c for c, keys in keyed.items() if any(k in text for k in keys)), current)
             mi += 1
         out.append((b, current))
         prev = b
