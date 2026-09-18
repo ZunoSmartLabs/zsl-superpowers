@@ -44,6 +44,9 @@ proposed time entries logged on your yes.**
   meeting gets a row, however small; a customer with no Harvest project keeps
   its row marked `needs project` with a suggestion of what to add in Harvest.
   Nothing is written until you say yes.
+- **`--day YYYY-MM-DD`.** One local calendar day, midnight to midnight, instead
+  of a trailing window; "what did I do on the 16th" no longer needs `--hours 24`
+  run at the right moment. The title line carries the date.
 - **No more "which repos to exclude?" gate.** The skill lists the projects and
   carries on with all of them; trim afterwards if you want to.
 - **How the day went.** Each render closes with three to six clock-ordered

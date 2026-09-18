@@ -5,7 +5,7 @@ description: Summarize recent Claude Code sessions, Granola meetings, calendar e
 
 # Timesheet
 
-Build a copy/paste-ready Markdown summary of work over a recent window (default 12 hours) — Claude Code sessions grouped by customer, the meetings, calendar events and sent email that fell inside the window, a short narrative of the day — and, where Harvest is connected, the time entries that record it. The script extracts raw session data; **Claude synthesizes the bullets** by reading the bash commands, user prompts, and files touched directly — no command parsing lives in the script.
+Build a copy/paste-ready Markdown summary of work over a recent window (default 12 hours, or one calendar day with `--day`) — Claude Code sessions grouped by customer, the meetings, calendar events and sent email that fell inside the window, a short narrative of the day — and, where Harvest is connected, the time entries that record it. The script extracts raw session data; **Claude synthesizes the bullets** by reading the bash commands, user prompts, and files touched directly — no command parsing lives in the script.
 
 ## Resolve the script (deterministic gate)
 
@@ -30,15 +30,17 @@ Use `python3 "$DIGEST" …` for every invocation below.
 
 **Include everything.** Every project, meeting and calendar event in the window is in the render and in the Harvest table; nothing is folded into a neighbour for being small, deferred for being unclear, or dropped for lacking a home. The user trims afterwards if they want to.
 
-1. **List candidates.** `python3 "$DIGEST" --list` shows projects with active hours, full path and customer. Print it and carry on; exclusions happen only when the user asks for them.
+1. **List candidates.** `python3 "$DIGEST" --list [--day YYYY-MM-DD | --hours N]` shows projects with active hours, full path and customer. A request that names a day ("what did I do on the 16th", "Sept 16") is `--day`, never a trailing `--hours 24`, which would span midday to midday. Print it and carry on; exclusions happen only when the user asks for them.
 
 2. **Resolve the customers file** (see step 3's note) so every project has a customer before anything renders.
 
-3. **Extract sessions.** `python3 "$DIGEST" [--exclude PATTERN] [--only PATTERN] [--merge-nested]` prints JSON. Top level: `window_start`/`window_end` (ISO, UTC), `window_header`, `window_phrase`, `customers[]` (name, `duration_label`, already ordered) and `customer_config` (the user's map, echoed). Per project: `customer`, `duration_label`, `blocks[]` (local `start`/`end`/`minutes`/`customer`) and `sessions[]`, each with `user_prompts`, `files_touched`, `bash_commands` (deduped). **Copy every `duration_label`, `window_header`, `window_phrase` and block boundary verbatim.**
+3. **Extract sessions.** `python3 "$DIGEST" [--day YYYY-MM-DD | --hours N] [--exclude PATTERN] [--only PATTERN] [--merge-nested]` prints JSON. Top level: `window_start`/`window_end` (ISO, UTC), `window_header`, `window_phrase`, `customers[]` (name, `duration_label`, already ordered) and `customer_config` (the user's map, echoed). Per project: `customer`, `duration_label`, `blocks[]` (local `start`/`end`/`minutes`/`customer`) and `sessions[]`, each with `user_prompts`, `files_touched`, `bash_commands` (deduped). **Copy every `duration_label`, `window_header`, `window_phrase` and block boundary verbatim.**
 
    `customers` is `null` when `~/.claude/timesheet-customers.json` does not exist. Then, once, propose the file from the day's projects (one entry per customer with `paths`, `domains`, `titles`, `harvest`; the user's own company as `self`; their `calendar` id), write it on their yes, and re-run. A project whose `customer` is `null` gets one question — which customer? — and an added `paths` pattern. Never keep the map in memory alone: the file is what makes the grouping repeatable.
 
-4. **Fetch meetings (Granola).** If the Granola MCP tools exist (`mcp__claude_ai_Granola__list_meetings`, `mcp__claude_ai_Granola__get_meetings`; load them via ToolSearch when deferred), call `list_meetings` with `time_range: "custom"`, `custom_start`/`custom_end` set to the JSON's `window_start`/`window_end` verbatim, and `involvement` `{captured_by_me: true, listed_as_participant: true}`. Then `get_meetings` on the returned ids (ten per call) for the summaries.
+Every connector below is optional and its tools are usually **deferred**: before the first call, load all the ones present in one ToolSearch (`select:mcp__claude_ai_Granola__list_meetings,mcp__claude_ai_Granola__get_meetings,mcp__claude_ai_Google_Calendar__list_events,mcp__claude_ai_Gmail__search_threads,mcp__harvest__list_projects,mcp__harvest__list_project_assignments,mcp__harvest__list_time_entries,mcp__harvest__log_time,mcp__harvest__get_account_settings`); a name that does not resolve means that connector is absent.
+
+4. **Fetch meetings (Granola).** If the Granola MCP tools exist (`mcp__claude_ai_Granola__list_meetings`, `mcp__claude_ai_Granola__get_meetings`), call `list_meetings` with `time_range: "custom"`, `custom_start`/`custom_end` set to the JSON's `window_start`/`window_end` verbatim, and `involvement` `{captured_by_me: true, listed_as_participant: true}`. Then `get_meetings` on the returned ids (ten per call) for the summaries.
 
 5. **Fetch the calendar.** If the Google Calendar MCP tools exist (`mcp__claude_ai_Google_Calendar__list_events`), call it with `calendarId` = `customer_config.calendar` (primary when unset), `startTime`/`endTime` = the same window, `orderBy: "startTime"`. Calendar events are the source of truth for **when** and **how long**: they give Granola meetings their end time, add meetings Granola never saw (in-person, uncaptured), and mark context. Drop events the user declined (`self` attendee with `responseStatus: declined`); all-day and free (`transparency: transparent`) events are context for the narrative, never time entries.
 
@@ -102,13 +104,15 @@ _2026-05-09 12:00 → 00:00 NZST_
 - **Ambiguity is a question in the table, not a hold.** Two calendar events that overlap, or a meeting whose customer is unclear, still get their rows; the notes column names the question and the user answers it before the yes.
 - **Calendar wins on duration.** A meeting's row spans the calendar event. With no calendar event, one hour from the Granola start, flagged as assumed.
 - **Notes carry the timesheet.** A row's notes are that customer's bullets for the block or the meeting's bullet, followed by the matching "How the day went" lines, and for a Granola meeting the plain `https://notes.granola.ai/d/<meeting id>` URL on its own last line so Harvest renders it as a link. No transcripts, no credentials.
+- **Questions stay in the table.** The proposal's notes column may carry a question or an overlap flag; the notes written to Harvest never do. Once the user says yes, log the facts only, and a row whose question was answered "no" is dropped, not logged with the doubt attached.
 - **Resolve ids, don't guess.** `list_projects` (active) for the project id, `list_project_assignments` with `assignment_type: "tasks"` for the task id; `get_account_settings` tells you whether the account takes `started_time`/`ended_time` (`wants_timestamp_timers`) or only `hours`, and whether notes are required.
 - **Show gaps, don't fill them.** Time with no session, meeting or calendar evidence is listed under the table as unaccounted, for the user to fill.
 - **Table columns:** `#`, project, task, time, hours, notes carry. Under it a **summary table**: one line per Harvest project with customer, rows, hours and billable yes/no (from the project's `is_billable`), then a total line with hours, billable hours and non-billable hours, then one line naming the unaccounted gaps.
 
 ## Common flags
 
-- `--hours N` — window size, decimals OK. Default 12.
+- `--day YYYY-MM-DD` — one local calendar day, midnight to midnight; overrides `--hours`. The title line becomes `# Timesheet — 16 September 2026`.
+- `--hours N` — trailing window back from now, decimals OK. Default 12.
 - `--list` — project picker (basename, active hours, session count, full path, customer) instead of JSON.
 - `--only PATTERN` / `--exclude PATTERN` — bare patterns match basename (case-insensitive substring); patterns containing `/` match the full cwd. Repeatable; `--exclude` is ignored when `--only` is set.
 - `--merge-nested` — fold projects nested under another project's cwd into the parent. Monorepos only: a repo cloned inside a plain customers folder would be renamed after the folder.

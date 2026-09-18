@@ -189,3 +189,31 @@ def test_pasted_output_never_switches_customer():
     projects = [_project("/code/gitlab.com/tgmedia-customers/seensafety-aws-architecture", set(range(100, 108)), [(102, pasted)])]
     ds.assign_customers(projects, _CONFIG)
     assert [b["customer"] for b in projects[0]["blocks"]] == ["SeenSafety"]
+
+
+def test_day_window_fails_the_prose_way():
+    # "--hours 24" run at 10:40 spans 10:40 yesterday to 10:40 today; the day
+    # the user asked about is midnight to midnight, local.
+    import datetime as dt
+
+    old_tz = os.environ.get("TZ")
+    os.environ["TZ"] = "Pacific/Auckland"
+    time.tzset()
+    try:
+        start, end, hours = ds.window_for(12.0, dt.date(2026, 9, 16))
+    finally:
+        if old_tz is None:
+            os.environ.pop("TZ", None)
+        else:
+            os.environ["TZ"] = old_tz
+        time.tzset()
+    assert start.isoformat() == "2026-09-15T12:00:00+00:00"  # NZST is UTC+12
+    assert end.isoformat() == "2026-09-16T12:00:00+00:00"
+    assert hours == 24.0
+    assert ds.fmt_window_phrase(hours, "2026-09-16") == "16 September 2026"
+
+
+def test_trailing_window_keeps_its_phrase():
+    start, end, hours = ds.window_for(1.5, None)
+    assert (end - start).total_seconds() == 5400 and hours == 1.5
+    assert ds.fmt_window_phrase(hours, None) == "last 1.5 hours"

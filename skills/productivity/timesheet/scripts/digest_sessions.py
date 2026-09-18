@@ -38,7 +38,7 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 
 SLASH_COMMAND_OUTPUT_MARKERS = (
@@ -311,13 +311,25 @@ def assign_customers(project_records: list[dict], config: dict | None) -> list[d
     return sorted(records, key=rank)
 
 
+def window_for(hours: float, day: date | None) -> tuple[datetime, datetime, float]:
+    """The UTC window: a trailing `hours` from now, or one local calendar day.
+
+    `--hours 24` at 10:40 covers 10:40 yesterday to 10:40 today, which is not
+    "what did I do on Tuesday"; `--day` anchors on local midnight instead.
+    """
+    if day is None:
+        end = datetime.now(timezone.utc)
+        return end - timedelta(hours=hours), end, hours
+    start = datetime.combine(day, time.min).astimezone()
+    return start.astimezone(timezone.utc), (start + timedelta(days=1)).astimezone(timezone.utc), 24.0
+
+
 def collect(args: argparse.Namespace) -> dict:
     if not args.projects_dir.is_dir():
         print(f"projects dir not found: {args.projects_dir}", file=sys.stderr)
         sys.exit(1)
 
-    window_end = datetime.now(timezone.utc)
-    window_start = window_end - timedelta(hours=args.hours)
+    window_start, window_end, hours = window_for(args.hours, args.day)
     mtime_floor = (window_start - timedelta(hours=2)).timestamp()
 
     # Explicit --only overrides the default noise filter; the user is being specific.
@@ -381,7 +393,8 @@ def collect(args: argparse.Namespace) -> dict:
     return {
         "window_start": window_start.isoformat(),
         "window_end": window_end.isoformat(),
-        "hours": args.hours,
+        "hours": hours,
+        "day": args.day.isoformat() if args.day else None,
         "session_count": sum(len(p["sessions"]) for p in project_records),
         "project_count": len(project_records),
         "customers_file": str(args.customers),
@@ -399,7 +412,7 @@ def strip_internal(digest: dict) -> dict:
     # deterministic — there is exactly one correct rendering, and it lives here).
     out = dict(digest)
     out["window_header"] = fmt_window_header(digest)
-    out["window_phrase"] = fmt_window_phrase(digest["hours"])
+    out["window_phrase"] = fmt_window_phrase(digest["hours"], digest.get("day"))
     if digest["customers"] is not None:
         out["customers"] = [{**c, "duration_label": fmt_duration(c["active_minutes"])} for c in digest["customers"]]
     out["projects"] = [
@@ -420,7 +433,10 @@ def fmt_duration(minutes: int) -> str:
     return f"{int(h)}h" if h == int(h) else f"{h:.1f}h"
 
 
-def fmt_window_phrase(hours: float) -> str:
+def fmt_window_phrase(hours: float, day: str | None = None) -> str:
+    if day:
+        d = date.fromisoformat(day)
+        return f"{d.day} {d.strftime('%B %Y')}"
     if hours == int(hours):
         n = int(hours)
         return f"last {n} hour{'s' if n != 1 else ''}"
@@ -440,7 +456,8 @@ def fmt_window_header(digest: dict) -> str:
 
 def render_list(digest: dict) -> str:
     lines: list[str] = []
-    lines.append(f"## Projects in {fmt_window_phrase(digest['hours'])}")
+    phrase = fmt_window_phrase(digest["hours"], digest.get("day"))
+    lines.append(f"## Projects on {phrase}" if digest.get("day") else f"## Projects in {phrase}")
     lines.append(fmt_window_header(digest))
     lines.append("")
 
@@ -462,7 +479,14 @@ def render_list(digest: dict) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--hours", type=float, default=12.0, help="Window size in hours (default: 12)")
+    parser.add_argument("--hours", type=float, default=12.0, help="Window size in hours back from now (default: 12)")
+    parser.add_argument(
+        "--day",
+        type=date.fromisoformat,
+        default=None,
+        metavar="YYYY-MM-DD",
+        help="One local calendar day instead of a trailing window; overrides --hours",
+    )
     parser.add_argument(
         "--list",
         action="store_true",
