@@ -4,6 +4,58 @@ For the full commit history, see
 [github.com/ZunoSmartLabs/zsl-superpowers/commits/main](https://github.com/ZunoSmartLabs/zsl-superpowers/commits/main).
 This page summarises the user-facing changes per plugin version.
 
+## 2.3.0
+
+`/timesheet` now **reads as a consultant's day and lands it in Harvest: grouped by
+customer, with meetings from Granola and the calendar, a narrative close, and
+proposed time entries logged on your yes.**
+
+- **Customers.** Every repo and meeting sits under a `## <Customer>` heading. The
+  digest script assigns projects from a per-user map at
+  `~/.claude/timesheet-customers.json` (`paths` per customer, matched with the
+  `--only` rules; `domains` and `titles` bucket the meetings; `harvest` names the
+  project and task), emits the customer roll-up with pre-rendered duration
+  labels, and shows the customer in `--list`. Without the file the skill proposes
+  one from the day's projects and writes it on your yes. `--customers PATH`
+  points elsewhere.
+- **Meetings.** With the Granola MCP connector the skill lists the meetings inside
+  the window and pulls their summaries; with the Google Calendar connector it
+  reads the same window from the calendar named in the map, which supplies real
+  durations, catches in-person meetings Granola never saw, and drops declined
+  events. Meetings and events render under their customer as `### Calendar · <count>`,
+  each linking to its Granola note, and count as outcomes, so a day of calls with no
+  commits still renders.
+- **Sent email.** With the Gmail connector the skill lists the messages you sent
+  inside the window — subject, time and recipient organisations only, never
+  bodies — renders them per customer as `### Email · <count>`, adds each to the
+  notes of the Harvest row that contains it, and gives an email in otherwise
+  unaccounted time a ten-minute row of its own.
+- **Activity blocks.** Each project's JSON carries `blocks`: contiguous runs of
+  active time in local clock time, split at gaps over 30 minutes or when the
+  customer changes. A customer's `prompts` keywords re-attribute minutes inside
+  another customer's repo from the prompt that names it, so ten minutes of
+  Thundergrid work done from a SeenSafety checkout bill Thundergrid. A session
+  whose first and last events are nine hours apart no longer reads as nine hours
+  of work.
+- **Harvest.** With the Harvest MCP connector the render ends with a table of
+  proposed entries — one per project and block, plus one per meeting, with
+  clock-in and clock-out, project, task and notes drawn from that customer's
+  bullets — checked against what is already logged that day. Every block and
+  meeting gets a row, however small; a customer with no Harvest project keeps
+  its row marked `needs project` with a suggestion of what to add in Harvest.
+  Nothing is written until you say yes.
+- **`--day YYYY-MM-DD`.** One local calendar day, midnight to midnight, instead
+  of a trailing window; "what did I do on the 16th" no longer needs `--hours 24`
+  run at the right moment. The title line carries the date.
+- **No more "which repos to exclude?" gate.** The skill lists the projects and
+  carries on with all of them; trim afterwards if you want to.
+- **How the day went.** Each render closes with three to six clock-ordered
+  bullets telling what was investigated, decided or built, including the work
+  that never became a commit.
+
+No migration steps; every connector and the customers file are optional, and
+the old flat render is what you get without them.
+
 ## 2.2.0
 
 Every PRD now **opens with a high-level architecture diagram in ASCII.**

@@ -147,7 +147,7 @@ The overnight loop — schedule dedicated remote sessions, run them unattended, 
 | [teach-me-the-codebase](teach-me-the-codebase.md) | On-the-fly conversational tutor for an unfamiliar repo. Reads `CONTEXT.md`/ADRs/`CLAUDE.md`/code and teaches the domain, architecture, and conventions. Zero persisted artefacts; hands doc gaps to `grill-with-docs`. |
 | [ask-zsl](ask-zsl.md) | Thin interactive router — asks situational questions and points you at the right ZSL skill mid-session, deferring each skill's description to its own page. The interactive twin of the decision tree above. |
 | [handoff](handoff.md) | Compact the current conversation into a handoff doc in OS temp dir; redacts secrets, references existing artifacts instead of duplicating them, suggests skills for the next session. |
-| [timesheet](timesheet.md) | Recent Claude Code session histories → copy/paste standup bullets, grouped by project. |
+| [timesheet](timesheet.md) | Claude Code sessions + Granola meetings + calendar events + sent email → standup bullets grouped by customer, then proposed Harvest time entries logged on your yes. |
 | [writing-great-skills](writing-great-skills.md) | Principles + vocabulary reference for authoring great skills: progressive disclosure, sharp descriptions/triggers, deterministic-gate scripts. Replaces the old `write-a-skill` process skill. |
 | [setup-zsl-superpowers](setup-zsl-superpowers.md) | One-time per-repo scaffold. Run before any of the engineering loop skills. |
 | [edit-article](edit-article.md) | Restructure and tighten article drafts. (Misc — rarely reached for.) |

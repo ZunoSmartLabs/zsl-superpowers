@@ -12,10 +12,24 @@ Active hours per project are estimated by counting distinct 5-minute
 buckets that contain at least one event, unioned across the project's
 sessions (overlapping work does not double-count).
 
-Usage:
-    digest_sessions.py [--hours N] [--list] [--only PATTERN]
-                       [--exclude PATTERN] [--merge-nested]
-                       [--include-noise] [--projects-dir PATH]
+Projects are assigned to customers from a per-user JSON file (default
+~/.claude/timesheet-customers.json) so the timesheet can group by client:
+
+    {"self": "ZunoSmart Labs",
+     "customers": {"Spark": {"paths": ["spark-asset-iq"], "domains": ["spark.co.nz"]}}}
+
+`paths` follow the --only/--exclude matching rules; everything else in the
+file (`domains`, `titles`, `harvest`, a top-level `calendar`) is echoed back
+untouched for the caller to bucket meetings and propose Harvest entries.
+
+Each project also carries `blocks`: contiguous runs of active buckets in local
+time, split wherever the gap exceeds BLOCK_GAP_MINUTES or the customer changes.
+A session that spans a day can hide an eight-hour gap between its first and
+last event; the blocks show where the work actually sat. A customer's optional
+`prompts` keywords re-attribute time inside a repo: from a short user prompt
+(pasted output is ignored) that mentions one, the minutes belong to that
+customer until another customer's keyword or a gap, so ten minutes of Thundergrid work done from the SeenSafety
+checkout land on Thundergrid.
 """
 
 from __future__ import annotations
@@ -24,7 +38,7 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 
 SLASH_COMMAND_OUTPUT_MARKERS = (
@@ -40,6 +54,10 @@ NOISE_PATH_FRAGMENTS = ("ClaudeProbe", "CodexBar")
 
 ACTIVE_BUCKET_MINUTES = 5
 BASH_CMD_TRUNCATE = 1500
+BLOCK_GAP_MINUTES = 30
+PROMPT_KEYWORD_MAX_CHARS = 400  # longer prompts are pasted output, not the user speaking
+CUSTOMERS_FILE = Path.home() / ".claude" / "timesheet-customers.json"
+UNASSIGNED = "Unassigned"
 
 
 def parse_ts(s: str) -> datetime | None:
@@ -49,14 +67,6 @@ def parse_ts(s: str) -> datetime | None:
         return datetime.fromisoformat(s.replace("Z", "+00:00"))
     except (ValueError, TypeError):
         return None
-
-
-def is_subagent_file(path: Path) -> bool:
-    return "subagents" in path.parts
-
-
-def is_noise_path(cwd: str) -> bool:
-    return any(frag in cwd for frag in NOISE_PATH_FRAGMENTS)
 
 
 def decode_cwd_from_dir(name: str) -> str:
@@ -107,6 +117,7 @@ def process_session(path: Path, window_start: datetime, window_end: datetime) ->
         "_bash_seen": set(),
     }
     buckets: set[int] = set()
+    marks: list[tuple[int, str]] = []
     in_window_count = 0
     earliest: datetime | None = None
     latest: datetime | None = None
@@ -147,6 +158,7 @@ def process_session(path: Path, window_start: datetime, window_end: datetime) ->
                     prompt = extract_user_prompt(msg)
                     if prompt:
                         user_prompts.append(prompt)
+                        marks.append((bucket_id(ts), prompt))
                 elif etype == "assistant":
                     content = msg.get("content")
                     if isinstance(content, list):
@@ -169,10 +181,58 @@ def process_session(path: Path, window_start: datetime, window_end: datetime) ->
         "event_count": in_window_count,
         "active_minutes": len(buckets) * ACTIVE_BUCKET_MINUTES,
         "_buckets": buckets,
+        "_marks": marks,
         "user_prompts": user_prompts,
         "files_touched": [{"path": p, "via": tool} for p, tool in summary["files_touched"].items()],
         "bash_commands": summary["bash_commands"],
     }
+
+
+def _fmt_bucket(b: int) -> str:
+    return datetime.fromtimestamp(b * ACTIVE_BUCKET_MINUTES * 60).astimezone().strftime("%Y-%m-%d %H:%M")
+
+
+def attribute_buckets(project: dict, entries: dict) -> list[tuple[int, str | None]]:
+    """Each active bucket with the customer it belongs to, in time order.
+
+    Attribution starts as the project's path customer. A user prompt that
+    mentions one of a customer's `prompts` keywords switches the minutes from
+    that bucket on to that customer, until another customer's keyword or a gap
+    over BLOCK_GAP_MINUTES resets to the default.
+    """
+    default = project.get("customer")
+    limit = BLOCK_GAP_MINUTES // ACTIVE_BUCKET_MINUTES
+    keyed = {c: [k.lower() for k in spec.get("prompts", [])] for c, spec in entries.items()}
+    marks = sorted(m for sess in project["sessions"] for m in sess["_marks"])
+    out: list[tuple[int, str | None]] = []
+    current, prev, mi = default, None, 0
+    for b in sorted(set().union(*(sess["_buckets"] for sess in project["sessions"]))):
+        if prev is not None and b - prev > limit:
+            current = default
+        while mi < len(marks) and marks[mi][0] <= b:
+            text = marks[mi][1]
+            if len(text) <= PROMPT_KEYWORD_MAX_CHARS:
+                text = text.lower()
+                current = next((c for c, keys in keyed.items() if any(k in text for k in keys)), current)
+            mi += 1
+        out.append((b, current))
+        prev = b
+    return out
+
+
+def blocks_from(attributed: list[tuple[int, str | None]]) -> list[dict]:
+    """Contiguous runs of buckets, split at gaps over BLOCK_GAP_MINUTES or a customer change."""
+    limit = BLOCK_GAP_MINUTES // ACTIVE_BUCKET_MINUTES
+    runs: list[list[tuple[int, str | None]]] = []
+    for b, c in attributed:
+        if runs and b - runs[-1][-1][0] <= limit and runs[-1][-1][1] == c:
+            runs[-1].append((b, c))
+        else:
+            runs.append([(b, c)])
+    return [
+        {"start": _fmt_bucket(r[0][0]), "end": _fmt_bucket(r[-1][0] + 1), "minutes": len(r) * ACTIVE_BUCKET_MINUTES, "customer": r[0][1]}
+        for r in runs
+    ]
 
 
 def merge_nested_projects(project_records: list[dict]) -> list[dict]:
@@ -217,13 +277,59 @@ def project_matches(cwd: str, patterns: list[str]) -> bool:
     return False
 
 
+def load_customers(path: Path) -> dict | None:
+    """The per-user customer map, or None when the file is absent (grouping is then off)."""
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def assign_customers(project_records: list[dict], config: dict | None) -> list[dict] | None:
+    """Stamp each project with its customer and blocks; return the customer roll-up.
+
+    First matching `paths` entry in file order wins; a project no entry claims is
+    UNASSIGNED, listed first so it gets noticed. Blocks carry per-bucket
+    attribution (see attribute_buckets), and the roll-up unions attributed
+    buckets per customer, so minutes are never summed twice. The user's own
+    company (`self`) is listed last. Without a config the blocks still come out,
+    with no customer on them, and the roll-up is None.
+    """
+    entries = (config or {}).get("customers") or {}
+    own = (config or {}).get("self")
+    pools: dict[str, set[int]] = {}
+    for p in project_records:
+        p["customer"] = next((c for c, spec in entries.items() if project_matches(p["cwd"], spec.get("paths", []))), None)
+        attributed = attribute_buckets(p, entries)
+        p["blocks"] = blocks_from(attributed)
+        for b, c in attributed:
+            pools.setdefault(c or UNASSIGNED, set()).add(b)
+    if config is None:
+        return None
+    records = [{"name": n, "active_minutes": len(b) * ACTIVE_BUCKET_MINUTES} for n, b in pools.items()]
+    rank = lambda r: (r["name"] == own, r["name"] != UNASSIGNED, -r["active_minutes"])  # noqa: E731
+    return sorted(records, key=rank)
+
+
+def window_for(hours: float, day: date | None) -> tuple[datetime, datetime, float]:
+    """The UTC window: a trailing `hours` from now, or one local calendar day.
+
+    `--hours 24` at 10:40 covers 10:40 yesterday to 10:40 today, which is not
+    "what did I do on Tuesday"; `--day` anchors on local midnight instead.
+    """
+    if day is None:
+        end = datetime.now(timezone.utc)
+        return end - timedelta(hours=hours), end, hours
+    start = datetime.combine(day, time.min).astimezone()
+    return start.astimezone(timezone.utc), (start + timedelta(days=1)).astimezone(timezone.utc), 24.0
+
+
 def collect(args: argparse.Namespace) -> dict:
     if not args.projects_dir.is_dir():
         print(f"projects dir not found: {args.projects_dir}", file=sys.stderr)
         sys.exit(1)
 
-    window_end = datetime.now(timezone.utc)
-    window_start = window_end - timedelta(hours=args.hours)
+    window_start, window_end, hours = window_for(args.hours, args.day)
     mtime_floor = (window_start - timedelta(hours=2)).timestamp()
 
     # Explicit --only overrides the default noise filter; the user is being specific.
@@ -231,7 +337,7 @@ def collect(args: argparse.Namespace) -> dict:
 
     sessions: list[dict] = []
     for path in args.projects_dir.rglob("*.jsonl"):
-        if is_subagent_file(path):
+        if "subagents" in path.parts:
             continue
         try:
             if path.stat().st_mtime < mtime_floor:
@@ -241,7 +347,7 @@ def collect(args: argparse.Namespace) -> dict:
         digest = process_session(path, window_start, window_end)
         if not digest:
             continue
-        if apply_noise_filter and digest["cwd"] and is_noise_path(digest["cwd"]):
+        if apply_noise_filter and any(f in (digest["cwd"] or "") for f in NOISE_PATH_FRAGMENTS):
             continue
         sessions.append(digest)
 
@@ -283,12 +389,17 @@ def collect(args: argparse.Namespace) -> dict:
     elif args.exclude:
         project_records = [p for p in project_records if not project_matches(p["cwd"], args.exclude)]
 
+    config = load_customers(args.customers)
     return {
         "window_start": window_start.isoformat(),
         "window_end": window_end.isoformat(),
-        "hours": args.hours,
+        "hours": hours,
+        "day": args.day.isoformat() if args.day else None,
         "session_count": sum(len(p["sessions"]) for p in project_records),
         "project_count": len(project_records),
+        "customers_file": str(args.customers),
+        "customer_config": config,
+        "customers": assign_customers(project_records, config),
         "projects": project_records,
     }
 
@@ -301,12 +412,14 @@ def strip_internal(digest: dict) -> dict:
     # deterministic — there is exactly one correct rendering, and it lives here).
     out = dict(digest)
     out["window_header"] = fmt_window_header(digest)
-    out["window_phrase"] = fmt_window_phrase(digest["hours"])
+    out["window_phrase"] = fmt_window_phrase(digest["hours"], digest.get("day"))
+    if digest["customers"] is not None:
+        out["customers"] = [{**c, "duration_label": fmt_duration(c["active_minutes"])} for c in digest["customers"]]
     out["projects"] = [
         {
             **p,
             "duration_label": fmt_duration(p["active_minutes"]),
-            "sessions": [{k: v for k, v in s.items() if k != "_buckets"} for s in p["sessions"]],
+            "sessions": [{k: v for k, v in s.items() if k not in ("_buckets", "_marks")} for s in p["sessions"]],
         }
         for p in digest["projects"]
     ]
@@ -320,7 +433,10 @@ def fmt_duration(minutes: int) -> str:
     return f"{int(h)}h" if h == int(h) else f"{h:.1f}h"
 
 
-def fmt_window_phrase(hours: float) -> str:
+def fmt_window_phrase(hours: float, day: str | None = None) -> str:
+    if day:
+        d = date.fromisoformat(day)
+        return f"{d.day} {d.strftime('%B %Y')}"
     if hours == int(hours):
         n = int(hours)
         return f"last {n} hour{'s' if n != 1 else ''}"
@@ -340,7 +456,8 @@ def fmt_window_header(digest: dict) -> str:
 
 def render_list(digest: dict) -> str:
     lines: list[str] = []
-    lines.append(f"## Projects in {fmt_window_phrase(digest['hours'])}")
+    phrase = fmt_window_phrase(digest["hours"], digest.get("day"))
+    lines.append(f"## Projects on {phrase}" if digest.get("day") else f"## Projects in {phrase}")
     lines.append(fmt_window_header(digest))
     lines.append("")
 
@@ -353,7 +470,8 @@ def render_list(digest: dict) -> str:
         name = os.path.basename(cwd.rstrip("/")) or cwd
         duration = fmt_duration(project["active_minutes"])
         n = len(project["sessions"])
-        lines.append(f"- **{name}** · {duration} · {n} session{'s' if n != 1 else ''}")
+        customer = f" · {project.get('customer') or UNASSIGNED}" if digest["customers"] is not None else ""
+        lines.append(f"- **{name}** · {duration} · {n} session{'s' if n != 1 else ''}{customer}")
         lines.append(f"  `{cwd}`")
 
     return "\n".join(lines).rstrip() + "\n"
@@ -361,7 +479,14 @@ def render_list(digest: dict) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--hours", type=float, default=12.0, help="Window size in hours (default: 12)")
+    parser.add_argument("--hours", type=float, default=12.0, help="Window size in hours back from now (default: 12)")
+    parser.add_argument(
+        "--day",
+        type=date.fromisoformat,
+        default=None,
+        metavar="YYYY-MM-DD",
+        help="One local calendar day instead of a trailing window; overrides --hours",
+    )
     parser.add_argument(
         "--list",
         action="store_true",
@@ -390,6 +515,12 @@ def main() -> int:
         "--include-noise",
         action="store_true",
         help="Include health-check / probe paths normally filtered out",
+    )
+    parser.add_argument(
+        "--customers",
+        type=Path,
+        default=CUSTOMERS_FILE,
+        help=f"Per-user customer map JSON (default: {CUSTOMERS_FILE}); absent file disables customer grouping",
     )
     parser.add_argument(
         "--projects-dir",

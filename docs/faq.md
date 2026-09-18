@@ -22,7 +22,7 @@ flowchart LR
     subgraph harness["⚠️ Harness-bound"]
         h1["tdd-parallel<br/>(uses Agent, Monitor,<br/>SendMessage, TaskStop)"]
         h3["code-review<br/>(uses parallel Agent calls<br/>for the six-lens scan)"]
-        h2["timesheet<br/>(reads ~/.claude/projects/)"]
+        h2["timesheet<br/>(reads ~/.claude/projects/;<br/>Granola, Calendar, Gmail,<br/>Harvest MCPs if connected)"]
         h4["afk-fanout · afk-worker<br/>morning-review<br/>(claude.ai remote routines,<br/>scheduling, ledger branch)"]
     end
     portable -.->|"copy SKILL.md body<br/>to your agent's prompt"| other["any other harness"]
