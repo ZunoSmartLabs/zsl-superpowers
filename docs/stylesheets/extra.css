@@ -1,3 +1,72 @@
+/* ── ZSL brand palette ──────────────────────────────────────────────────────
+
+   mkdocs.yml sets `primary: custom` / `accent: custom`, which only sets the
+   data attributes below; the colours themselves live here. Values are the
+   tokens from the marketing site's assets/css/site.css, so the docs chrome,
+   the social cards in layouts/zsl.yml and zunosmartlabs.com all agree.
+
+       violet  #6d28d9 light / #a78bfa dark
+       navy    #0a1628
+       amber   #d97706 light / #f59e0b dark  (unused here, cards only)         */
+
+[data-md-color-primary="custom"] {
+  --md-primary-fg-color: #6d28d9;
+  --md-primary-fg-color--light: #7c3aed;
+  --md-primary-fg-color--dark: #5b21b6;
+  --md-primary-bg-color: #ffffff;
+  --md-primary-bg-color--light: rgba(255, 255, 255, 0.7);
+}
+
+[data-md-color-accent="custom"] {
+  --md-accent-fg-color: #7c3aed;
+  --md-accent-fg-color--transparent: rgba(124, 58, 237, 0.1);
+  --md-accent-bg-color: #ffffff;
+  --md-accent-bg-color--light: rgba(255, 255, 255, 0.7);
+}
+
+/* In dark mode the header takes the brand navy rather than the violet, which
+   is what zunosmartlabs.com does, and links lift to the lighter violet so they
+   keep their contrast against it. --md-hue is Material's own knob for the
+   slate background ramp; 216 is the hue of #0a1628, so the greys it derives
+   sit on the brand navy instead of Material's default blue-grey. */
+[data-md-color-scheme="slate"] {
+  --md-hue: 216;
+
+  /* --md-hue only rotates Material's slate ramp, which is 15% saturation, so
+     on its own it still reads grey. Pin the two surfaces to the marketing
+     site's own dark tokens (--bg-primary / --bg-surface) so the page sits on
+     the brand navy. The foreground ramp is left to Material: it is hue-driven
+     and already near-white, and the mermaid rules below depend on it. */
+  --md-default-bg-color: #0a1628;
+  --md-code-bg-color: #0e1d33;
+}
+
+/* --md-primary-fg-color does double duty in Material: it colours the header
+   *and* every link and primary button. It therefore has to stay the light
+   violet here — pinning it to the navy puts navy links on a navy page, which
+   is how the "Get started" button and the inline links disappeared. The header
+   gets the navy through an explicit rule below instead. */
+[data-md-color-scheme="slate"][data-md-color-primary="custom"] {
+  --md-primary-fg-color: #a78bfa;
+  --md-primary-fg-color--light: #c4b5fd;
+  --md-primary-fg-color--dark: #7c3aed;
+  --md-primary-bg-color: #0a1628;
+  --md-primary-bg-color--light: rgba(10, 22, 40, 0.7);
+}
+
+[data-md-color-scheme="slate"] .md-header,
+[data-md-color-scheme="slate"] .md-tabs {
+  background-color: #0a1628;
+  color: #f1f5f9;
+}
+
+[data-md-color-scheme="slate"][data-md-color-accent="custom"] {
+  --md-accent-fg-color: #a78bfa;
+  --md-accent-fg-color--transparent: rgba(167, 139, 250, 0.1);
+  --md-accent-bg-color: #0a1628;
+  --md-accent-bg-color--light: rgba(10, 22, 40, 0.7);
+}
+
 /* Mermaid dark-mode legibility.
 
    Every diagram in these docs styles its nodes with light pastel `classDef`
