@@ -1,0 +1,109 @@
+# ZunoSmart Labs social card.
+#
+# Mirrors the marketing site's cards (zunosmartlabs-public-website,
+# scripts/og-template.html) so a card from either site reads as the same
+# company: the same lockup, the light #f8f9fc ground, Space Grotesk over
+# Inter, and the violet-to-amber rule along the bottom edge.
+#
+# Why this exists rather than `cards_layout_options` on the default layout:
+# the default reserves a three-line title box anchored at its top, so a short
+# title like "Home" leaves a large hole through the middle of the card. Every
+# text layer here is anchored "center", so a one-line title sits in the
+# middle of its box and the card stays balanced whatever the title's length.
+
+definitions:
+  - &background_color "#f8f9fc"
+  - &ink "#0f172a"
+  - &muted "#475569"
+  - &violet "#6d28d9"
+
+  - &heading_font Space Grotesk
+  - &body_font Inter
+
+  - &lockup >-
+    {{ config.docs_dir }}/assets/zsl-lockup-light.png
+  - &rule >-
+    {{ config.docs_dir }}/assets/zsl-rule.png
+
+  - &site_name >-
+    {{ config.site_name }}
+
+  - &page_title >-
+    {%- if layout.title -%}
+      {{ layout.title }}
+    {%- else -%}
+      {{ page.meta.get("title", page.title) }}
+    {%- endif -%}
+
+  - &page_title_with_site_name >-
+    {%- if not page.is_homepage -%}
+      {{ page.meta.get("title", page.title) }} - {{ config.site_name }}
+    {%- else -%}
+      {{ config.site_name }}
+    {%- endif -%}
+
+  - &page_description >-
+    {%- if layout.description -%}
+      {{ layout.description }}
+    {%- else -%}
+      {{ page.meta.get("description", config.site_description) | x }}
+    {%- endif -%}
+
+tags:
+  og:type: website
+  og:title: *page_title_with_site_name
+  og:description: *page_description
+  og:image: "{{ image.url }}"
+  og:image:type: "{{ image.type }}"
+  og:image:width: "{{ image.width }}"
+  og:image:height: "{{ image.height }}"
+  og:url: "{{ page.canonical_url }}"
+
+  twitter:card: summary_large_image
+  twitter:title: *page_title_with_site_name
+  twitter:description: *page_description
+  twitter:image: "{{ image.url }}"
+
+size: { width: 1200, height: 630 }
+layers:
+  - background:
+      color: *background_color
+
+  # The hero lockup, already recoloured for a light ground. Layer backgrounds
+  # are resized to *cover*, so this box keeps the source's 3.2:1 aspect.
+  - size: { width: 512, height: 160 }
+    offset: { x: 344, y: 52 }
+    background:
+      image: *lockup
+
+  - size: { width: 1000, height: 30 }
+    offset: { x: 100, y: 228 }
+    typography:
+      content: *site_name
+      align: center
+      color: *violet
+      line: { amount: 1, height: 1.25 }
+      font: { family: *body_font, style: Regular }
+
+  - size: { width: 1000, height: 176 }
+    offset: { x: 100, y: 282 }
+    typography:
+      content: *page_title
+      align: center
+      color: *ink
+      line: { amount: 2, height: 1.15 }
+      font: { family: *heading_font, style: Bold }
+
+  - size: { width: 880, height: 72 }
+    offset: { x: 160, y: 476 }
+    typography:
+      content: *page_description
+      align: center
+      color: *muted
+      line: { amount: 2, height: 1.5 }
+      font: { family: *body_font, style: Regular }
+
+  - size: { width: 1200, height: 8 }
+    offset: { x: 0, y: 622 }
+    background:
+      image: *rule

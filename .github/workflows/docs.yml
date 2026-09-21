@@ -7,6 +7,7 @@ on:
       - "docs/**"
       - "skills/**/SKILL.md"
       - "scripts/mkdocs_hooks/**"
+      - "layouts/**"
       - "mkdocs.yml"
       - ".github/workflows/docs.yml"
   workflow_dispatch:

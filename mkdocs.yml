@@ -9,17 +9,19 @@ edit_uri: edit/main/docs/
 theme:
   name: material
   palette:
+    # `custom` defers the actual colours to docs/stylesheets/extra.css, which
+    # holds the ZSL violet and navy. Keep them there, not here.
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: indigo
-      accent: indigo
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-sunny
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: indigo
-      accent: indigo
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-night
         name: Switch to light mode
@@ -41,7 +43,11 @@ extra_css:
 
 plugins:
   - search
-  - social
+  # Cards use the ZSL layout in layouts/zsl.yml so they match the marketing
+  # site's. Changing it means clearing .cache/plugin/social/ before rebuilding,
+  # or the old cards are served straight back from cache.
+  - social:
+      cards_layout: zsl
 
 hooks:
   - scripts/mkdocs_hooks/skill_pages.py
