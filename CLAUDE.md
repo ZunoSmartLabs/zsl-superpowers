@@ -13,7 +13,7 @@ Skills live in bucket folders under `skills/`:
 
 - `make lint` — `ruff check` plus `basedpyright` over the Python (mkdocs hooks, scripts). When you add a Python deterministic-gate script under `skills/**/scripts/`, add it to the `basedpyright` line.
 - `make test` — runs the deterministic-gate script tests: `pytest` over `skills/**` (the Python scripts' `scripts/tests/test_*.py`) plus each shell script's own assertion runner. Add a line per new shell test runner.
-- `make docs` — strict MkDocs build. **This is the exact gate the GitHub Pages deploy runs on push to `main`** — run it locally before pushing any change to `docs/**`, `skills/**/SKILL.md`, `scripts/mkdocs_hooks/**`, or `mkdocs.yml`, or the deploy fails. (`make docs-serve` for live preview.)
+- `make docs` — strict MkDocs build. **This is the exact gate the GitHub Pages deploy runs on push to `main`** — run it locally before pushing any change to `docs/**`, `skills/**/SKILL.md`, `scripts/mkdocs_hooks/**`, `layouts/**`, or `mkdocs.yml`, or the deploy fails. (`make docs-serve` for live preview.)
 - `make format` — `ruff format`.
 
 ## Invariants that break silently
@@ -30,7 +30,7 @@ A skill in `engineering/`, `productivity/`, `misc/`, or `remote-agents/` must be
 4. `docs/skills/index.md` — row in the table under the matching **role-in-the-loop** section (Plan / Break down / Build / Verify / Ship / Overnight / Cross-cutting / Off-loop and meta — *not* the bucket folder; the page groups by role and says so). If it's a loop skill, also add a node to the "Which skill do I want?" mermaid decision tree.
 5. `mkdocs.yml` — nav line under the matching **role** group (same role headings as `docs/skills/index.md`, not the bucket).
 
-Per-skill pages under `docs/skills/<name>.md` are auto-generated from `SKILL.md` by `scripts/mkdocs_hooks/skill_pages.py` — don't edit by hand. `mkdocs build --strict` (= `make docs`) runs on every push to `main` that touches `docs/**`, `skills/**/SKILL.md`, `scripts/mkdocs_hooks/**`, or `mkdocs.yml`, so a stale nav entry will fail the GitHub Pages deploy.
+Per-skill pages under `docs/skills/<name>.md` are auto-generated from `SKILL.md` by `scripts/mkdocs_hooks/skill_pages.py` — don't edit by hand. `mkdocs build --strict` (= `make docs`) runs on every push to `main` that touches `docs/**`, `skills/**/SKILL.md`, `scripts/mkdocs_hooks/**`, `layouts/**`, or `mkdocs.yml`, so a stale nav entry will fail the GitHub Pages deploy.
 
 **Routing pair — `ask-zsl` and the decision tree move together.** The `ask-zsl` interactive router (`skills/engineering/ask-zsl/SKILL.md`) and the "Which skill do I want?" mermaid decision tree in `docs/skills/index.md` are two views of the same loop routing. Whenever you add or remove a *loop* skill, update **both**: the decision-tree node *and* `ask-zsl`'s routing branches. A skill present in one but not the other is a stale-routing bug.
 
@@ -69,6 +69,26 @@ Some skills delegate a *secretly-deterministic* step (one with exactly one corre
 2. **Resolve, never hard-code a path.** `${CLAUDE_PLUGIN_ROOT}` does not expand inside SKILL.md Bash (Claude Code bug), so each callout resolves the script across all three environments with the same priority search and `| head -1`: `$PWD/skills/*/<name>/scripts/<file>` (this repo/dev) → `$HOME/.claude/skills/<name>/scripts/<file>` (remote symlink / personal install) → newest `$HOME/.claude/plugins/cache/zsl-superpowers/zsl/*/skills/*/<name>/scripts/<file>` (local plugin, `sort -Vr`).
 3. **Always preserve a prose fallback.** If the resolver finds nothing it prints a `zsl-gate: … unresolved` line; the SKILL.md must keep the original prose under an explicit **Fallback** heading so the step still works by model judgment. A gate that silently does nothing is a bug.
 4. **Every script has tests, including a fails-the-prose-way case.** Python scripts: `scripts/tests/test_*.py` run by `pytest` (and add the script to `make lint`'s `basedpyright` line). Shell scripts: a `scripts/tests/test_*.sh` runner added to `make test`. Each must include at least one input the old prose way gets wrong (e.g. a 1025-char description, a clean tree on a detached HEAD, a `outcome: scheduled` vs `pending` slip).
+
+### Social cards — custom layout, cached output
+
+Cards come from the `social` plugin using `layouts/zsl.yml`, which matches the
+marketing site's cards (`zunosmartlabs-public-website`, `scripts/og-template.html`):
+the ZSL lockup, the light `#f8f9fc` ground, Space Grotesk over Inter, and the
+violet-to-amber rule. The two brand assets it draws are `docs/assets/zsl-lockup-light.png`
+(the hero lockup recoloured for a light ground) and `docs/assets/zsl-rule.png`.
+
+Do not go back to the stock layout: it anchors a three-line title box at its top,
+so short titles like "Home" leave a hole through the middle of the card. Every text
+layer in `zsl.yml` is anchored `center` instead.
+
+**Rendered cards are cached in `.cache/plugin/social/`.** After changing the layout
+or either asset, `rm -rf .cache/plugin/social` before `make docs`, or you will keep
+looking at the old cards. The plugin fetches Space Grotesk and Inter from Google
+Fonts at build time, so the build needs network access.
+
+Pages carry no per-page `description`, so every card falls back to `site_description`.
+Adding a `description:` to a page's front matter gives that card its own subtitle.
 
 ## Agent skills
 

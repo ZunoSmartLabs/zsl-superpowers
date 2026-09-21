@@ -41,7 +41,11 @@ extra_css:
 
 plugins:
   - search
-  - social
+  # Cards use the ZSL layout in layouts/zsl.yml so they match the marketing
+  # site's. Changing it means clearing .cache/plugin/social/ before rebuilding,
+  # or the old cards are served straight back from cache.
+  - social:
+      cards_layout: zsl
 
 hooks:
   - scripts/mkdocs_hooks/skill_pages.py
